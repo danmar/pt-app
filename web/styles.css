@@ -788,3 +788,45 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .picker .ex-main { cursor: pointer; }
 .picker .ex-text strong { white-space: normal; line-height: 1.25; }
 .picker .ex-text small { white-space: normal; }
+
+/* Uppvärmning och pass */
+.toggle.small { font-size: 12.5px; padding: 4px 10px; }
+.m-head b { flex: 1; }
+.part-title { margin: 6px 4px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.m-set .kg.wide input, .kg.wide input { width: 76px; }
+.wk-links { align-items: center; flex-wrap: wrap; }
+
+/* Kondition: välj aktivitet */
+.hidden { display: none !important; }
+.choice.activity { background: var(--blue-bg); --c: var(--blue); }
+.k-swim { --kc: var(--blue); --kb: var(--blue-bg); }
+.k-run { --kc: var(--green); --kb: var(--green-bg); }
+.k-bike { --kc: var(--teal); --kb: var(--teal-bg); }
+.k-walk { --kc: var(--yellow); --kb: var(--yellow-bg); }
+.k-ski { --kc: var(--purple); --kb: var(--purple-bg); }
+.k-other { --kc: var(--pink); --kb: var(--pink-bg); }
+.act-list { gap: 10px; }
+.act-item {
+  width: 100%; display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 0; text-align: left;
+  background: var(--card); color: var(--text); border-radius: 20px; box-shadow: var(--shadow); font: inherit;
+}
+.act-item:active { transform: scale(0.98); }
+.act-icon { width: 48px; height: 48px; border-radius: 15px; flex: none; display: grid; place-items: center; background: var(--kb); color: var(--kc); }
+.act-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.act-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.act-text b { font-size: 17px; }
+.act-text small { color: var(--muted); font-size: 13px; }
+.pill.warn-pill { background: var(--danger); }
+.swim-item[class*="k-"] .swim-badge { background: var(--kb); color: var(--kc); }
+.swim-item[class*="k-"] .ex-text small { color: var(--kc); }
+.log-icon[class*="k-"] { background: var(--kb); color: var(--kc); }
+.today-card.k-run .today-icon, .today-card.k-bike .today-icon, .today-card.k-ski .today-icon { background: var(--kb); color: var(--kc); }
+.dot.k-run { background: var(--green); } .dot.k-bike { background: var(--teal); } .dot.k-ski { background: var(--purple); }
+.week-day-item.k-run { --kc: var(--green); } .week-day-item.k-bike { --kc: var(--teal); }
+.row.three > .btn { padding-left: 6px; padding-right: 6px; }
+.segmented.four { grid-template-columns: repeat(4, 1fr); }
+
+/* Uppvärmning först i passet */
+.warm-box { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px 4px; border-radius: var(--radius); background: var(--yellow-bg); }
+.warm-box .pk-title { margin-top: 2px; }
+.then-title { margin-top: 6px; }

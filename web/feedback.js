@@ -6,7 +6,8 @@ import { AREAS, REHAB } from './physio.js';
 const DAY = 86_400_000;
 const fmt = (n) => Number(n).toLocaleString('sv-SE', { maximumFractionDigits: 1 });
 const lc = (s) => s.charAt(0).toLowerCase() + s.slice(1);
-const best = (sets, key) => Math.max(0, ...sets.map((s) => (key === 'weight' ? (s.reps > 0 ? s.weight || 0 : 0) : s.reps || 0)));
+const best = (sets, key) => Math.max(0, ...sets.map((s) => (key === 'weight' ? (s.reps > 0 ? s.weight || 0 : 0) : s[key] || 0)));
+const fmtDist = (m) => (m >= 10000 ? `${fmt(m / 1000)} km` : `${fmt(Math.round(m))} m`);
 const volume = (sets) => sets.reduce((n, s) => n + (s.reps || 0) * (s.weight || 1), 0);
 const PUSH = new Set(['push-h', 'push-v']);
 const PULL = new Set(['pull-h', 'pull-v']);
@@ -21,17 +22,18 @@ export function workoutFeedback({ session, before, swims = [], walks = [], goals
   const firsts = [];
   const more = [];
 
-  for (const e of session.entries) {
+  const work = session.entries.filter((e) => !e.warmup);
+  for (const e of work) {
     const ex = BY_ID[e.exId];
     if (!ex) continue;
     const history = before.flatMap((s) => s.entries.filter((x) => x.exId === e.exId).map((x) => ({ date: s.date, sets: x.sets })));
     if (!history.length) { firsts.push(ex); continue; }
     const weighted = e.sets.some((s) => s.weight > 0);
-    const key = weighted ? 'weight' : 'reps';
+    const key = weighted ? 'weight' : e.sets.some((s) => s.dist > 0) ? 'dist' : 'reps';
     const prev = Math.max(...history.map((h) => best(h.sets, key)));
     const now = best(e.sets, key);
     if (now > prev && prev > 0) {
-      prs.push(weighted ? `${fmt(now)} kg i ${lc(ex.name)}` : ex.timed ? `${fmt(now)} s ${lc(ex.name)}` : `${fmt(now)} ${lc(ex.name)} i ett set`);
+      prs.push(weighted ? `${fmt(now)} kg i ${lc(ex.name)}` : key === 'dist' ? `${fmtDist(now)} ${lc(ex.name)}` : ex.timed ? `${fmt(now)} s ${lc(ex.name)}` : `${fmt(now)} ${lc(ex.name)} i ett set`);
       continue;
     }
     const last = history.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -44,6 +46,16 @@ export function workoutFeedback({ session, before, swims = [], walks = [], goals
   for (const m of more.slice(0, prs.length ? 1 : 2)) hl.push({ icon: '📈', text: `Mer jobb i ${lc(m.ex.name)} än förra gången (+${m.pct} %). Så blir man starkare.` });
   if (firsts.length && hl.length < 3) hl.push({ icon: '✨', text: `Första gången du körde ${lc(firsts[0].name)}. Kul att du testar nytt!` });
 
+  // Uppvärmning
+  const warm = session.entries.filter((e) => e.warmup && BY_ID[e.exId]);
+  if (warm.length && hl.length < 3) {
+    const w = warm[0];
+    const sec = w.sets.reduce((n, s) => n + (s.sec || BY_ID[w.exId].timed ? s.reps || 0 : 0), 0);
+    const dist = w.sets.reduce((n, s) => n + (s.dist || 0), 0);
+    const what = [sec >= 60 ? `${fmt(sec / 60)} min` : '', dist ? fmtDist(dist) : ''].filter(Boolean).join(', ');
+    hl.push({ icon: '🌡️', text: `Bra uppvärmning med ${lc(BY_ID[w.exId].name)}${what ? ` (${what})` : ''}. Varma muskler orkar mer och skadas mindre.` });
+  }
+
   // Mål
   for (const g of goals) {
     if (hl.length >= 4) break;
@@ -55,7 +67,7 @@ export function workoutFeedback({ session, before, swims = [], walks = [], goals
   }
 
   // Balans och fysio
-  const patterns = new Set(session.entries.map((e) => BY_ID[e.exId] && patternOf(BY_ID[e.exId])));
+  const patterns = new Set(work.map((e) => BY_ID[e.exId] && patternOf(BY_ID[e.exId])));
   if (hl.length < 4 && [...patterns].some((p) => PUSH.has(p)) && [...patterns].some((p) => PULL.has(p))) {
     hl.push({ icon: '⚖️', text: 'Bra balans: du körde både press och drag. Det är bra för axlarna och hållningen.' });
   }
@@ -78,8 +90,8 @@ export function workoutFeedback({ session, before, swims = [], walks = [], goals
   if (hl.length < 4 && weekCount >= 2) hl.push({ icon: '🔥', text: `Ditt ${weekCount}:e pass på sju dagar. Det är kontinuiteten som ger resultat.` });
 
   // Mängd
-  const sets = session.entries.reduce((n, e) => n + e.sets.length, 0);
-  const groups = [...new Set(session.entries.map((e) => BY_ID[e.exId]?.muscles[0]).filter((m) => m && MUSCLES[m]))];
+  const sets = work.reduce((n, e) => n + e.sets.length, 0);
+  const groups = [...new Set(work.map((e) => BY_ID[e.exId]?.muscles[0]).filter((m) => m && MUSCLES[m]))];
   if (hl.length < 2 && sets) {
     hl.push({ icon: '💪', text: `${sets} set${groups.length ? ` för ${groups.map((m) => MUSCLES[m].name.toLowerCase()).join(', ')}` : ''}. Gediget jobbat!` });
   }
@@ -93,7 +105,7 @@ export function workoutFeedback({ session, before, swims = [], walks = [], goals
 function nextTip(session, before, pain) {
   for (const e of session.entries) {
     const ex = BY_ID[e.exId];
-    if (!ex || ex.physio || ex.timed) continue;
+    if (!ex || ex.physio || ex.timed || e.warmup) continue;
     const w = Math.max(0, ...e.sets.map((s) => s.weight || 0));
     const allReps = e.sets.length >= 2 && e.sets.every((s) => s.reps >= ex.defaultReps);
     if (w > 0 && allReps && !Object.keys(ex.load || {}).some((a) => (pain[a] || 0) > 0)) {
@@ -107,10 +119,10 @@ function nextTip(session, before, pain) {
 }
 
 /** Kortare omdöme för intervallpass och simning. */
-export function cardioFeedback({ minutes, kind, before = [], swims = [] }) {
+export function cardioFeedback({ minutes, kind, km, before = [], swims = [] }) {
   const start = Date.now();
   const weekCount = 1 + [...before, ...swims].filter((s) => (start - new Date(s.date)) / DAY < 7).length;
-  const hl = [{ icon: '❤️', text: `${minutes} minuter ${kind}. Hjärtat och lungorna tackar dig.` }];
+  const hl = [{ icon: '❤️', text: `${minutes} minuter ${kind}${km ? `, ${fmt(km)} km` : ''}. Hjärtat och lungorna tackar dig.` }];
   if (weekCount >= 2) hl.push({ icon: '🔥', text: `Ditt ${weekCount}:e pass på sju dagar. Fin kontinuitet!` });
   return { title: 'Bra jobbat!', highlights: hl, tip: 'Drick vatten och ta det lugnt en stund. Pulsen ska gå ner innan du duschar varmt.' };
 }

@@ -2,9 +2,10 @@
 
 En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver ingen App Store, Mac eller Apple Developer-konto.
 
-- **Startsida:** välj vad du ska göra, Gym, Hemma, Simma eller Planera. Här ser du också dagens plan och dina steg.
+- **Startsida:** välj vad du ska göra, Gym, Hemma, Kondition eller Planera. Här ser du också dagens plan och dina steg.
 - **Styrka (gym och hemma):** inga färdiga program. Du väljer utrustning (kroppsvikt, hantlar, skivstång, maskiner och kabel) och vilka muskelgrupper du vill köra. Under passet föreslår appen nästa övning utifrån det du redan har kört idag. Den väljer muskelgrupper du inte har kört än, ger motvikt (till exempel rodd efter bänkpress), ger nya vinklar och sparar isoleringsövningar till slutet. Du kan lägga övningar i en kö och flytta om dem. Är en maskin upptagen trycker du på klockan, så flyttas övningen sist och du får andra förslag.
 - **Passtyper:** Styrka (set och vila), Cirkel (stationer där muskelgrupperna växlar), HIIT (korta intensiva intervaller) och Kondition (längre intervaller). Cirkel, HIIT och Kondition körs med en intervalltimer som räknar ner, piper och går vidare själv.
+- **Kondition:** välj aktivitet: simning, löpning, cykling, promenad, längdskidor eller annat. Löpning, cykling och skidor får ett passförslag (20–60 min, lugnt, intervaller eller växla med gång) som du bockar av och sparar med tid och km. Har du ont i knäna föreslås skonsammare alternativ. Veckoförslaget kan rotera mellan simning, löpning och cykling.
 - **Simma:** föreslår ett simpass (20/40/60 min) med uppvärmning, teknik, huvuddel och nedvarvning. Du bockar av delarna och sparar passet. Du kan också logga ett simpass direkt.
 - **Planera:** lägg upp en veckoplan och spara pass till senare. Ett sparat pass kan du lägga in på en veckodag.
 - **Inbyggd fysioterapeut (Fysio):** ange om du har ont i axlar, rygg eller knän (inget, lite ont eller ont). Förslagen hoppar då över övningar som belastar det stället. Vid "lite ont" försvinner bara tung belastning, vid "ont" all belastning. Under passet föreslås fysioövningar för stället, till exempel utåtrotation, väggänglar, fågelhunden och raka benlyft. Du får råd och får veta när du ska söka vård. Med "Gör det ont?" mitt i en övning kan du ange var det gör ont och välja en annan övning. Råden är allmänna och ersätter inte en riktig fysioterapeut.
@@ -17,11 +18,12 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Animationer:** varje övning visas med en animerad streckgubbe och en kort instruktion.
 - **Under passet:** logga kg och reps per set. En vilotimer piper när det är dags för nästa set, och skärmen hålls tänd. Svep mellan övningarna. Stängs appen mitt i passet återupptas det nästa gång du öppnar den.
 - **Omdöme efter passet:** som hos en PT får du direkt efter passet ett positivt omdöme som lyfter fram vad som gick bra. Det kan vara nya personbästan, mer jobb än förra gången, framsteg mot dina mål, bra balans mellan press och drag, att du gjorde dina fysioövningar, att du tränade smart runt ont, eller fin kontinuitet. Du får också ett konkret tips till nästa gång, till exempel "Prova 62,5 kg". Omdömet syns även när du öppnar ett pass i loggen.
-- **Grafer:** en egen flik med aktiva minuter per vecka (träning, simning, promenad), set per muskelgrupp, utveckling per övning (vikt eller reps över tid) och steg per dag mot ditt mål. Tryck på diagrammen för att se värden. Varje diagram kan också visas som tabell.
+- **Grafer:** en egen flik med aktiva minuter per vecka (träning, kondition, promenad), set per muskelgrupp, utveckling per övning (vikt eller reps över tid) och steg per dag mot ditt mål. Tryck på diagrammen för att se värden. Varje diagram kan också visas som tabell.
 - **Under passet** öppnas ingen övning automatiskt. Du trycker på den övning du ska köra, i kön eller bland förslagen.
 - **Välj övningar från listan:** alla övningar visas i en lista där du bockar för de du vill ha med. Det fungerar före passet, under passet (övningarna hamnar i kön) och när du loggar i efterhand. Sökningen hittar även andra namn, till exempel *liggande hantelpress*, *rodd* och *benspark*.
 - **Höger och vänster:** övningar på ett ben, och egna övningar som du markerar så, får H eller V på varje set. Tryck på bokstaven för att byta sida.
-- **Logga i efterhand:** under Logg trycker du på *Logga övningar*. Välj datum, plats och tid, och lägg till valfria övningar med set, reps och kg. Finns övningen inte i listan skapar du en egen. Egna övningar går också att välja under ett pass via *Valfri övning…*.
+- **Logga i efterhand:** under Logg trycker du på *Logga övningar*. Välj datum, plats och tid, och lägg till valfria övningar med set, reps och kg. Finns övningen inte i listan skapar du en egen. Egna övningar går också att välja under ett pass via *Valfri övning…*. Ett sparat pass kan ändras i efterhand via *Ändra passet*.
+- **Uppvärmning och pass:** varje övning kan markeras som uppvärmning. Roddmaskin och motionscykel blir uppvärmning automatiskt om de körs först. Uppvärmningen visas för sig, räknas inte som set för muskelgrupperna och ger ingen vilotimer. Roddmaskinen loggas med tid och meter, utan vikt. Varje styrkepass börjar med förslag på uppvärmning (roddmaskin, cykel eller marsch på gym; marsch, skuggboxning eller jumping jacks hemma, skonsamma först om knäna gör ont). Styrkeövningarna kommer under *Sedan*, och *Jag har redan värmt upp* hoppar över den.
 - **Logg:** historik över pass och promenader, med ett diagram över aktiva minuter de senaste 7 dagarna. Promenader loggar du för hand.
 - **Fungerar offline**, och all data sparas bara på telefonen. Du kan exportera och importera en säkerhetskopia under Inställningar.
 
@@ -40,6 +42,7 @@ web/
   physio.js             Den inbyggda fysioterapeuten: kroppsdelar, råd och rehabövningar
   week.js               Förslag på aktiviteter för kommande vecka
   feedback.js           Omdöme och tips efter passet
+  cardio.js             Konditionsaktiviteter: löpning, cykling, skidor m.m.
   charts.js             Diagram (SVG) till Grafer
   workouts.js           Cirkel, HIIT och kondition (stationer och timersteg)
   storage.js            Sparar data i telefonen

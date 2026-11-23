@@ -9,6 +9,7 @@ import { WEEK_KINDS, PRIORITIES, suggestWeek } from './week.js';
 import { workoutFeedback, cardioFeedback } from './feedback.js';
 import { columns, hbars, line, table } from './charts.js';
 import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
+import { ACTS, CARDIO_IDS, CARDIO_FOCUS, suggestCardio, cardioAdvice } from './cardio.js';
 
 // ---------------------------------------------------------------------------
 // Tillstånd för gränssnittet (sparas inte)
@@ -25,10 +26,12 @@ const ui = {
   loaded: { gym: null, home: null, swim: null }, // namn på inläst sparat pass
   swimStyle: 'mixed',
   swimStart: null,
+  actBack: 'start', // vart tillbaka-knappen på Kondition leder
+  cardio: { kind: 'run', minutes: 30, focus: 'easy', plan: null, start: null }, // löpning, cykling m.m.
 };
 
 // Vyer man når från startsidan eller Planera (har en tillbaka-knapp).
-const SUB = new Set(['gym', 'home', 'swim', 'physio']);
+const SUB = new Set(['gym', 'home', 'swim', 'physio', 'activity', 'cardio']);
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -46,7 +49,7 @@ const lastDays = (n) => [...Array(n)].map((_, i) => { const d = new Date(); d.se
 const shortDay = (d) => d.toLocaleDateString('sv-SE', { weekday: 'short' }).replace('.', '');
 const weekIndex = (d = new Date()) => (d.getDay() + 6) % 7; // måndag = 0
 const WEEKDAYS = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
-const ACTIVITIES = { rest: 'Vila', gym: 'Gym', home: 'Hemma', swim: 'Simma', walk: 'Promenad' };
+const ACTIVITIES = { rest: 'Vila', gym: 'Gym', home: 'Hemma', swim: 'Simma', run: 'Löpning', bike: 'Cykling', ski: 'Längdskidor', walk: 'Promenad' };
 const PLACE_NAME = { gym: 'Gym', home: 'Hemma', swim: 'Simma' };
 const PASS_NAME = { gym: 'Gympass', home: 'Hemmapass', swim: 'Simpass' };
 const savedById = (id) => data.saved.find((s) => s.id === id);
@@ -71,17 +74,22 @@ const ICON = {
   up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  pulse: '<svg viewBox="0 0 24 24"><path d="M3 12.5h4l2.2-5.5 4.3 11 2.3-5.5H21"/></svg>',
+  run: '<svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="1.9"/><path d="M6 20.5l3.5-4.5 3 2 1 3.5M9.5 16l2-6.5 4 2.5 3 1M11.5 9.5l-3.5 1-2 3"/></svg>',
+  bike: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16l4-7.5h6l3 7.5M9.5 8.5l3.5 7.5H5.5M13.5 5.5h3"/></svg>',
+  ski: '<svg viewBox="0 0 24 24"><circle cx="14" cy="4.5" r="1.9"/><path d="M2.5 19.5l19-4M8 17.5l2.5-5.5 3 1.5 1.5 3M10.5 12l2-4.5 3.5 2.5M6.5 13l3-3.5M17 10l-1 6"/></svg>',
+  star: '<svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg>',
   shield: '<svg viewBox="0 0 24 24" class="ic"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/></svg>',
 };
-const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON.walk };
+const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON.walk, run: ICON.run, bike: ICON.bike, ski: ICON.ski, other: ICON.star };
 
 // ---------------------------------------------------------------------------
 // Rendering
 function render() {
   const view = $('#view');
-  const views = { start: startView, plan: planningView, log: logView, stats: statsView, settings: settingsView, swim: swimView, physio: physioView };
+  const views = { start: startView, plan: planningView, log: logView, stats: statsView, settings: settingsView, swim: swimView, physio: physioView, activity: activityView, cardio: cardioView };
   view.innerHTML = views[ui.tab] ? views[ui.tab]() : planView(ui.tab);
-  const current = SUB.has(ui.tab) ? ui.back : ui.tab;
+  const current = !SUB.has(ui.tab) ? ui.tab : ui.tab === 'activity' || ui.back === 'activity' ? ui.actBack : ui.back;
   for (const b of document.querySelectorAll('.tabbar button')) {
     b.classList.toggle('active', b.dataset.tab === current);
     b.setAttribute('aria-current', b.dataset.tab === current ? 'page' : 'false');
@@ -89,7 +97,7 @@ function render() {
   mountFigures(view);
 }
 
-const BACK_NAME = { start: 'Idag', plan: 'Planera', log: 'Logg', settings: 'Inställningar' };
+const BACK_NAME = { start: 'Idag', plan: 'Planera', log: 'Logg', settings: 'Inställningar', activity: 'Kondition' };
 const backButton = () => `<button class="back" data-action="tab" data-tab="${ui.back}">${ICON.chevronL}${BACK_NAME[ui.back] ?? 'Idag'}</button>`;
 
 const physioFor = (place) => (data.settings.physioAlways && !ui.skipPhysio[place] ? physioItems(place) : []);
@@ -129,7 +137,7 @@ function startView() {
     <div class="choices">
       ${choice('gym', 'Gym', 'Passförslag med maskiner och vikter', ICON.gym)}
       ${choice('home', 'Hemma', 'Korta cirkelpass och intervaller', ICON.home)}
-      ${choice('swim', 'Simma', 'Simpass för bassängen', ICON.swim)}
+      ${choice('activity', 'Kondition', 'Simma, spring, cykla, gå', ICON.pulse)}
       ${choice('plan', 'Planera', 'Veckoplan och sparade pass', ICON.calendar)}
     </div>
     ${goalsCard()}
@@ -151,6 +159,7 @@ function doneToday(kind) {
   const today = (x) => daysBetween(x.date, new Date()) === 0;
   if (kind === 'swim') return data.swims.some(today);
   if (kind === 'walk') return data.walks.some(today);
+  if (ACTS[kind] && !ACTS[kind].page) return data.cardio.some((c) => today(c) && c.kind === kind);
   return data.sessions.some((s) => today(s) && s.place === kind);
 }
 
@@ -176,7 +185,7 @@ function todayCard() {
   const kind = saved ? saved.place : v;
   const done = doneToday(kind);
   const action = saved ? `data-action="load-saved" data-id="${esc(saved.id)}"`
-    : v === 'walk' ? 'data-action="walk-new"' : `data-action="tab" data-tab="${v}"`;
+    : v === 'walk' ? 'data-action="walk-new"' : CARDIO_IDS.includes(v) ? `data-action="act" data-kind="${v}"` : `data-action="tab" data-tab="${v}"`;
   return `
     <section class="card today-card k-${kind}">
       <span class="today-icon">${PLACE_ICON[kind]}</span>
@@ -258,6 +267,121 @@ function swimView() {
         <button class="btn secondary" data-action="save-plan">${ICON.save} Spara till senare</button>
       </div>
     </div>`;
+}
+
+// ---- Kondition: välj aktivitet ----------------------------------------------
+const actName = (c) => (c.kind === 'other' && c.name ? c.name : ACTS[c.kind]?.name ?? 'Aktivitet');
+const cardioMinutes = (from, to) => [...data.swims, ...data.cardio].filter((x) => new Date(x.date) >= from && new Date(x.date) < to)
+  .reduce((n, x) => n + (Number(x.minutes) || 0), 0);
+
+function activityView() {
+  const knees = data.settings.pain?.knees || 0;
+  const weekAgo = new Date(Date.now() - 7 * 86400000);
+  const week = cardioMinutes(weekAgo, new Date(Date.now() + 60000)) + data.walks.filter((w) => new Date(w.date) >= weekAgo).reduce((n, w) => n + (Number(w.minutes) || 0), 0);
+  const last = (kind) => {
+    const list = kind === 'swim' ? data.swims : kind === 'walk' ? data.walks : data.cardio.filter((c) => c.kind === kind);
+    const d = list.reduce((m, x) => (!m || new Date(x.date) > new Date(m) ? x.date : m), null);
+    if (!d) return '';
+    const n = daysBetween(d, new Date());
+    return n === 0 ? 'Idag' : n === 1 ? 'Igår' : `${n} dagar sedan`;
+  };
+  return `
+    <button class="back" data-action="tab" data-tab="${ui.actBack}">${ICON.chevronL}${BACK_NAME[ui.actBack] ?? 'Idag'}</button>
+    <header class="page-head"><h1>Kondition</h1><p class="sub">Välj aktivitet</p></header>
+    <p class="hint">Senaste 7 dagarna: ${week} minuter kondition och promenader. Sikta på minst 150 minuter i veckan.</p>
+    ${knees ? `<p class="note">${knees >= 2 ? 'Knäna gör ont:' : 'Lite ont i knäna:'} cykling och simning är skonsammast. ${knees >= 2 ? 'Vänta med löpningen tills det känns bättre.' : 'Spring på mjukt underlag om du springer.'}</p>` : ''}
+    <ul class="ex-list act-list">
+      ${Object.entries(ACTS).map(([k, a]) => `
+        <li><button class="act-item k-${k}" data-action="act" data-kind="${k}">
+          <span class="act-icon">${PLACE_ICON[k]}</span>
+          <span class="act-text"><b>${a.name}</b><small>${a.desc}${last(k) ? ` · senast ${last(k).toLowerCase()}` : ''}</small></span>
+          ${knees >= 2 && a.knees >= 2 ? '<em class="pill warn-pill">Knän</em>' : ''}
+          <span class="chev">${ICON.chevronR}</span>
+        </button></li>`).join('')}
+    </ul>`;
+}
+
+function regenerateCardio() {
+  const c = ui.cardio;
+  c.plan = suggestCardio({ kind: c.kind, minutes: c.minutes, focus: c.focus, pain: data.settings.pain });
+  c.start = null;
+}
+
+function cardioView() {
+  const c = ui.cardio;
+  if (!c.plan) regenerateCardio();
+  const a = ACTS[c.kind];
+  const advice = cardioAdvice(c.kind, data.settings.pain);
+  return `
+    ${backButton()}
+    <header class="page-head"><h1>${a.name}</h1><p class="sub">Ett pass på ${c.minutes} minuter</p></header>
+    <section class="card controls">
+      <div class="segmented four" role="radiogroup" aria-label="Passets längd">
+        ${[20, 30, 45, 60].map((m) => `<button role="radio" aria-checked="${c.minutes === m}" data-action="c-min" data-value="${m}">${m} min</button>`).join('')}
+      </div>
+      <label class="select-row"><span>Fokus</span>
+        <select data-change="c-focus">${Object.entries(CARDIO_FOCUS).map(([k, v]) => `<option value="${k}" ${c.focus === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      </label>
+    </section>
+    ${advice ? `<p class="note warn">${esc(advice)}</p>` : ''}
+    <h2 class="section-title">Dagens pass</h2>
+    <p class="hint">Bocka av delarna medan du kör.</p>
+    <ul class="ex-list">
+      ${c.plan.map((b, i) => `
+        <li class="ex-item swim-item k-${c.kind} ${b.done ? 'done' : ''}">
+          <span class="swim-badge">${PLACE_ICON[c.kind]}</span>
+          <div class="ex-text"><strong>${esc(b.title)}</strong><span class="wrap">${esc(b.text)}</span><small>${b.minutes} min</small></div>
+          <button class="check" data-action="c-toggle" data-index="${i}" aria-pressed="${b.done}" aria-label="${esc(b.title)} klar">${ICON.check}</button>
+        </li>`).join('')}
+    </ul>
+    <div class="stack">
+      <button class="btn primary big" data-action="c-save">${ICON.check} Spara passet</button>
+      <button class="btn secondary" data-action="c-new">${ICON.refresh} Nytt förslag</button>
+    </div>`;
+}
+
+/** Logga löpning, cykling m.m. kind = null ger ett val av aktivitet. */
+function cardioSheet(kind, fromPlan) {
+  const today = dayKey(new Date());
+  const c = ui.cardio;
+  const elapsed = fromPlan && c.start ? Math.round((Date.now() - c.start) / 60000) : 0;
+  const minutes = elapsed >= 5 ? elapsed : fromPlan ? c.minutes : 30;
+  return `
+    <div class="sheet-head"><h2>${kind ? `Logga ${ACTS[kind].name.toLowerCase()}` : 'Logga aktivitet'}</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
+    <form id="cardio-form" class="form">
+      <input type="hidden" name="fromPlan" value="${fromPlan ? 1 : ''}">
+      ${kind ? `<input type="hidden" name="kind" value="${kind}">` : `
+        <label>Aktivitet<select name="kind" data-change="c-kind-pick">${CARDIO_IDS.map((k) => `<option value="${k}">${ACTS[k].name}</option>`).join('')}</select></label>`}
+      <label class="${!kind || kind === 'other' ? '' : 'hidden'}" id="c-name-row">Vad gjorde du? (valfritt)<input type="text" name="name" maxlength="30" autocomplete="off" placeholder="t.ex. padel, dans, vandring"></label>
+      <label>Datum<input type="date" name="date" value="${today}" max="${today}" required></label>
+      <label>Minuter<input type="number" name="minutes" inputmode="numeric" min="1" max="600" value="${minutes}" required></label>
+      <label class="${!kind || ACTS[kind].km ? '' : 'hidden'}" id="c-km-row">Kilometer (valfritt)<input type="text" name="km" inputmode="decimal" autocomplete="off" placeholder="t.ex. 5"></label>
+      <button class="btn primary big" type="submit">Spara</button>
+    </form>`;
+}
+
+function cardioDetailSheet(c) {
+  const pace = c.km && c.minutes && c.kind !== 'bike' ? (() => { const sec = Math.round((c.minutes * 60) / c.km); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')} min/km`; })()
+    : c.km && c.minutes ? `${fmtNum(c.km / (c.minutes / 60))} km/h` : '';
+  return `
+    <div class="sheet-head"><h2>${esc(actName(c))}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
+    <div class="card list">
+      <div class="list-row"><span>Datum</span><b>${fmtDate(c.date)}</b></div>
+      <div class="list-row"><span>Tid</span><b>${fmtNum(c.minutes, 0)} min</b></div>
+      ${c.km ? `<div class="list-row"><span>Distans</span><b>${fmtNum(c.km)} km</b></div>` : ''}
+      ${pace ? `<div class="list-row"><span>Tempo</span><b>${pace}</b></div>` : ''}
+    </div>
+    <button class="btn danger-outline" data-action="delete-cardio" data-id="${esc(c.id)}">Radera passet</button>`;
+}
+
+function cardioRow(c) {
+  return `
+    <li><button class="log-item" data-action="cardio" data-id="${esc(c.id)}">
+      <span class="log-icon k-${c.kind}">${PLACE_ICON[c.kind] ?? ICON.pulse}</span>
+      <span class="log-text"><strong>${fmtDate(c.date)}</strong>
+        <small>${esc(actName(c))} · ${fmtNum(c.minutes, 0)} min${c.km ? ` · ${fmtNum(c.km)} km` : ''}</small></span>
+      <span class="chev">${ICON.chevronR}</span>
+    </button></li>`;
 }
 
 // ---- Planera --------------------------------------------------------------
@@ -422,7 +546,7 @@ function weekSuggestCard() {
       ${p ? '' : `<button class="btn primary" data-action="week-suggest" ${weekKinds().length ? '' : 'disabled'}>Föreslå veckan</button>`}
     </section>
     ${p ? `
-      <p class="hint">Senaste två veckorna: ${h.gym} gympass, ${h.home} hemmapass, ${h.swim} simpass och ${h.walk} promenader${painSummary() ? `. Hänsyn till: ${esc(painSummary().toLowerCase())}` : ''}.</p>
+      <p class="hint">Senaste två veckorna: ${[`${h.gym} gympass`, `${h.home} hemmapass`, `${h.swim} simpass`, h.run ? `${h.run} löppass` : '', h.bike ? `${h.bike} cykelpass` : '', `${h.walk} promenader`].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' och $1')}${painSummary() ? `. Hänsyn till: ${esc(painSummary().toLowerCase())}` : ''}.</p>
       <ul class="ex-list week-proposal">${p.days.map((x, i) => `
         <li class="week-day-item k-${x.kind}">
           <span class="wd">${dayLabel(x.date, i)}</span>
@@ -725,8 +849,9 @@ function strengthControls(place, prefix = '') {
 /** Det du kört idag: tidigare sparade pass + klara set i pågående pass, i tidsordning. */
 function exercisesToday() {
   const done = [];
-  for (const s of data.sessions) if (isToday(s.date)) for (const e of s.entries) done.push({ exId: e.exId, sets: e.sets.length });
-  if (data.active?.items) for (const it of data.active.items) if (doneSets(it)) done.push({ exId: it.exId, sets: doneSets(it) });
+  // Uppvärmningen räknas inte som träning av muskelgrupperna.
+  for (const s of data.sessions) if (isToday(s.date)) for (const e of s.entries) if (!e.warmup) done.push({ exId: e.exId, sets: e.sets.length });
+  if (data.active?.items) for (const it of data.active.items) if (doneSets(it) && !it.warmup) done.push({ exId: it.exId, sets: doneSets(it) });
   return done;
 }
 function todaySummary(done) {
@@ -804,7 +929,7 @@ function planItem(p, i) {
 // ---- Grafer -----------------------------------------------------------------
 const SERIES = [
   { key: 'train', name: 'Träning', cls: 's-train' },
-  { key: 'swim', name: 'Simning', cls: 's-swim' },
+  { key: 'swim', name: 'Kondition', cls: 's-swim' },
   { key: 'walk', name: 'Promenad', cls: 's-walk' },
 ];
 const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - weekIndex(x)); return x; };
@@ -827,14 +952,18 @@ const legendHtml = () => `<div class="legend">${SERIES.map((x) => `<span><i clas
 function exerciseSeries(exId) {
   const rows = data.sessions.filter((s) => s.entries.some((e) => e.exId === exId)).sort((a, b) => new Date(a.date) - new Date(b.date));
   const weighted = rows.some((s) => s.entries.some((e) => e.exId === exId && e.sets.some((x) => x.weight > 0)));
+  const distance = !weighted && rows.some((s) => s.entries.some((e) => e.exId === exId && e.sets.some((x) => x.dist > 0)));
+  const ex = BY_ID[exId];
+  const minutes = !weighted && !distance && ex && inMinutes(ex);
+  const key = weighted ? 'weight' : distance ? 'dist' : 'reps';
   const points = rows.map((s) => {
     const sets = s.entries.filter((e) => e.exId === exId).flatMap((e) => e.sets);
-    const y = weighted ? Math.max(0, ...sets.map((x) => x.weight || 0)) : Math.max(0, ...sets.map((x) => x.reps || 0));
-    return { x: new Date(s.date), y };
+    const y = Math.max(0, ...sets.map((x) => x[key] || 0));
+    return { x: new Date(s.date), y: minutes ? y / 60 : y };
   }).filter((p) => p.y > 0);
-  const ex = BY_ID[exId];
-  const unit = weighted ? ' kg' : ex?.timed ? ' s' : ' st';
-  return { points: points.map((p) => ({ ...p, tip: `${p.x.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}: ${fmtNum(p.y)}${unit}` })), unit, weighted };
+  const unit = weighted ? ' kg' : distance ? ' m' : minutes ? ' min' : ex?.timed ? ' s' : ' st';
+  const sub = weighted ? 'Tyngsta vikt per pass' : distance ? 'Längsta distans per pass' : ex?.timed ? 'Längsta tid per pass' : 'Flest reps per pass';
+  return { points: points.map((p) => ({ ...p, tip: `${p.x.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}: ${fmtNum(p.y)}${unit}` })), unit, weighted, sub };
 }
 
 function statsView() {
@@ -843,7 +972,7 @@ function statsView() {
     const inR = (d) => new Date(d) >= from && new Date(d) < to;
     return {
       train: data.sessions.filter((s) => inR(s.date)).reduce((n, s) => n + minutesOf(s), 0),
-      swim: data.swims.filter((x) => inR(x.date)).reduce((n, x) => n + (Number(x.minutes) || 0), 0),
+      swim: [...data.swims, ...data.cardio].filter((x) => inR(x.date)).reduce((n, x) => n + (Number(x.minutes) || 0), 0),
       walk: data.walks.filter((x) => inR(x.date)).reduce((n, x) => n + (Number(x.minutes) || 0), 0),
     };
   };
@@ -854,7 +983,7 @@ function statsView() {
     const to = new Date(from); to.setDate(to.getDate() + 7);
     const v = minutesIn(from, to);
     const total = v.train + v.swim + v.walk;
-    return { label: `v${isoWeek(from)}`, values: v, total, tip: `Vecka ${isoWeek(from)}: ${total} min (träning ${v.train}, simning ${v.swim}, promenad ${v.walk})` };
+    return { label: `v${isoWeek(from)}`, values: v, total, tip: `Vecka ${isoWeek(from)}: ${total} min (träning ${v.train}, kondition ${v.swim}, promenad ${v.walk})` };
   });
   const sum = (v) => v.train + v.swim + v.walk;
   const thisWeek = sum(weeks[11].values);
@@ -863,12 +992,12 @@ function statsView() {
 
   // Pass och personbästa senaste 30 dagarna
   const since30 = new Date(now.getTime() - 30 * 86400000);
-  const passes30 = data.sessions.filter((s) => new Date(s.date) >= since30).length + data.swims.filter((s) => new Date(s.date) >= since30).length;
+  const passes30 = [...data.sessions, ...data.swims, ...data.cardio].filter((s) => new Date(s.date) >= since30).length;
   const bestSoFar = {};
   let prs30 = 0;
   for (const s of [...data.sessions].sort((a, b) => new Date(a.date) - new Date(b.date))) {
     for (const e of s.entries) {
-      const v = Math.max(0, ...e.sets.map((x) => (x.weight > 0 ? x.weight * 1000 : x.reps || 0)));
+      const v = Math.max(0, ...e.sets.map((x) => (x.weight > 0 ? x.weight * 1000 : x.dist || x.reps || 0)));
       if (bestSoFar[e.exId] !== undefined && v > bestSoFar[e.exId] && new Date(s.date) >= since30) prs30++;
       bestSoFar[e.exId] = Math.max(bestSoFar[e.exId] ?? 0, v);
     }
@@ -878,6 +1007,7 @@ function statsView() {
   const since28 = new Date(now.getTime() - 28 * 86400000);
   const setsBy = {};
   for (const s of data.sessions) if (new Date(s.date) >= since28) for (const e of s.entries) {
+    if (e.warmup) continue;
     const g = BY_ID[e.exId]?.muscles[0];
     if (g && g !== 'cardio') setsBy[g] = (setsBy[g] ?? 0) + e.sets.length;
   }
@@ -908,7 +1038,7 @@ function statsView() {
 
     ${chartCard('Aktiva minuter per vecka', 'Senaste 12 veckorna', legendHtml(),
       columns({ cols: weeks, series: SERIES, unit: 'minuter' }),
-      table(['Vecka', 'Träning', 'Simning', 'Promenad'], weeks.map((w) => [w.label, w.values.train, w.values.swim, w.values.walk])))}
+      table(['Vecka', 'Träning', 'Kondition', 'Promenad'], weeks.map((w) => [w.label, w.values.train, w.values.swim, w.values.walk])))}
 
     ${chartCard('Set per muskelgrupp', 'Senaste fyra veckorna', '',
       hbars({ rows: groupRows, cls: 's-train' }),
@@ -917,7 +1047,7 @@ function statsView() {
     <section class="card chart-card">
       <h3>Utveckling per övning</h3>
       ${exIds.length ? `
-        <label class="select-row"><span class="chart-sub">${series.weighted ? 'Tyngsta vikt per pass' : 'Flest reps per pass'}</span>
+        <label class="select-row"><span class="chart-sub">${series.sub}</span>
           <select data-change="stats-ex">${exIds.map((id) => `<option value="${id}" ${id === ui.statsEx ? 'selected' : ''}>${esc(BY_ID[id].name)}</option>`).join('')}</select></label>
         <p class="readout" aria-live="polite">Tryck på en punkt för att se värdet</p>
         ${series.points.length ? line({ points: series.points, unit: series.unit, cls: 's-train' }) : '<p class="empty">Inga värden för övningen än.</p>'}
@@ -938,16 +1068,17 @@ function logView() {
   const weekSessions = data.sessions.filter((s) => week(s.date));
   const weekWalks = data.walks.filter((w) => week(w.date));
   const weekSwims = data.swims.filter((w) => week(w.date));
+  const weekCardio = data.cardio.filter((w) => week(w.date));
   const sets = weekSessions.reduce((n, s) => n + s.entries.reduce((m, e) => m + e.sets.length, 0), 0);
   const walkMin = weekWalks.reduce((n, w) => n + (Number(w.minutes) || 0), 0);
-  const swimM = weekSwims.reduce((n, w) => n + (Number(w.meters) || 0), 0);
+  const cardioMin = [...weekSwims, ...weekCardio].reduce((n, w) => n + (Number(w.minutes) || 0), 0);
   const mins = (list, d) => list.filter((x) => daysBetween(x.date, d) === 0).reduce((n, x) => n + (Number(x.minutes) || 0), 0);
 
   // Aktiva minuter per dag, senaste 7 dagarna
   const days = lastDays(7).map((d) => ({
     d,
     train: data.sessions.filter((s) => daysBetween(s.date, d) === 0).reduce((n, s) => n + minutesOf(s), 0),
-    swim: mins(data.swims, d),
+    swim: mins(data.swims, d) + mins(data.cardio, d),
     walk: mins(data.walks, d),
   }));
   const maxMin = Math.max(30, ...days.map((x) => x.train + x.swim + x.walk));
@@ -956,22 +1087,23 @@ function logView() {
     ...data.sessions.map((s) => ({ date: s.date, html: () => sessionRow(s) })),
     ...data.walks.map((w) => ({ date: w.date, html: () => walkRow(w) })),
     ...data.swims.map((w) => ({ date: w.date, html: () => swimRow(w) })),
+    ...data.cardio.map((c) => ({ date: c.date, html: () => cardioRow(c) })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return `
     <header class="page-head"><h1>Logg</h1><p class="sub">Senaste 7 dagarna</p></header>
 
     <div class="tiles">
-      <div class="tile"><span>Pass</span><b>${weekSessions.length + weekSwims.length}</b></div>
+      <div class="tile"><span>Pass</span><b>${weekSessions.length + weekSwims.length + weekCardio.length}</b></div>
       <div class="tile"><span>Set</span><b>${sets}</b></div>
-      <div class="tile"><span>Simmat</span><b>${fmtNum(swimM, 0)} m</b></div>
+      <div class="tile"><span>Kondition</span><b>${cardioMin} min</b></div>
       <div class="tile"><span>Promenad</span><b>${walkMin} min</b></div>
     </div>
 
     <section class="card chart" aria-label="Aktiva minuter per dag">
       <div class="chart-head">
         <h3>Aktiva minuter</h3>
-        <div class="legend"><i class="sw train"></i>Träning <i class="sw swim"></i>Simning <i class="sw walk"></i>Promenad</div>
+        <div class="legend"><i class="sw train"></i>Träning <i class="sw swim"></i>Kondition <i class="sw walk"></i>Promenad</div>
       </div>
       <div class="bars">
         ${days.map(({ d, train, swim, walk }) => `
@@ -987,13 +1119,14 @@ function logView() {
     </section>
 
     <button class="btn primary" data-action="manual-new">${ICON.gym} Logga övningar</button>
-    <div class="row">
+    <div class="row three">
       <button class="btn primary" data-action="walk-new">${ICON.walk} Promenad</button>
-      <button class="btn primary swim-btn" data-action="swim-log">${ICON.swim} Simpass</button>
+      <button class="btn primary swim-btn" data-action="swim-log">${ICON.swim} Simning</button>
+      <button class="btn primary swim-btn" data-action="cardio-log">${ICON.pulse} Annat</button>
     </div>
 
     <h2 class="section-title">Historik</h2>
-    ${items.length === 0 ? '<p class="empty">Inget loggat än. Kör ett pass eller logga en promenad eller ett simpass.</p>' : ''}
+    ${items.length === 0 ? '<p class="empty">Inget loggat än. Kör ett pass eller logga en promenad, simning, löpning eller cykling.</p>' : ''}
     <ul class="log-list">
       ${items.map((it) => it.html()).join('')}
     </ul>`;
@@ -1247,7 +1380,7 @@ function manualMain() {
   const m = ui.manual;
   const today = dayKey(new Date());
   return `
-    <div class="sheet-head"><h2>Logga övningar</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
+    <div class="sheet-head"><h2>${m.editId ? 'Ändra pass' : 'Logga övningar'}</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
     <div class="form">
       <label>Datum<input type="date" value="${m.date}" max="${today}" data-minput="date"></label>
       <div class="segmented two" role="radiogroup" aria-label="Var">
@@ -1257,18 +1390,21 @@ function manualMain() {
     </div>
     ${m.items.map((it, i) => {
       const ex = BY_ID[it.exId];
-      return `
+      const head = m.items.some((x) => x.warmup) && (i === 0 || (!it.warmup && m.items[i - 1].warmup))
+        ? `<h3 class="part-title">${it.warmup ? 'Uppvärmning' : 'Pass'}</h3>` : '';
+      return `${head}
       <div class="card m-ex">
         <div class="m-head"><b>${esc(ex.name)}</b>
+          <button class="toggle small" data-action="m-warmup" data-i="${i}" aria-pressed="${!!it.warmup}">Uppvärmning</button>
           <button class="icon-btn" data-action="m-remove" data-i="${i}" aria-label="Ta bort ${esc(ex.name)}">${ICON.remove}</button></div>
         ${it.sets.map((set, k) => `
           <div class="m-set">
             ${set.side ? `<button class="side" data-action="m-side" data-i="${i}" data-k="${k}" aria-label="Set ${k + 1}, ${set.side === 'H' ? 'höger' : 'vänster'}. Tryck för att byta">${set.side}</button>` : `<span class="set-no">${k + 1}</span>`}
             <label class="kg"><input type="text" inputmode="numeric" value="${inMinutes(ex) ? fmtNum(set.reps / 60) : set.reps}" data-minput="reps" data-i="${i}" data-k="${k}" aria-label="${inMinutes(ex) ? 'Minuter' : ex.timed ? 'Sekunder' : 'Reps'} set ${k + 1}"><span>${inMinutes(ex) ? 'min' : ex.timed ? 's' : 'st'}</span></label>
-            ${ex.timed ? '' : `<label class="kg"><input type="text" inputmode="decimal" placeholder="0" value="${set.weight ? fmtNum(set.weight, 2) : ''}" data-minput="weight" data-i="${i}" data-k="${k}" aria-label="Vikt set ${k + 1}"><span>kg</span></label>`}
+            ${ex.distance ? `<label class="kg wide"><input type="text" inputmode="numeric" placeholder="0" value="${set.dist || ''}" data-minput="dist" data-i="${i}" data-k="${k}" aria-label="Meter set ${k + 1}"><span>m</span></label>` : ex.timed ? '' : `<label class="kg"><input type="text" inputmode="decimal" placeholder="0" value="${set.weight ? fmtNum(set.weight, 2) : ''}" data-minput="weight" data-i="${i}" data-k="${k}" aria-label="Vikt set ${k + 1}"><span>kg</span></label>`}
             ${it.sets.length > 1 ? `<button class="icon-btn small" data-action="m-unset" data-i="${i}" data-k="${k}" aria-label="Ta bort set ${k + 1}">${ICON.remove}</button>` : ''}
           </div>`).join('')}
-        <button class="btn-text" data-action="m-addset" data-i="${i}">+ Set</button>
+        ${ex.timed && it.sets.length === 1 ? '' : `<button class="btn-text" data-action="m-addset" data-i="${i}">+ Set</button>`}
       </div>`;
     }).join('')}
     <button class="btn secondary" data-action="m-pick-open">+ Lägg till övningar</button>
@@ -1332,8 +1468,9 @@ function finishPick() {
   if (ui.pick.for === 'manual') {
     for (const exId of ids) {
       const ex = BY_ID[exId];
-      ui.manual.items.push({ exId, sets: makeSets(ex, ex.sets, lastWeights(data.sessions)[exId] ?? 0) });
+      ui.manual.items.push({ exId, warmup: isWarmupStart(exId, ui.manual.items), sets: makeSets(ex, ex.sets, lastWeights(data.sessions)[exId] ?? 0) });
     }
+    ui.manual.items = warmupFirst(ui.manual.items);
     sheetBody(manualMain());
     return;
   }
@@ -1343,7 +1480,10 @@ function finishPick() {
     render();
   } else {
     const w = data.active;
+    const current = w.items[w.index];
     for (const exId of ids) w.items.push(newItem(exId));
+    w.items = warmupFirst(w.items);
+    if (current) w.index = w.items.indexOf(current);
     w.picking = true;
     save();
     renderWorkout();
@@ -1357,13 +1497,27 @@ function saveManual() {
   const isToday = m.date === dayKey(new Date());
   const end = isToday ? new Date() : new Date(`${m.date}T12:00:00`);
   const start = new Date(end.getTime() - minutes * 60000);
-  const entries = m.items
-    .map((it) => ({ exId: it.exId, sets: it.sets.filter((x) => x.reps > 0).map((x) => ({
+  const entries = warmupFirst(m.items)
+    .map((it) => ({ exId: it.exId, ...(it.warmup ? { warmup: true } : {}), sets: it.sets.filter((x) => x.reps > 0).map((x) => ({
       ...(BY_ID[it.exId].timed ? { reps: x.reps, weight: 0, sec: true } : { reps: x.reps, weight: x.weight || 0 }),
+      ...(x.dist > 0 ? { dist: x.dist } : {}),
       ...(x.side ? { side: x.side } : {}),
     })) }))
     .filter((e) => e.sets.length);
   if (!entries.length) { toast('Lägg till minst ett set'); return; }
+  const old = m.editId && data.sessions.find((x) => x.id === m.editId);
+  if (old) {
+    // Samma dag och längd: behåll starttiden.
+    const keep = dayKey(new Date(old.date)) === m.date && minutesOf(old) === minutes;
+    Object.assign(old, { place: m.place, entries, ...(keep ? {} : { date: start.toISOString(), endDate: end.toISOString() }) });
+    checkGoals();
+    save();
+    ui.manual = null;
+    closeSheet();
+    render();
+    toast('Passet är ändrat');
+    return;
+  }
   data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), endDate: end.toISOString(), entries, manual: true });
   checkGoals();
   save();
@@ -1397,13 +1551,16 @@ function sessionSheet(s) {
     <div class="sheet-head"><h2>${s.place === 'gym' ? 'Gympass' : 'Hemmapass'}${s.type && s.type !== 'strength' ? ` · ${TYPES[s.type].name.toLowerCase()}` : ''}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
     <p class="muted">${fmtDate(s.date)} · ${minutesOf(s)} min</p>
     ${sessionPraise(s)}
-    ${s.entries.map((e) => {
-      const ex = BY_ID[e.exId];
-      return `<div class="card list">
-        <div class="list-row head"><b>${esc(ex ? ex.name : e.exId)}</b></div>
-        ${e.sets.map((set, i) => `<div class="list-row"><span>Set ${i + 1}${sideTag(set)}</span><b>${ex && (ex.timed || set.sec) ? fmtAmount(ex, set.reps) : set.weight > 0 ? `${set.reps} × ${fmtNum(set.weight)} kg` : `${set.reps} st`}</b></div>`).join('')}
-      </div>`;
-    }).join('')}
+    ${[['Uppvärmning', s.entries.filter((e) => e.warmup)], ['Pass', s.entries.filter((e) => !e.warmup)]].map(([title, list]) => (list.length ? `
+      ${s.entries.some((e) => e.warmup) ? `<h3 class="part-title">${title}</h3>` : ''}
+      ${list.map((e) => {
+        const ex = BY_ID[e.exId];
+        return `<div class="card list">
+          <div class="list-row head"><b>${esc(ex ? ex.name : e.exId)}</b></div>
+          ${e.sets.map((set, i) => `<div class="list-row"><span>${e.sets.length > 1 || set.side ? `Set ${i + 1}${sideTag(set)}` : ex?.timed ? 'Tid' : 'Set 1'}</span><b>${fmtSet(ex, set)}</b></div>`).join('')}
+        </div>`;
+      }).join('')}` : '')).join('')}
+    ${!s.type || s.type === 'strength' ? `<button class="btn secondary" data-action="edit-session" data-id="${esc(s.id)}">Ändra passet</button>` : ''}
     <button class="btn danger-outline" data-action="delete-session" data-id="${esc(s.id)}">Radera passet</button>`;
 }
 
@@ -1453,6 +1610,16 @@ function toast(text) {
 /** Långa tidsövningar (cykel, roddmaskin) visas i minuter. */
 const inMinutes = (ex) => ex.timed && ex.defaultReps >= 120;
 const fmtAmount = (ex, reps) => (inMinutes(ex) ? `${fmtNum(reps / 60)} min` : `${reps} ${ex.timed ? 's' : 'st'}`);
+const fmtDist = (m) => (m >= 10000 ? `${fmtNum(m / 1000, 2)} km` : `${fmtNum(m, 0)} m`);
+/** Ett set som text: tid (och distans), reps × vikt eller reps. */
+const fmtSet = (ex, set) => (ex && (ex.timed || set.sec)
+  ? `${fmtAmount(ex, set.reps)}${set.dist ? ` · ${fmtDist(set.dist)}` : ''}`
+  : set.weight > 0 ? `${set.reps} × ${fmtNum(set.weight)} kg` : `${set.reps} st`);
+/** Uppvärmningsövningar (roddmaskin, cykel) blir uppvärmning så länge inget riktigt set är klart. */
+const isWarmupStart = (exId, before) => !!BY_ID[exId]?.warmup
+  && before.every((it) => it.warmup || !Array.isArray(it.sets) || !it.sets.some((x) => x.done));
+/** Uppvärmning först, sedan passet; ordningen inom varje del behålls. */
+const warmupFirst = (list) => [...list.filter((x) => x.warmup), ...list.filter((x) => !x.warmup)];
 
 /** Set för en övning. Enbensövningar får H och V växelvis, så antalet set dubbleras. */
 function makeSets(ex, n = ex.sets, weight = 0, extra = {}) {
@@ -1462,13 +1629,23 @@ function makeSets(ex, n = ex.sets, weight = 0, extra = {}) {
 const flip = (side) => (side === 'H' ? 'V' : side === 'V' ? 'H' : undefined);
 const sideTag = (set) => (set.side ? ` (${set.side})` : '');
 
-function newItem(exId, sets = BY_ID[exId].sets) {
+function newItem(exId, sets = BY_ID[exId].sets, before = data.active?.items ?? []) {
   const ex = BY_ID[exId];
-  return { exId, sets: makeSets(ex, sets, lastWeights(data.sessions)[exId] ?? 0, { done: false }) };
+  const warmup = isWarmupStart(exId, before);
+  const item = { exId, warmup, sets: makeSets(ex, sets, lastWeights(data.sessions)[exId] ?? 0, { done: false }) };
+  // Som uppvärmning räcker 5 minuter på cykel eller roddmaskin.
+  if (warmup && inMinutes(ex)) for (const x of item.sets) x.reps = 300;
+  return item;
+}
+/** Bygger en lista med övningar, där de inledande roddmaskin/cykel blir uppvärmning. */
+function newItems(list) {
+  const items = [];
+  for (const p of list) items.push(newItem(p.exId, p.sets, items));
+  return items;
 }
 
 function startWorkout(place) {
-  const items = ui.plans[place].map((p) => newItem(p.exId, p.sets));
+  const items = warmupFirst(newItems(ui.plans[place]));
   data.active = {
     place,
     start: Date.now(),
@@ -1650,7 +1827,7 @@ function renderWorkout() {
   root.innerHTML = `
     <div class="wk-top">
       <button class="btn-text" data-action="end">Avsluta</button>
-      <div class="wk-title"><b>Övning ${w.index + 1}</b><span id="elapsed">0:00</span></div>
+      <div class="wk-title"><b>${item.warmup ? 'Uppvärmning' : `Övning ${w.items.slice(0, w.index).filter((it) => !it.warmup).length + 1}`}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body" id="wk-body">
@@ -1658,6 +1835,7 @@ function renderWorkout() {
       <h2 class="wk-name">${esc(ex.name)}</h2>
       <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>
       <div class="wk-links">
+        <button class="toggle small" data-action="wk-warmup" aria-pressed="${!!item.warmup}">Uppvärmning</button>
         ${doneSets(item) || ex.physio ? '' : '<button class="btn-text busy-link" data-action="busy-now">Upptagen?</button>'}
         <button class="btn-text busy-link" data-action="pain-sheet">Gör det ont?</button>
       </div>
@@ -1678,6 +1856,21 @@ function renderWorkout() {
   updateTimers();
 }
 
+/** Uppvärmningsalternativ för platsen; skonsamma först om knäna gör ont. */
+function warmupOptions(place) {
+  const pain = data.settings.pain ?? {};
+  const ids = place === 'gym' ? ['rowing-machine', 'bike', 'march'] : ['march', 'shadow-box', 'jumping-jack'];
+  const list = ids.map((id) => BY_ID[id]).filter((ex) => ex && painOk(ex, pain));
+  return (pain.knees || 0) > 0 ? [...list].sort((a, b) => (a.load?.knees || 0) - (b.load?.knees || 0)) : list;
+}
+const WARM_WHY = {
+  'rowing-machine': 'Värmer hela kroppen: ben, rygg och armar',
+  bike: 'Skonsam för knäna, värmer upp benen',
+  march: 'Lugn start som höjer pulsen',
+  'shadow-box': 'Värmer axlar och överkropp',
+  'jumping-jack': 'Får igång pulsen snabbt',
+};
+
 function renderPicker() {
   const w = data.active;
   const root = $('#workout');
@@ -1690,21 +1883,33 @@ function renderPicker() {
   const busy = list.filter((x) => x.busy);
   const started = w.items.some((it) => doneSets(it));
   const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
+  // Varje pass börjar med uppvärmning, om man inte väljer bort den.
+  const needWarm = !started && !w.skipWarm;
+  const queuedWarm = qi.filter((i) => w.items[i].warmup);
+  const warmList = warmupOptions(w.place).filter((ex) => !queueIds.includes(ex.id));
 
   root.innerHTML = `
     <div class="wk-top">
       <button class="btn-text" data-action="end">Avsluta</button>
-      <div class="wk-title"><b>${started ? 'Nästa övning' : 'Första övningen'}</b><span id="elapsed">0:00</span></div>
+      <div class="wk-title"><b>${started ? 'Nästa övning' : needWarm ? 'Uppvärmning' : 'Första övningen'}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body picker" id="wk-body">
-      <p class="hint center">Tryck på övningen du ska köra.</p>
+      <p class="hint center">${needWarm ? 'Börja med 5 minuters uppvärmning. Tryck på den du vill köra.' : 'Tryck på övningen du ska köra.'}</p>
+      ${needWarm ? `
+        <div class="warm-box"><h3 class="pk-title">Uppvärmning <small>lugnt tempo, pulsen ska upp lite</small></h3>
+        <ul class="ex-list">${[...queuedWarm.map((i) => ({ ex: BY_ID[w.items[i].exId], k: i })), ...warmList.map((ex) => ({ ex }))].map(({ ex, k }) => suggestionItem(
+          { ex, reason: `${WARM_WHY[ex.id] ?? 'Lätt uppvärmning'} · ${inMinutes(ex) ? '5 min' : `${ex.reps} × ${ex.sets}`}` },
+          `<div class="ex-actions"><div class="pk-more">${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}</div></div>`,
+          k != null ? `data-action="q-go" data-k="${k}"` : `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul>
+        <button class="btn-text" data-action="skip-warm">Jag har redan värmt upp</button></div>
+        <h3 class="pk-title then-title">Sedan</h3>` : ''}
       ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
-      ${qi.length ? `
+      ${qi.some((i) => !(needWarm && w.items[i].warmup)) ? `
         <div><h3 class="pk-title">Din kö <small>flytta om något är upptaget</small></h3>
-        <ul class="ex-list">${qi.map((i, n) => {
+        <ul class="ex-list">${qi.filter((i) => !(needWarm && w.items[i].warmup)).map((i, n) => {
           const ex = BY_ID[w.items[i].exId];
-          return suggestionItem({ ex, reason: `${ex.unilateral ? w.items[i].sets.length / 2 : w.items[i].sets.length} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`, busy: w.busy[ex.id] }, `
+          return suggestionItem({ ex, reason: `${w.items[i].warmup ? 'Uppvärmning · ' : ''}${ex.timed && w.items[i].sets.length === 1 ? ex.reps : `${ex.unilateral ? w.items[i].sets.length / 2 : w.items[i].sets.length} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`}`, busy: w.busy[ex.id] }, `
             <div class="ex-actions">
               <div class="pk-more">
                 ${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}
@@ -1751,7 +1956,9 @@ function setRow(ex, s, k) {
   return `
     <div class="set ${s.done ? 'done' : ''}">
       ${s.side ? `<button class="side" data-action="side" data-k="${k}" aria-label="Set ${k + 1}, ${s.side === 'H' ? 'höger' : 'vänster'} ben. Tryck för att byta">${s.side}</button>` : `<span class="set-no">${k + 1}</span>`}
-      ${ex.equipment !== 'none' ? `
+      ${ex.distance ? `
+        <label class="kg wide"><input type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="${s.dist || ''}" data-input="dist" data-k="${k}" aria-label="Meter set ${k + 1}"><span>m</span></label>`
+      : ex.equipment !== 'none' && !ex.timed ? `
         <label class="kg"><input type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="${s.weight ? fmtNum(s.weight, 2) : ''}" data-input="weight" data-k="${k}" aria-label="Vikt set ${k + 1}"><span>kg</span></label>` : ''}
       <div class="stepper">
         <button data-action="reps" data-k="${k}" data-d="-1" aria-label="Minska">−</button>
@@ -1774,8 +1981,9 @@ function goTo(index) {
 
 function finishWorkout() {
   const w = data.active;
-  const entries = w.items
-    .map((it) => ({ exId: it.exId, sets: it.sets.filter((s) => s.done).map(({ reps, weight, side }) => ({ reps, weight: Number(weight) || 0, ...(side ? { side } : {}) })) }))
+  const entries = warmupFirst(w.items)
+    .map((it) => ({ exId: it.exId, ...(it.warmup ? { warmup: true } : {}), sets: it.sets.filter((s) => s.done).map(({ reps, weight, side, dist }) => ({
+      reps, weight: Number(weight) || 0, ...(BY_ID[it.exId]?.timed ? { sec: true } : {}), ...(dist > 0 ? { dist } : {}), ...(side ? { side } : {}) })) }))
     .filter((e) => e.sets.length);
   if (entries.length) {
     data.sessions.push({ id: uid(), place: w.place, date: new Date(w.start).toISOString(), endDate: new Date().toISOString(), entries });
@@ -1920,6 +2128,7 @@ document.addEventListener('click', (e) => {
   switch (t.dataset.action) {
     case 'tab': {
       const to = t.dataset.tab;
+      if (to === 'activity' && !SUB.has(ui.tab)) ui.actBack = ui.tab;
       if (SUB.has(to) && !SUB.has(ui.tab)) {
         ui.back = ui.tab;
         // Via startsidan eller Planera: börja med ett vanligt förslag, inte ett tidigare inläst pass.
@@ -1943,6 +2152,31 @@ document.addEventListener('click', (e) => {
       render();
       break;
     }
+    case 'act': {
+      const kind = t.dataset.kind;
+      if (ui.tab !== 'activity' && !SUB.has(ui.tab)) ui.actBack = ui.tab;
+      if (kind === 'walk') { openSheet(walkSheet()); break; }
+      ui.back = ui.tab === 'activity' ? 'activity' : SUB.has(ui.tab) ? ui.back : ui.tab;
+      if (kind === 'swim') { ui.tab = 'swim'; render(); window.scrollTo(0, 0); break; }
+      if (ui.cardio.kind !== kind) { ui.cardio.kind = kind; ui.cardio.plan = null; }
+      ui.tab = 'cardio'; render(); window.scrollTo(0, 0); break;
+    }
+    case 'c-min': ui.cardio.minutes = Number(t.dataset.value); regenerateCardio(); render(); break;
+    case 'c-new': regenerateCardio(); render(); break;
+    case 'c-toggle': {
+      const b = ui.cardio.plan[Number(t.dataset.index)];
+      b.done = !b.done;
+      if (b.done && !ui.cardio.start) ui.cardio.start = Date.now();
+      render(); break;
+    }
+    case 'c-save': openSheet(cardioSheet(ui.cardio.kind, true)); break;
+    case 'cardio-log': openSheet(cardioSheet(null, false)); break;
+    case 'cardio': openSheet(cardioDetailSheet(data.cardio.find((x) => x.id === t.dataset.id))); break;
+    case 'delete-cardio':
+      confirmDialog({ title: 'Radera passet?', buttons: [
+        { label: 'Radera', style: 'danger', onClick: () => { data.cardio = data.cardio.filter((x) => x.id !== t.dataset.id); save(); closeSheet(); render(); } },
+        { label: 'Avbryt' }] });
+      break;
     case 'swim-save':
       openSheet(swimSheet(true)); break;
     case 'swim-log':
@@ -2031,7 +2265,7 @@ document.addEventListener('click', (e) => {
     case 'rehab-start': {
       unlockAudio();
       const ids = rehabSuggestions('home', [], 3).flatMap(([, list]) => list.map((ex) => ex.id));
-      const items = [...new Set(ids)].map((id) => newItem(id));
+      const items = newItems([...new Set(ids)].map((exId) => ({ exId, sets: BY_ID[exId].sets })));
       data.active = { place: 'home', start: Date.now(), index: 0, restEnd: null, restBeeped: false,
         gear: ['body'], groups: [], busy: {}, picking: false, items };
       save(); openWorkout(); break;
@@ -2068,6 +2302,19 @@ document.addEventListener('click', (e) => {
       ui.manual = { date: dayKey(new Date()), place: 'gym', minutes: 45, items: [] };
       openSheet(manualMain()); break;
     case 'm-place': ui.manual.place = t.dataset.value; sheetBody(manualMain()); break;
+    case 'm-warmup': {
+      const it = ui.manual.items[Number(t.dataset.i)];
+      it.warmup = !it.warmup;
+      ui.manual.items = warmupFirst(ui.manual.items);
+      sheetBody(manualMain()); break;
+    }
+    case 'edit-session': {
+      const s = data.sessions.find((x) => x.id === t.dataset.id);
+      if (!s) break;
+      ui.manual = { editId: s.id, date: dayKey(new Date(s.date)), place: s.place === 'home' ? 'home' : 'gym', minutes: minutesOf(s),
+        items: s.entries.filter((e) => BY_ID[e.exId]).map((e) => ({ exId: e.exId, warmup: !!e.warmup, sets: e.sets.map((x) => ({ ...x })) })) };
+      sheetBody(manualMain()); break;
+    }
     case 'm-remove': ui.manual.items.splice(Number(t.dataset.i), 1); sheetBody(manualMain()); break;
     case 'm-side': {
       const set = ui.manual.items[Number(t.dataset.i)].sets[k];
@@ -2177,6 +2424,7 @@ document.addEventListener('click', (e) => {
     case 's-busy': markBusy(w, t.dataset.id); save(); renderWorkout(); break;
     case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
     case 's-more': w.more = true; save(); renderWorkout(); break;
+    case 'skip-warm': w.skipWarm = true; save(); renderWorkout(); break;
     case 'q-up': {
       const qi = queueIndexes(w);
       const p = qi.indexOf(k);
@@ -2208,13 +2456,19 @@ document.addEventListener('click', (e) => {
       unlockAudio();
       const s = w.items[w.index].sets[k];
       s.done = !s.done;
-      if (s.done) { w.restEnd = Date.now() + data.settings.restSeconds * 1000; w.restBeeped = false; }
+      // Ingen vila efter uppvärmningen.
+      if (s.done && !w.items[w.index].warmup) { w.restEnd = Date.now() + data.settings.restSeconds * 1000; w.restBeeped = false; }
       save();
       const row = t.closest('.set');
       row.classList.toggle('done', s.done);
       t.setAttribute('aria-pressed', s.done);
       updateTimers();
       break;
+    }
+    case 'wk-warmup': {
+      const it = w.items[w.index];
+      it.warmup = !it.warmup;
+      save(); renderWorkout(); break;
     }
     case 'side': {
       const set = w.items[w.index].sets[k];
@@ -2241,6 +2495,12 @@ document.addEventListener('change', (e) => {
       ui.focus[ui.tab] = t.value; regenerate(ui.tab); render(); break;
     case 'swim-focus':
       ui.focus.swim = t.value; regenerate('swim'); render(); break;
+    case 'c-focus':
+      ui.cardio.focus = t.value; regenerateCardio(); render(); break;
+    case 'c-kind-pick':
+      $('#c-km-row').classList.toggle('hidden', !ACTS[t.value].km);
+      $('#c-name-row').classList.toggle('hidden', t.value !== 'other');
+      break;
     case 'swim-style':
       ui.swimStyle = t.value; regenerate('swim'); render(); break;
     case 'goal-ex':
@@ -2282,9 +2542,10 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('input', (e) => {
   const t = e.target;
-  if (t.dataset.input === 'weight' && data.active) {
-    const v = parseFloat(String(t.value).replace(',', '.'));
-    data.active.items[data.active.index].sets[Number(t.dataset.k)].weight = Number.isFinite(v) ? v : 0;
+  if ((t.dataset.input === 'weight' || t.dataset.input === 'dist') && data.active) {
+    const v = parseFloat(String(t.value).replace(/\s/g, '').replace(',', '.'));
+    const ok = Number.isFinite(v) && v > 0;
+    data.active.items[data.active.index].sets[Number(t.dataset.k)][t.dataset.input] = ok ? (t.dataset.input === 'dist' ? Math.round(v) : v) : 0;
     save();
   } else if (t.dataset.minput && ui.manual) {
     const v = t.dataset.minput;
@@ -2293,16 +2554,16 @@ document.addEventListener('input', (e) => {
       const i = Number(t.dataset.i);
       const k = Number(t.dataset.k);
       const sets = ui.manual.items[i].sets;
-      const n = parseFloat(String(t.value).replace(',', '.'));
+      const n = parseFloat(String(t.value).replace(/\s/g, '').replace(',', '.'));
       const old = sets[k][v];
       const mins = v === 'reps' && inMinutes(BY_ID[ui.manual.items[i].exId]);
-      const value = Number.isFinite(n) && n > 0 ? (v === 'reps' ? Math.round(mins ? n * 60 : n) : n) : 0;
+      const value = Number.isFinite(n) && n > 0 ? (v === 'reps' ? Math.round(mins ? n * 60 : n) : v === 'dist' ? Math.round(n) : n) : 0;
       sets[k][v] = value;
       // Följande set som hade samma värde följer med, så att man bara behöver skriva en gång.
       for (let j = k + 1; j < sets.length && sets[j][v] === old; j++) {
         sets[j][v] = value;
         const input = $(`[data-minput="${v}"][data-i="${i}"][data-k="${j}"]`);
-        if (input) input.value = value ? fmtNum(mins ? value / 60 : value, 2) : '';
+        if (input) input.value = value ? (v === 'dist' ? value : fmtNum(mins ? value / 60 : value, 2)) : '';
       }
     }
   } else if (t.dataset.input === 'pick-search') {
@@ -2318,7 +2579,7 @@ document.addEventListener('input', (e) => {
 
 function makeWeek() {
   ui.weekProposal = weekKinds().length ? suggestWeek({ days: weekDays(), kinds: weekKinds(), sessions: data.sessions,
-    swims: data.swims, walks: data.walks, pain: data.settings.pain, priority: priority() }) : null;
+    swims: data.swims, walks: data.walks, cardio: data.cardio, pain: data.settings.pain, priority: priority() }) : null;
 }
 
 function setPref(key, place, value) {
@@ -2352,6 +2613,17 @@ const FORMS = {
     if (f.get('fromPlan')) { regenerate('swim'); ui.tab = 'log'; }
     toast('Simpasset sparat 🏊');
   },
+  'cardio-form'(f) {
+    const kind = CARDIO_IDS.includes(f.get('kind')) ? f.get('kind') : 'other';
+    const km = parseFloat(String(f.get('km') || '').replace(',', '.'));
+    const name = String(f.get('name') || '').trim();
+    const entry = { id: uid(), date: parseDate(f.get('date')).toISOString(), kind, minutes: Number(f.get('minutes')),
+      ...(ACTS[kind].km && Number.isFinite(km) && km > 0 ? { km } : {}), ...(kind === 'other' && name ? { name } : {}) };
+    const before = [...data.swims, ...data.cardio];
+    data.cardio.push(entry);
+    if (f.get('fromPlan')) { regenerateCardio(); ui.tab = 'log'; }
+    ui.after = () => openSheet(feedbackSheet(cardioFeedback({ minutes: entry.minutes, km: entry.km, kind: actName(entry).toLowerCase(), before: data.sessions, swims: before })));
+  },
   'goal-form'(f) {
     const exId = f.get('exId');
     const metric = f.get('metric');
@@ -2380,6 +2652,8 @@ document.addEventListener('submit', (e) => {
   save();
   closeSheet();
   render();
+  // T.ex. PT:ns omdöme efter ett sparat konditionspass.
+  if (ui.after) { const fn = ui.after; ui.after = null; setTimeout(fn, 250); }
 });
 
 // Avläsning av diagram: tryck (mobil) eller hovra (dator) på en markering.

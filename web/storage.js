@@ -5,6 +5,7 @@ const defaults = () => ({
   sessions: [],  // { id, place, date, endDate, entries: [{ exId, sets: [{ reps, weight }] }] }
   walks: [],     // { id, date, minutes, km }
   swims: [],     // { id, date, minutes, meters, style }
+  cardio: [],    // löpning, cykling m.m.: { id, date, kind: 'run' | 'bike' | 'ski' | 'other', minutes, km, name }
   steps: {},     // { 'ÅÅÅÅ-MM-DD': antal }
   saved: [],     // sparade pass: { id, name, place, items, minutes }
   week: ['', '', '', '', '', '', ''], // veckoplan, måndag först: '', rest, gym, home, swim, walk eller saved:<id>
@@ -22,6 +23,7 @@ function normalize(raw) {
     sessions: Array.isArray(raw.sessions) ? raw.sessions : [],
     walks: Array.isArray(raw.walks) ? raw.walks : [],
     swims: Array.isArray(raw.swims) ? raw.swims : [],
+    cardio: Array.isArray(raw.cardio) ? raw.cardio.filter((c) => c && c.kind && c.date) : [],
     steps: raw.steps && typeof raw.steps === 'object' && !Array.isArray(raw.steps) ? raw.steps : {},
     saved: Array.isArray(raw.saved) ? raw.saved : [],
     week: Array.isArray(raw.week) && raw.week.length === 7 ? raw.week.map((v) => (typeof v === 'string' ? v : '')) : base.week,
