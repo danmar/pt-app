@@ -3,8 +3,7 @@
 En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver ingen App Store, Mac eller Apple Developer-konto.
 
 - **Startsida:** välj vad du ska göra, Gym, Hemma, Simma eller Planera. Här ser du också dagens plan och dina steg.
-- **Gym:** föreslår ett pass på 20, 40 eller 60 minuter. Den väljer muskelgrupper du vilat längst, så du inte kör samma muskler två dagar i rad. Du kan välja fokus och byta eller ta bort övningar.
-- **Hemma:** korta pass på 10, 15 eller 20 minuter, med kroppsviktsövningar och hantlar om du har det.
+- **Styrka (gym och hemma):** inga färdiga program. Du väljer utrustning (kroppsvikt, hantlar, skivstång, maskiner och kabel) och vilka muskelgrupper du vill köra. Under passet föreslår appen nästa övning utifrån det du redan har kört idag. Den väljer muskelgrupper du inte har kört än, ger motvikt (till exempel rodd efter bänkpress), ger nya vinklar och sparar isoleringsövningar till slutet. Du kan lägga övningar i en kö och flytta om dem. Är en maskin upptagen trycker du på klockan, så flyttas övningen sist och du får andra förslag.
 - **Passtyper:** Styrka (set och vila), Cirkel (stationer där muskelgrupperna växlar), HIIT (korta intensiva intervaller) och Kondition (längre intervaller). Cirkel, HIIT och Kondition körs med en intervalltimer som räknar ner, piper och går vidare själv.
 - **Simma:** föreslår ett simpass (20/40/60 min) med uppvärmning, teknik, huvuddel och nedvarvning. Du bockar av delarna och sparar passet. Du kan också logga ett simpass direkt.
 - **Planera:** lägg upp en veckoplan och spara pass till senare. Ett sparat pass kan du lägga in på en veckodag.
@@ -72,4 +71,4 @@ Appen måste ligga på en **https**-adress för att fungera som app på telefone
 
 ## Uppdatera appen
 
-Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v10`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
+Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v12`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.

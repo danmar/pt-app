@@ -58,6 +58,21 @@ export const SAFETY = {
     'Svanka inte i toppen. Avsluta med rumpan och håll revbenen nere.',
     'Börja med lätt vikt och öka i små steg.',
   ],
+  'leg-press': [
+    'Lås aldrig knäna helt i toppläget.',
+    'Knäna ska följa tårnas riktning och inte falla inåt.',
+    'Gå inte så djupt att rumpan lyfter från sätet. Det belastar ländryggen.',
+  ],
+  'leg-extension': [
+    'Ställ in maskinen så att knät är i linje med vridpunkten.',
+    'Inga ryck. Sträck lugnt och sänk ännu långsammare.',
+    'Ont framtill i knät? Minska vikten eller rörelseomfånget.',
+  ],
+  'leg-curl': [
+    'Lyft inte höften från dynan för att få upp vikten. Då är den för tung.',
+    'Släpp tillbaka långsamt, utan att vikterna slår i.',
+    'Kramp i baksida lår betyder att du ska vila.',
+  ],
   // Fysio
   'single-leg-extension': [
     'Ställ in maskinen ordentligt: knät ska vara i linje med maskinens vridpunkt.',
@@ -151,6 +166,21 @@ export const SAFETY = {
     'Svanka inte. Spänn magen och rumpan.',
     'Pressa inte bakom huvudet.',
     'Stoppa om det nyper i axeln, och ta lättare vikt.',
+  ],
+  'barbell-press': [
+    'Svanka inte. Spänn magen och rumpan hela tiden.',
+    'Håll stången nära ansiktet på vägen upp.',
+    'Stoppa om det nyper i axeln, och ta lättare vikt.',
+  ],
+  'machine-shoulder-press': [
+    'Ställ in sätet så att handtagen startar i axelhöjd, inte lägre.',
+    'Håll ryggen mot ryggstödet.',
+    'Stoppa om det nyper i axeln, och ta lättare vikt.',
+  ],
+  'barbell-curl': [
+    'Gunga inte med ryggen för att få upp vikten.',
+    'Ont i handlederna? Använd en EZ-stång eller hantlar.',
+    'Sänk hela vägen men kontrollerat.',
   ],
   'bicep-curl': [
     'Gunga inte med ryggen för att få upp vikten.',

@@ -1,6 +1,6 @@
-import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, isAvailable } from './exercises.js';
+import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable } from './exercises.js';
 import { mountFigures } from './figure.js';
-import { LENGTHS, COUNT, suggest, replacement, daysSinceTrained, lastWeights, daysBetween } from './planner.js';
+import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
 import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor } from './workouts.js';
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
@@ -63,6 +63,9 @@ const ICON = {
   calendar: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
   steps: '<svg viewBox="0 0 24 24"><path d="M8 3c1.6 0 2.5 2 2.5 4.5S9.6 12 8 12 5.5 10 5.5 7.5 6.4 3 8 3zM6 14.5h4V17a2 2 0 0 1-4 0zM16 7c1.6 0 2.5 2 2.5 4.5S17.6 16 16 16s-2.5-2-2.5-4.5S14.4 7 16 7zM14 18.5h4V20a2 2 0 0 1-4 0z"/></svg>',
   save: '<svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4-6 4z"/></svg>',
+  up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
   shield: '<svg viewBox="0 0 24 24" class="ic"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/></svg>',
 };
 const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON.walk };
@@ -93,42 +96,16 @@ function regenerate(place) {
     });
     return;
   }
-  if (place !== 'swim' && !ui.fixed[place] && data.settings.physioAlways && !ui.skipPhysio[place]) {
-    ui.fixed[place] = physioItems(place);
-  }
-  if (place !== 'swim' && ui.fixed[place]?.length) {
-    ui.plans[place] = withComplement(place, ui.fixed[place]);
-    return;
-  }
-  ui.loaded[place] = null;
   if (place === 'swim') {
+    ui.loaded.swim = null;
     ui.plans.swim = suggestSwim({ minutes: ui.minutes.swim, style: ui.swimStyle, focus: ui.focus.swim });
     ui.swimStart = null;
     return;
   }
-  ui.plans[place] = suggest({
-    place,
-    minutes: ui.minutes[place],
-    focus: ui.focus[place],
-    sessions: data.sessions,
-    hasDumbbells: data.settings.hasDumbbells,
-    kneeFriendly: data.settings.kneeFriendly,
-  });
-}
-
-/** Fysiopass: behåll benövningarna och fyll på med överkropp och bål. */
-function withComplement(place, fixed) {
-  const total = COUNT[ui.minutes[place]] ?? 6;
-  const extra = suggest({
-    place,
-    focus: ['legs', 'cardio'].includes(ui.focus[place]) ? '' : ui.focus[place],
-    sessions: data.sessions,
-    hasDumbbells: data.settings.hasDumbbells,
-    kneeFriendly: true,
-    skip: ['legs', 'cardio'],
-    count: Math.max(2, total - fixed.length),
-  });
-  return [...clone(fixed), ...extra];
+  // Styrka: inget färdigt program. Fysioövningarna läggs först i kön, resten föreslås under passet.
+  if (!ui.fixed[place] && data.settings.physioAlways && !ui.skipPhysio[place]) ui.fixed[place] = physioItems(place);
+  ui.loaded[place] = null;
+  ui.plans[place] = clone(ui.fixed[place] ?? []);
 }
 
 // ---- Idag (startsida) -----------------------------------------------------
@@ -313,7 +290,7 @@ function planningView() {
 function savedRow(s) {
   const info = s.place === 'swim'
     ? `${fmtNum(s.items.reduce((n, b) => n + b.meters, 0), 0)} m · ${s.minutes} min`
-    : s.physio ? `${s.items.length} fysioövningar + överkropp och bål`
+    : s.physio ? `${s.items.length} fysioövningar, sedan förslag`
     : s.type && s.type !== 'strength' ? `${TYPES[s.type].name} · ${s.items.length} övningar · ${s.minutes} min` : `${s.items.length} övningar`;
   return `
     <li class="saved-item">
@@ -337,7 +314,7 @@ function loadSaved(id) {
     ui.type[s.place] = s.type || 'strength';
     if (ui.type[s.place] === 'strength') {
       ui.fixed[s.place] = s.physio ? valid : null;
-      ui.plans[s.place] = s.physio ? withComplement(s.place, valid) : valid;
+      ui.plans[s.place] = clone(valid);
     } else {
       ui.fixed[s.place] = null;
       ui.iplans[s.place] = buildInterval({
@@ -402,23 +379,16 @@ function placeHeader(place) {
       <div class="segmented types" role="radiogroup" aria-label="Typ av pass">
         ${Object.entries(TYPES).map(([k, t]) => `<button role="radio" aria-checked="${ui.type[place] === k}" data-action="ptype" data-value="${k}">${t.name}</button>`).join('')}
       </div>
+      ${ui.type[place] === 'strength' ? strengthControls(place) : `
       <div class="segmented" role="radiogroup" aria-label="Passets längd">
         ${LENGTH_OPTIONS[place].map((m) => `<button role="radio" aria-checked="${ui.minutes[place] === m}" data-action="minutes" data-value="${m}">${m} min</button>`).join('')}
-      </div>
-      ${ui.type[place] === 'strength' ? `
-      <label class="select-row">
-        <span>Fokus</span>
-        <select data-change="focus">
-          <option value="">Automatiskt</option>
-          ${MUSCLE_IDS.map((m) => `<option value="${m}" ${ui.focus[place] === m ? 'selected' : ''}>${MUSCLES[m].name}</option>`).join('')}
-        </select>
-      </label>` : ''}
+      </div>`}
     </section>
-    <p class="hint">${TYPES[ui.type[place]].desc}</p>
+    <p class="hint">${ui.type[place] === 'strength' ? 'Du väljer övning för övning. Appen föreslår vad som passar efter det du redan kört idag.' : TYPES[ui.type[place]].desc}</p>
     ${ui.type[place] === 'strength' ? `<p class="note">${ICON.shield} <b>Värm upp först:</b> 5 minuter på ${place === 'gym' ? 'cykel' : 'marsch på stället'}, och kör första setet av varje övning med lätt vikt. <button class="inline-link" data-action="guide">Träna säkert</button></p>` : ''}`;
 }
 
-const physioNote = (place) => `<p class="note">Dina fysioövningar ingår alltid. Övriga övningar är skonsamma för knäna och du kan byta eller ta bort dem. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`;
+const physioNote = (place) => `<p class="note">Dina fysioövningar ingår alltid och ligger först. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`;
 
 function intervalView(place) {
   if (!ui.iplans[place]) regenerate(place);
@@ -475,39 +445,82 @@ function intervalView(place) {
     </div>`;
 }
 
+// ---- Fri styrketräning ------------------------------------------------------
+const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body', ...(data.settings.hasDumbbells ? ['dumbbells'] : [])]);
+const gearFor = (place) => data.settings.gear?.[place] ?? defaultGear(place);
+const groupsFor = (place) => data.settings.groups?.[place] ?? [];
+const toggle = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
+const isToday = (d) => dayKey(d) === dayKey(new Date());
+const doneSets = (it) => it.sets.filter((x) => x.done).length;
+
+function chipToggles(action, entries, selected) {
+  return `<div class="toggles">${entries.map(([k, label]) =>
+    `<button class="toggle" data-action="${action}" data-value="${k}" aria-pressed="${selected.includes(k)}">${label}</button>`).join('')}</div>`;
+}
+function strengthControls(place, prefix = '') {
+  const groups = prefix ? data.active.groups : groupsFor(place);
+  return `
+      <div class="field"><span class="field-label">Utrustning</span>
+        ${chipToggles(`${prefix}gear`, Object.entries(GEAR), prefix ? data.active.gear : gearFor(place))}</div>
+      <div class="field"><span class="field-label">Muskelgrupper <small>${groups.length ? '' : 'inget valt = alla'}</small></span>
+        ${chipToggles(`${prefix}group`, MUSCLE_IDS.map((m) => [m, MUSCLES[m].name]), groups)}</div>`;
+}
+
+/** Det du kört idag: tidigare sparade pass + klara set i pågående pass, i tidsordning. */
+function exercisesToday() {
+  const done = [];
+  for (const s of data.sessions) if (isToday(s.date)) for (const e of s.entries) done.push({ exId: e.exId, sets: e.sets.length });
+  if (data.active?.items) for (const it of data.active.items) if (doneSets(it)) done.push({ exId: it.exId, sets: doneSets(it) });
+  return done;
+}
+function todaySummary(done) {
+  const vol = volumeByGroup(done);
+  const groups = MUSCLE_IDS.filter((m) => vol[m] >= 1);
+  if (!groups.length) return '';
+  return `<div class="chips left">${groups.map((m) => `<span class="chip g-${m}">${MUSCLES[m].name} ${fmtNum(vol[m], 0)} set</span>`).join('')}</div>`;
+}
+
 function planView(place) {
   if (ui.type[place] !== 'strength') return intervalView(place);
   if (!ui.plans[place]) regenerate(place);
-  const plan = ui.plans[place];
-  const rest = daysSinceTrained(data.sessions);
-  const groups = [...new Set(plan.map((p) => BY_ID[p.exId].muscles[0]))].sort(byOrder);
-  const restText = groups.map((g) => {
-    const d = rest[g];
-    const label = d === undefined ? 'ny' : d === 0 ? 'idag' : `${d} d vila`;
-    return `${MUSCLES[g].name} (${label})`;
-  }).join(', ');
+  const queue = ui.plans[place];
+  const done = exercisesToday();
+  const gear = gearFor(place);
+  const preview = gear.length ? suggestNext({ done, groups: groupsFor(place), gear, kneeFriendly: data.settings.kneeFriendly,
+    exclude: queue.map((p) => p.exId), sessions: data.sessions, limit: 3 }).filter((x) => !x.busy) : [];
 
   return `
     ${placeHeader(place)}
-
-    ${ui.fixed[place] ? physioNote(place)
-      : restText ? `<p class="hint">Förslaget väljer muskler du vilat längst: ${restText}.</p>` : ''}
-    ${place === 'home' && !data.settings.hasDumbbells ? `<p class="hint">Har du hantlar hemma? Slå på det under <button class="inline-link" data-action="tab" data-tab="settings">Inställningar</button> så får du fler övningar.</p>` : ''}
-
-    <h2 class="section-title">Dagens förslag</h2>
-    <ul class="ex-list">
-      ${plan.map((p, i) => planItem(p, i)).join('')}
-    </ul>
-    ${plan.length === 0 ? '<p class="empty">Inga övningar kvar. Tryck på ”Nytt förslag”.</p>' : ''}
-
+    ${done.length ? `<h2 class="section-title">Kört idag</h2>${todaySummary(done)}` : ''}
+    ${queue.length ? `
+      ${ui.fixed[place] ? physioNote(place) : ''}
+      <h2 class="section-title">Först i passet</h2>
+      <ul class="ex-list">${queue.map((p, i) => planItem(p, i)).join('')}</ul>` : ''}
+    ${!gear.length ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : `
+      <h2 class="section-title">${queue.length ? 'Sedan till exempel' : 'Förslag att börja med'}</h2>
+      <ul class="ex-list">${preview.map((x) => suggestionItem(x, '')).join('')}</ul>
+      ${preview.length ? '' : '<p class="empty">Inga övningar passar. Välj fler muskelgrupper eller mer utrustning.</p>'}
+      <p class="hint">Förslagen ändras under passet efter det du har kört.</p>`}
     <div class="stack">
-      <button class="btn primary big" data-action="start" ${plan.length ? '' : 'disabled'}>${ICON.play} Starta passet</button>
-      <div class="row">
-        <button class="btn secondary" data-action="regenerate">${ICON.refresh} Nytt förslag</button>
-        <button class="btn secondary" data-action="library">Alla övningar</button>
-      </div>
-      <button class="btn secondary" data-action="save-plan" ${plan.length ? '' : 'disabled'}>${ICON.save} Spara till senare</button>
+      <button class="btn primary big" data-action="start" ${gear.length ? '' : 'disabled'}>${ICON.play} Börja träna</button>
+      <button class="btn secondary" data-action="library">Alla övningar</button>
     </div>`;
+}
+
+function suggestionItem({ ex, reason, busy }, actions) {
+  return `
+    <li class="ex-item ${busy ? 'is-busy' : ''}" data-group="${ex.muscles[0]}">
+      <button class="ex-main" data-action="detail" data-id="${ex.id}">
+        <div class="fig thumb" data-ex="${ex.id}"></div>
+        <div class="ex-text">
+          <strong>${esc(ex.name)}</strong>
+          <span>${busy ? 'Upptagen' : esc(reason)}</span>
+          <small>${GEAR[ex.gear]} · ${muscleNames(ex)}</small>
+          ${kneeWarn(ex) ? '<em class="knee-warn">Belastar knäna</em>' : ''}
+        </div>
+      </button>
+      ${actions}
+    </li>`;
 }
 
 function planItem(p, i) {
@@ -524,7 +537,6 @@ function planItem(p, i) {
         </div>
       </button>
       <div class="ex-actions">
-        ${ex.physio ? '' : `<button class="icon-btn" data-action="swap" data-index="${i}" aria-label="Byt ${esc(ex.name)}">${ICON.swap}</button>`}
         <button class="icon-btn" data-action="remove" data-index="${i}" aria-label="Ta bort ${esc(ex.name)}">${ICON.remove}</button>
       </div>
     </li>`;
@@ -902,21 +914,59 @@ function toast(text) {
 
 // ---------------------------------------------------------------------------
 // Träningspass
+function newItem(exId, sets = BY_ID[exId].sets) {
+  const weight = lastWeights(data.sessions)[exId] ?? 0;
+  return { exId, sets: [...Array(sets)].map(() => ({ reps: BY_ID[exId].defaultReps, weight, done: false })) };
+}
+
 function startWorkout(place) {
-  const weights = lastWeights(data.sessions);
+  const items = ui.plans[place].map((p) => newItem(p.exId, p.sets));
   data.active = {
     place,
     start: Date.now(),
     index: 0,
     restEnd: null,
     restBeeped: false,
-    items: ui.plans[place].map((p) => ({
-      exId: p.exId,
-      sets: [...Array(p.sets)].map(() => ({ reps: BY_ID[p.exId].defaultReps, weight: weights[p.exId] ?? 0, done: false })),
-    })),
+    gear: [...gearFor(place)],
+    groups: [...groupsFor(place)],
+    busy: {},
+    picking: !items.length,
+    items,
   };
   save();
   openWorkout();
+}
+
+// Kön = övningar utan klara set. Påbörjade övningar ligger först, i den ordning de kördes.
+const queueIndexes = (w) => w.items.map((_, i) => i).filter((i) => !doneSets(w.items[i]));
+
+/** Gör en övning till nästa: den läggs direkt efter de påbörjade och visas. */
+function runItem(w, item) {
+  const started = w.items.filter((it) => doneSets(it));
+  const queued = w.items.filter((it) => !doneSets(it) && it !== item);
+  w.items = [...started, item, ...queued];
+  w.index = started.length;
+  w.picking = false;
+  w.restEnd = w.restEnd && w.restEnd > Date.now() ? w.restEnd : null;
+  save();
+  renderWorkout();
+  $('#wk-body').scrollTop = 0;
+}
+
+function openPicker() {
+  const w = data.active;
+  w.picking = true;
+  w.more = false;
+  save();
+  renderWorkout();
+  $('#wk-body').scrollTop = 0;
+}
+
+/** Markera en maskin som upptagen och flytta övningen sist i kön. */
+function markBusy(w, exId) {
+  w.busy[exId] = true;
+  const i = w.items.findIndex((it) => it.exId === exId && !doneSets(it));
+  if (i >= 0) w.items.push(...w.items.splice(i, 1));
 }
 
 function openWorkout() {
@@ -1039,23 +1089,25 @@ function closeWorkout() {
 
 function renderWorkout() {
   const w = data.active;
+  w.busy ??= {};
+  w.gear ??= gearFor(w.place);
+  w.groups ??= groupsFor(w.place);
+  if (w.picking || !w.items[w.index]) { renderPicker(); return; }
   const root = $('#workout');
   const item = w.items[w.index];
   const ex = BY_ID[item.exId];
-  const n = w.items.length;
-  const last = w.index === n - 1;
 
   root.innerHTML = `
     <div class="wk-top">
       <button class="btn-text" data-action="end">Avsluta</button>
-      <div class="wk-title"><b>Övning ${w.index + 1} av ${n}</b><span id="elapsed">0:00</span></div>
+      <div class="wk-title"><b>Övning ${w.index + 1}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
-    <div class="progress"><div style="width:${((w.index + 1) / n) * 100}%"></div></div>
     <div class="wk-body" id="wk-body">
       <div class="fig big" data-ex="${ex.id}" data-play="1"></div>
       <h2 class="wk-name">${esc(ex.name)}</h2>
       <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>
+      ${doneSets(item) || ex.physio ? '' : `<button class="btn-text busy-link" data-action="busy-now">Upptagen? Välj en annan övning</button>`}
       <details class="card">
         <summary>Så gör du</summary>
         <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
@@ -1067,9 +1119,68 @@ function renderWorkout() {
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
       <button class="btn secondary square" data-action="prev" ${w.index === 0 ? 'disabled' : ''} aria-label="Föregående övning">${ICON.chevronL}</button>
-      ${last
-        ? '<button class="btn success grow" data-action="finish">Klar – spara passet</button>'
-        : '<button class="btn primary grow" data-action="next">Nästa övning</button>'}
+      <button class="btn primary grow" data-action="pick">Nästa övning</button>
+    </div>`;
+  mountFigures(root);
+  updateTimers();
+}
+
+function renderPicker() {
+  const w = data.active;
+  const root = $('#workout');
+  const done = exercisesToday();
+  const qi = queueIndexes(w);
+  const queueIds = qi.map((i) => w.items[i].exId);
+  const list = w.gear.length ? suggestNext({ done, groups: w.groups, gear: w.gear, kneeFriendly: data.settings.kneeFriendly,
+    exclude: queueIds, busy: w.busy, sessions: data.sessions, limit: w.more ? 99 : 4 }) : [];
+  const free = list.filter((x) => !x.busy);
+  const busy = list.filter((x) => x.busy);
+  const started = w.items.some((it) => doneSets(it));
+  const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
+
+  root.innerHTML = `
+    <div class="wk-top">
+      <button class="btn-text" data-action="end">Avsluta</button>
+      <div class="wk-title"><b>${started ? 'Nästa övning' : 'Första övningen'}</b><span id="elapsed">0:00</span></div>
+      <span class="wk-spacer"></span>
+    </div>
+    <div class="wk-body picker" id="wk-body">
+      ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
+      ${qi.length ? `
+        <div><h3 class="pk-title">Din kö <small>flytta om något är upptaget</small></h3>
+        <ul class="ex-list">${qi.map((i, n) => {
+          const ex = BY_ID[w.items[i].exId];
+          return suggestionItem({ ex, reason: `${w.items[i].sets.length} set × ${ex.reps}`, busy: w.busy[ex.id] }, `
+            <div class="ex-actions">
+              <button class="go-btn" data-action="q-go" data-k="${i}">Kör</button>
+              <div class="pk-more">
+                ${n ? btn('q-up', `data-k="${i}"`, `Flytta upp ${esc(ex.name)}`, ICON.up) : ''}
+                ${btn('q-busy', `data-k="${i}"`, `${esc(ex.name)} är upptagen, flytta sist`, ICON.clock)}
+                ${btn('q-remove', `data-k="${i}"`, `Ta bort ${esc(ex.name)}`, ICON.remove)}
+              </div>
+            </div>`);
+        }).join('')}</ul></div>` : ''}
+      <div><h3 class="pk-title">${qi.length ? 'Eller välj ett förslag' : 'Förslag'}</h3>
+      ${!w.gear.length ? '<p class="note warn">Välj minst en typ av utrustning nedan.</p>' : free.length ? `
+        <ul class="ex-list">${free.map((x) => suggestionItem(x, `
+          <div class="ex-actions">
+            <button class="go-btn" data-action="s-go" data-id="${x.ex.id}">Kör</button>
+            <div class="pk-more">
+              ${btn('s-queue', `data-id="${x.ex.id}"`, `Lägg ${esc(x.ex.name)} i kön`, ICON.plus)}
+              ${btn('s-busy', `data-id="${x.ex.id}"`, `${esc(x.ex.name)} är upptagen`, ICON.clock)}
+            </div>
+          </div>`)).join('')}</ul>
+        ${w.more ? '' : '<button class="btn-text" data-action="s-more">Visa fler förslag</button>'}`
+        : '<p class="empty">Inga fler övningar passar. Välj fler muskelgrupper eller mer utrustning nedan.</p>'}
+      </div>
+      ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
+        <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
+      <details class="card"><summary>Ändra utrustning och muskelgrupper</summary><div class="controls pk-controls">${strengthControls(w.place, 'w')}</div></details>
+    </div>
+    <div id="rest" class="rest" hidden></div>
+    <div class="wk-bottom">
+      ${w.items[w.index] ? `<button class="btn secondary square" data-action="pk-back" aria-label="Tillbaka till övningen">${ICON.chevronL}</button>` : ''}
+      <button class="btn success grow" data-action="finish" ${started ? '' : 'disabled'}>Klar – spara passet</button>
     </div>`;
   mountFigures(root);
   updateTimers();
@@ -1092,7 +1203,8 @@ function setRow(ex, s, k) {
 
 function goTo(index) {
   const w = data.active;
-  if (index < 0 || index >= w.items.length) return;
+  if (index < 0) return;
+  if (index >= w.items.length || w.picking) { if (!w.picking) openPicker(); return; }
   w.index = index;
   save();
   renderWorkout();
@@ -1377,6 +1489,34 @@ document.addEventListener('click', (e) => {
     case 'end': endWorkoutDialog(); break;
     case 'finish': finishWorkout(); break;
     case 'next': goTo(w.index + 1); break;
+    case 'pick': openPicker(); break;
+    case 'pk-back': w.picking = false; save(); renderWorkout(); break;
+    case 'busy-now':
+      markBusy(w, w.items[w.index].exId);
+      w.index = Math.max(0, w.items.filter((it) => doneSets(it)).length - 1);
+      openPicker(); break;
+    case 'q-go': delete w.busy[w.items[k].exId]; runItem(w, w.items[k]); break;
+    case 's-go': runItem(w, newItem(t.dataset.id)); break;
+    case 's-queue': w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
+    case 's-busy': markBusy(w, t.dataset.id); save(); renderWorkout(); break;
+    case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
+    case 's-more': w.more = true; save(); renderWorkout(); break;
+    case 'q-up': {
+      const qi = queueIndexes(w);
+      const p = qi.indexOf(k);
+      if (p > 0) [w.items[qi[p - 1]], w.items[k]] = [w.items[k], w.items[qi[p - 1]]];
+      save(); renderWorkout(); break;
+    }
+    case 'q-busy': markBusy(w, w.items[k].exId); save(); renderWorkout(); break;
+    case 'q-remove': {
+      w.items.splice(k, 1);
+      if (w.index >= k && w.index > 0) w.index--;
+      save(); renderWorkout(); break;
+    }
+    case 'wgear': w.gear = toggle(w.gear, t.dataset.value); save(); renderWorkout(); break;
+    case 'wgroup': w.groups = toggle(w.groups, t.dataset.value); save(); renderWorkout(); break;
+    case 'gear': setPref('gear', place, toggle(gearFor(place), t.dataset.value)); render(); break;
+    case 'group': setPref('groups', place, toggle(groupsFor(place), t.dataset.value)); render(); break;
     case 'prev': goTo(w.index - 1); break;
     case 'reps': {
       const item = w.items[w.index];
@@ -1465,6 +1605,11 @@ document.addEventListener('input', (e) => {
   }
 });
 
+function setPref(key, place, value) {
+  data.settings[key] = { ...(data.settings[key] || {}), [place]: value };
+  save();
+}
+
 const parseCount = (v) => parseInt(String(v || '').replace(/[\s.,]/g, ''), 10);
 
 const FORMS = {
@@ -1523,7 +1668,7 @@ $('#workout').addEventListener('touchstart', (e) => {
   touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
 }, { passive: true });
 $('#workout').addEventListener('touchend', (e) => {
-  if (!touchStart || !data.active || data.active.mode === 'interval') return;
+  if (!touchStart || !data.active || data.active.mode === 'interval' || data.active.picking) return;
   const dx = e.changedTouches[0].clientX - touchStart.x;
   const dy = e.changedTouches[0].clientY - touchStart.y;
   touchStart = null;

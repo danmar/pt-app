@@ -18,6 +18,15 @@ export const EQUIPMENT = {
   gym: 'Gymutrustning',
 };
 
+/** Utrustning man väljer bland när man tränar fritt. */
+export const GEAR = {
+  body: 'Kroppsvikt',
+  dumbbells: 'Hantlar',
+  barbell: 'Skivstång',
+  machine: 'Maskiner & kabel',
+};
+export const GEAR_IDS = Object.keys(GEAR);
+
 // ---------------------------------------------------------------------------
 // Ställningar för streckgubben. Koordinater: x 0–1 vänster→höger, y 0–1 uppifrån
 // och ner, golvet vid y ≈ 0.96. Gubben tittar åt höger. N = närmsta arm/ben,
@@ -466,6 +475,25 @@ export const EXERCISES = [
            'Spänn rumpan och lyft höften tills kroppen är rak från knä till axel.',
            'Sänk kontrollerat. Rörelsen sker i höften, knävinkeln är densamma.'] },
 
+  { kneeHeavy: true, id: 'leg-press', name: 'Benpress', muscles: ['legs'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'legPress', props: ['legpress'],
+    tips: ['Sätt fötterna höftbrett mitt på plattan.',
+           'Lossa spärren och sänk plattan tills knäna är i ungefär 90 grader.',
+           'Pressa ut genom hela foten tills benen är nästan raka.',
+           'Lås inte knäna i toppen.'] },
+  { id: 'leg-extension', name: 'Benspark', muscles: ['legs'], equipment: 'gym',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'legExtension', props: ['machine', 'pad'],
+    tips: ['Ställ in maskinen så att knät är i linje med vridpunkten.',
+           'Dynan ligger mot nedre delen av smalbenen.',
+           'Sträck benen lugnt tills de är raka.',
+           'Sänk långsamt, ungefär 3 sekunder ner.'] },
+  { id: 'leg-curl', name: 'Bencurl', muscles: ['legs'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'legCurl', props: ['machine', 'pad'],
+    tips: ['Ställ in maskinen så att knät är i linje med vridpunkten.',
+           'Dynan ligger strax ovanför hälarna.',
+           'Böj knäna och dra hälarna in under sätet.',
+           'Släpp tillbaka långsamt och kontrollerat.'] },
+
   // Fysio (ordinerade av fysioterapeut – föreslås inte automatiskt)
   { id: 'single-leg-extension', name: 'Benspark med ett ben', muscles: ['legs'], equipment: 'gym', physio: true,
     sets: 3, reps: '8 per ben', defaultReps: 8, anim: 'legExtension', props: ['machine', 'pad'],
@@ -581,6 +609,24 @@ export const EXERCISES = [
            'Spänn magen så att du inte svankar.',
            'Pressa rakt upp tills armarna är nästan raka.',
            'Sänk kontrollerat.'] },
+  { id: 'barbell-press', name: 'Stående axelpress med skivstång', muscles: ['shoulders', 'arms', 'core'], equipment: 'gym',
+    sets: 3, reps: '6–10', defaultReps: 8, anim: 'shoulderPress', props: ['barbell'],
+    tips: ['Håll stången framför axlarna med greppet lite bredare än axelbrett.',
+           'Spänn magen och rumpan så att du inte svankar.',
+           'Pressa stången rakt upp och för huvudet lätt bakåt när den passerar.',
+           'Sänk kontrollerat till axelhöjd.'] },
+  { id: 'machine-shoulder-press', name: 'Axelpress i maskin', muscles: ['shoulders', 'arms'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'shoulderPress', props: ['machine'],
+    tips: ['Ställ in sätet så att handtagen är i axelhöjd.',
+           'Sitt med ryggen mot ryggstödet.',
+           'Pressa uppåt tills armarna är nästan raka.',
+           'Sänk långsamt.'] },
+  { id: 'barbell-curl', name: 'Bicepscurl med skivstång', muscles: ['arms'], equipment: 'gym',
+    sets: 3, reps: '8–12', defaultReps: 10, anim: 'bicepCurl', props: ['barbell'],
+    tips: ['Greppa stången underifrån, axelbrett.',
+           'Armbågarna stilla intill kroppen.',
+           'Böj armarna och lyft stången mot axlarna utan att gunga.',
+           'Sänk långsamt hela vägen.'] },
   { id: 'bicep-curl', name: 'Bicepscurl', muscles: ['arms'], equipment: 'dumbbells',
     sets: 3, reps: '10–12', defaultReps: 10, anim: 'bicepCurl', props: ['dumbbells'],
     tips: ['Armbågarna stilla intill kroppen.',
@@ -647,7 +693,21 @@ export const EXERCISES = [
            'Cykling är ett av de skonsammaste sätten att träna kondition för knäna.'] },
 ];
 
-for (const e of EXERCISES) e.safety = SAFETY[e.id] ?? [];
+const GEAR_OF = {
+  'goblet-squat': 'dumbbells', 'db-lunge': 'dumbbells', rdl: 'dumbbells', 'db-row': 'dumbbells', 'db-bench': 'dumbbells',
+  'shoulder-press': 'dumbbells', 'bicep-curl': 'dumbbells', 'triceps-ext': 'dumbbells',
+  'barbell-squat': 'barbell', 'hip-thrust': 'barbell', deadlift: 'barbell', 'barbell-row': 'barbell',
+  'bench-press': 'barbell', 'barbell-press': 'barbell', 'barbell-curl': 'barbell',
+  'leg-press': 'machine', 'leg-extension': 'machine', 'leg-curl': 'machine', 'single-leg-extension': 'machine',
+  'single-leg-curl': 'machine', 'single-leg-press': 'machine', 'lat-pulldown': 'machine', 'seated-row': 'machine',
+  'chest-press-machine': 'machine', 'triceps-pushdown': 'machine', 'machine-shoulder-press': 'machine',
+  'battle-ropes': 'machine', bike: 'machine',
+};
+
+for (const e of EXERCISES) {
+  e.safety = SAFETY[e.id] ?? [];
+  e.gear = GEAR_OF[e.id] ?? 'body';
+}
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 

@@ -624,3 +624,34 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .quick-tip { display: flex; gap: 8px; align-items: flex-start; text-align: left; margin: 4px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--card); font-size: 15px; }
 .quick-tip svg { color: var(--green); margin-top: 1px; }
 .note svg.ic { color: var(--green); }
+
+/* --- Fri styrketräning -------------------------------------------------- */
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field-label { font-weight: 600; font-size: 14px; }
+.field-label small { font-weight: 500; color: var(--muted); margin-left: 4px; }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.toggle {
+  border: 1.5px solid var(--line); background: var(--card); color: var(--text);
+  font-weight: 600; font-size: 14px; padding: 7px 13px; border-radius: 99px;
+}
+.toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chips.left { justify-content: flex-start; }
+.chip.g-cardio { --gc: var(--g-cardio); } .chip.g-legs { --gc: var(--g-legs); } .chip.g-back { --gc: var(--g-back); }
+.chip.g-chest { --gc: var(--g-chest); } .chip.g-shoulders { --gc: var(--g-shoulders); } .chip.g-arms { --gc: var(--g-arms); }
+.chip.g-core { --gc: var(--g-core); }
+.chip[class*="g-"] { color: var(--gc); background: color-mix(in srgb, var(--gc) 15%, var(--card)); }
+.picker { gap: 18px; }
+.pk-title { margin: 0 4px 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.pk-title small { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 4px; }
+.picker .ex-actions { flex-direction: column; align-items: flex-end; gap: 6px; }
+.pk-more { display: flex; gap: 4px; }
+.pk-more .icon-btn { width: 32px; height: 32px; }
+.pk-more .icon-btn svg { width: 16px; height: 16px; }
+.go-btn {
+  border: 0; border-radius: 99px; padding: 7px 16px; font-weight: 700; font-size: 14px;
+  background: var(--gc, var(--accent)); color: #fff;
+}
+.go-btn.soft { background: color-mix(in srgb, var(--card) 75%, transparent); color: var(--gc, var(--accent)); }
+.ex-item.is-busy { opacity: 0.6; }
+.pk-controls { margin-top: 12px; }
+.busy-link { align-self: center; font-size: 14px; margin-top: -6px; }
