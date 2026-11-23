@@ -7,7 +7,8 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Passtyper:** Styrka (set och vila), Cirkel (stationer där muskelgrupperna växlar), HIIT (korta intensiva intervaller) och Kondition (längre intervaller). Cirkel, HIIT och Kondition körs med en intervalltimer som räknar ner, piper och går vidare själv.
 - **Simma:** föreslår ett simpass (20/40/60 min) med uppvärmning, teknik, huvuddel och nedvarvning. Du bockar av delarna och sparar passet. Du kan också logga ett simpass direkt.
 - **Planera:** lägg upp en veckoplan och spara pass till senare. Ett sparat pass kan du lägga in på en veckodag.
-- **Skonsamt för knäna** (påslaget som standard): förslagen hoppar över knäböj, utfall, marklyft och hopp. I stället används knävänliga övningar som raka benlyft, sidoliggande benlyft, tåhävningar, höftlyft, motionscykel och marsch på stället.
+- **Inbyggd fysioterapeut (Fysio):** ange om du har ont i axlar, rygg eller knän (inget, lite ont eller ont). Förslagen hoppar då över övningar som belastar det stället. Vid "lite ont" försvinner bara tung belastning, vid "ont" all belastning. Under passet föreslås fysioövningar för stället, till exempel utåtrotation, väggänglar, fågelhunden och raka benlyft. Du får råd och får veta när du ska söka vård. Med "Gör det ont?" mitt i en övning kan du ange var det gör ont och välja en annan övning. Råden är allmänna och ersätter inte en riktig fysioterapeut.
+- **Veckoförslag:** under Planera väljer du antal träningsdagar och aktiviteter (gym, hemma, simma, promenad). Appen föreslår de kommande sju dagarna. Styrkedagarna sprids ut så att musklerna hinner vila, och varje styrkedag får fokus på de muskelgrupper du vilat längst. Förslaget tar hänsyn till vad du gjort de senaste två veckorna och om du har ont. På dagen visar gymvyn veckans fokus, och du kan använda det med ett tryck.
 - **Fysiopass:** "Fysio gym" (benspark, bencurl och benpress med ett ben) och "Fysio hemma" (kort enbensknäböj och högt väggsittande) finns under Planera. Benövningarna ligger alltid först och fylls på med förslag för överkropp och bål.
 - **Träna säkert:** varje övning har en lista, ”Tänk på”, med vanliga misstag och hur du skyddar knän, rygg och axlar. En guide tar upp uppvärmning, en smärtregel för knäna, när du ska stoppa direkt, teknik och hur du ökar belastningen. Cirkel- och HIIT-passen börjar med en uppvärmning.
 - **Steg:** skriv in dagens steg från Hälsa-appen. Startsidan visar hur nära du är ditt stegmål och de senaste 7 dagarna.
@@ -28,6 +29,8 @@ web/
   planner.js            Logiken för passförslag
   swim.js               Förslag på simpass
   safety.js             Säkerhetsråd per övning och guiden Träna säkert
+  physio.js             Den inbyggda fysioterapeuten: kroppsdelar, råd och rehabövningar
+  week.js               Förslag på aktiviteter för kommande vecka
   workouts.js           Cirkel, HIIT och kondition (stationer och timersteg)
   storage.js            Sparar data i telefonen
   sw.js                 Offlinestöd (höj VERSION när du ändrar filer)
@@ -71,4 +74,4 @@ Appen måste ligga på en **https**-adress för att fungera som app på telefone
 
 ## Uppdatera appen
 
-Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v12`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
+Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v13`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.

@@ -364,6 +364,28 @@ const pushdownUp = mod(standing, {
 });
 const pushdownDown = mod(pushdownUp, { handN: P(0.57, 0.51), handF: P(0.56, 0.51) });
 
+// Framifrån: utåtrotation (armbågarna mot sidorna, händerna roterar ut).
+const rotIn = {
+  head: P(0.50, 0.11), neck: P(0.50, 0.21), hip: P(0.50, 0.50),
+  elbowN: P(0.58, 0.36), handN: P(0.53, 0.40),
+  elbowF: P(0.42, 0.36), handF: P(0.47, 0.40),
+  kneeN: P(0.53, 0.72), footN: P(0.54, 0.95),
+  kneeF: P(0.47, 0.72), footF: P(0.46, 0.95),
+};
+const rotOut = mod(rotIn, { handN: P(0.71, 0.37), handF: P(0.29, 0.37) });
+// Framifrån: väggänglar (W till Y).
+const angelW = mod(rotIn, { elbowN: P(0.64, 0.27), handN: P(0.65, 0.13), elbowF: P(0.36, 0.27), handF: P(0.35, 0.13) });
+const angelY = mod(rotIn, { elbowN: P(0.61, 0.08), handN: P(0.68, -0.04), elbowF: P(0.39, 0.08), handF: P(0.32, -0.04) });
+// Fågelhunden: på alla fyra, sträck ut motsatt arm och ben.
+const fourPoint = {
+  head: P(0.76, 0.64), neck: P(0.66, 0.68), hip: P(0.38, 0.70),
+  elbowN: P(0.67, 0.82), handN: P(0.67, 0.95),
+  elbowF: P(0.66, 0.82), handF: P(0.66, 0.95),
+  kneeN: P(0.39, 0.93), footN: P(0.17, 0.94),
+  kneeF: P(0.38, 0.93), footF: P(0.16, 0.94),
+};
+const birdDogOut = mod(fourPoint, { elbowN: P(0.80, 0.66), handN: P(0.93, 0.63), kneeF: P(0.17, 0.69), footF: P(-0.05, 0.68) });
+
 /** period = sekunder för ett helt varv genom alla ställningar (två ställningar = fram och tillbaka). */
 export const ANIMATIONS = {
   squat:            { period: 2.6, frames: [squatTop, squatBottom] },
@@ -401,6 +423,9 @@ export const ANIMATIONS = {
   pushdown:         { period: 2.2, frames: [pushdownUp, pushdownDown] },
   battleRopes:      { period: 0.7, frames: [ropeA, ropeB] },
   wallSit:          { period: 3.0, frames: [wallSitA, wallSitB] },
+  externalRotation: { period: 2.6, frames: [rotIn, rotOut], front: true },
+  wallAngel:        { period: 3.0, frames: [angelW, angelY], front: true },
+  birdDog:          { period: 3.2, frames: [fourPoint, birdDogOut] },
 };
 
 // ---------------------------------------------------------------------------
@@ -654,6 +679,26 @@ export const EXERCISES = [
            'Rulla upp axlarna från golvet med magmusklerna.',
            'Sänk långsamt.'] },
 
+  // Rehab (föreslås av den inbyggda fysioterapeuten)
+  { noAuto: true, id: 'external-rotation', name: 'Utåtrotation med gummiband', muscles: ['shoulders'], equipment: 'none',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'externalRotation',
+    tips: ['Håll ett gummiband med båda händerna, armbågarna intill sidorna och böjda 90 grader.',
+           'Vrid underarmarna utåt utan att armbågarna lämnar kroppen.',
+           'Kläm lätt ihop skulderbladen.',
+           'För tillbaka långsamt. Inget band? Gör rörelsen utan motstånd.'] },
+  { noAuto: true, id: 'wall-angel', name: 'Väggänglar', muscles: ['shoulders', 'back'], equipment: 'none',
+    sets: 2, reps: '10', defaultReps: 10, anim: 'wallAngel',
+    tips: ['Stå med rygg, bakhuvud och rumpa mot en vägg.',
+           'Lägg armarna mot väggen i ett W, armbågarna i axelhöjd.',
+           'Glid uppåt till ett Y så långt det går utan att ryggen lämnar väggen.',
+           'Glid ner långsamt och dra ner skulderbladen.'] },
+  { noAuto: true, id: 'bird-dog', name: 'Fågelhunden', muscles: ['core', 'back'], equipment: 'none',
+    sets: 3, reps: '8 per sida', defaultReps: 8, anim: 'birdDog',
+    tips: ['Stå på alla fyra med händerna under axlarna och knäna under höfterna.',
+           'Spänn magen lätt och håll ryggen rak som ett bord.',
+           'Sträck ut ena armen och motsatt ben samtidigt. Håll 2 sekunder.',
+           'Byt sida. Höften ska inte vrida sig.'] },
+
   // Kondition
   { kneeHeavy: true, id: 'jumping-jack', name: 'Jumping jacks', muscles: ['cardio'], equipment: 'none',
     sets: 3, reps: '45 s', defaultReps: 45, anim: 'jumpingJack', timed: true,
@@ -704,16 +749,45 @@ const GEAR_OF = {
   'battle-ropes': 'machine', bike: 'machine',
 };
 
+// Belastning på kroppsdelar som kan göra ont: 1 = viss, 2 = hög.
+const LOAD = {
+  squat: { knees: 2 }, 'goblet-squat': { knees: 2, back: 1 }, 'barbell-squat': { knees: 2, back: 2, shoulders: 1 },
+  'leg-press': { knees: 2, back: 1 }, lunge: { knees: 2 }, 'db-lunge': { knees: 2, back: 1 },
+  'leg-extension': { knees: 1 }, 'leg-curl': { knees: 1 }, 'hip-thrust': { back: 1 },
+  rdl: { back: 2 }, deadlift: { knees: 2, back: 2 }, 'barbell-row': { back: 2 }, 'db-row': { back: 1 },
+  'seated-row': { back: 1 }, 'lat-pulldown': { shoulders: 1 }, 'pull-up': { shoulders: 2 }, superman: { back: 1, shoulders: 1 },
+  'bench-press': { shoulders: 2 }, 'db-bench': { shoulders: 1 }, 'chest-press-machine': { shoulders: 1 }, 'push-up': { shoulders: 1 },
+  'shoulder-press': { shoulders: 2, back: 1 }, 'barbell-press': { shoulders: 2, back: 1 }, 'machine-shoulder-press': { shoulders: 2 },
+  'triceps-ext': { shoulders: 2, back: 1 }, crunch: { back: 1 }, plank: { back: 1, shoulders: 1 },
+  'jumping-jack': { knees: 2, shoulders: 1 }, 'mountain-climber': { knees: 1, shoulders: 1, back: 1 },
+  'shadow-box': { shoulders: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
+};
+
 for (const e of EXERCISES) {
   e.safety = SAFETY[e.id] ?? [];
   e.gear = GEAR_OF[e.id] ?? 'body';
+  e.load = { ...(LOAD[e.id] || {}) };
+  if (e.kneeHeavy) e.load.knees = 2;
+}
+
+/**
+ * pain: { knees, back, shoulders } med 0 = inget, 1 = lite ont, 2 = ont.
+ * Lite ont: hoppa över hög belastning. Ont: hoppa över all belastning på den kroppsdelen.
+ * Fysioövningar från din fysioterapeut tas aldrig bort.
+ */
+export function painOk(exercise, pain = {}) {
+  if (exercise.physio) return true;
+  return Object.entries(exercise.load).every(([area, l]) => {
+    const level = pain[area] || 0;
+    return level === 0 || (level === 1 ? l < 2 : l < 1);
+  });
 }
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
-/** opts: { hasDumbbells, kneeFriendly } */
-export function isAvailable(exercise, place, { hasDumbbells = false, kneeFriendly = false } = {}) {
-  if (kneeFriendly && exercise.kneeHeavy) return false;
+/** opts: { hasDumbbells, kneeFriendly, pain } */
+export function isAvailable(exercise, place, { hasDumbbells = false, kneeFriendly = false, pain } = {}) {
+  if (pain ? !painOk(exercise, pain) : kneeFriendly && exercise.kneeHeavy) return false;
   if (place === 'gym') return true;
   return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells);
 }

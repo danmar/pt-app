@@ -1,10 +1,12 @@
-import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable } from './exercises.js';
+import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk } from './exercises.js';
 import { mountFigures } from './figure.js';
 import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
 import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor } from './workouts.js';
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
+import { WEEK_KINDS, suggestWeek } from './week.js';
+import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
 
 // ---------------------------------------------------------------------------
 // Tillstånd för gränssnittet (sparas inte)
@@ -24,7 +26,7 @@ const ui = {
 };
 
 // Vyer man når från startsidan eller Planera (har en tillbaka-knapp).
-const SUB = new Set(['gym', 'home', 'swim']);
+const SUB = new Set(['gym', 'home', 'swim', 'physio']);
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -74,7 +76,7 @@ const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON
 // Rendering
 function render() {
   const view = $('#view');
-  const views = { start: startView, plan: planningView, log: logView, settings: settingsView, swim: swimView };
+  const views = { start: startView, plan: planningView, log: logView, settings: settingsView, swim: swimView, physio: physioView };
   view.innerHTML = views[ui.tab] ? views[ui.tab]() : planView(ui.tab);
   const current = SUB.has(ui.tab) ? ui.back : ui.tab;
   for (const b of document.querySelectorAll('.tabbar button')) {
@@ -84,7 +86,8 @@ function render() {
   mountFigures(view);
 }
 
-const backButton = () => `<button class="back" data-action="tab" data-tab="${ui.back}">${ICON.chevronL}${ui.back === 'plan' ? 'Planera' : 'Idag'}</button>`;
+const BACK_NAME = { start: 'Idag', plan: 'Planera', log: 'Logg', settings: 'Inställningar' };
+const backButton = () => `<button class="back" data-action="tab" data-tab="${ui.back}">${ICON.chevronL}${BACK_NAME[ui.back] ?? 'Idag'}</button>`;
 
 const physioFor = (place) => (data.settings.physioAlways && !ui.skipPhysio[place] ? physioItems(place) : []);
 
@@ -127,6 +130,7 @@ function startView() {
       ${choice('plan', 'Planera', 'Veckoplan och sparade pass', ICON.calendar)}
     </div>
     ${stepsCard()}
+    ${physioCard()}
     <button class="card guide-card" data-action="guide">
       <span class="today-icon">${ICON.shield}</span>
       <span class="today-text"><b>Träna säkert</b><small>Uppvärmning, knäna och när du ska stoppa</small></span>
@@ -265,6 +269,7 @@ function planningView() {
 
   return `
     <header class="page-head"><h1>Planera</h1><p class="sub">Din vecka och sparade pass</p></header>
+    ${weekSuggestCard()}
 
     <h2 class="section-title">Veckoplan</h2>
     <section class="card list">
@@ -285,6 +290,36 @@ function planningView() {
       <button class="btn secondary" data-action="tab" data-tab="home">+ Hemma</button>
       <button class="btn secondary" data-action="tab" data-tab="swim">+ Simma</button>
     </div>`;
+}
+
+const weekDays = () => data.settings.weekDays ?? 4;
+const weekKinds = () => data.settings.weekKinds ?? ['gym', 'swim', 'walk'];
+const dayLabel = (d, i) => (i === 0 ? 'Idag' : i === 1 ? 'Imorgon' : WEEKDAYS[weekIndex(d)]);
+
+function weekSuggestCard() {
+  const p = ui.weekProposal;
+  const h = p?.hist;
+  return `
+    <h2 class="section-title">Förslag för kommande vecka</h2>
+    <section class="card controls">
+      <div class="field"><span class="field-label">Träningsdagar</span>
+        <div class="segmented five" role="radiogroup" aria-label="Träningsdagar per vecka">
+          ${[2, 3, 4, 5, 6].map((n) => `<button role="radio" aria-checked="${weekDays() === n}" data-action="wdays" data-value="${n}">${n}</button>`).join('')}
+        </div></div>
+      <div class="field"><span class="field-label">Aktiviteter</span>${chipToggles('wkind', Object.entries(WEEK_KINDS), weekKinds())}</div>
+      ${p ? '' : `<button class="btn primary" data-action="week-suggest" ${weekKinds().length ? '' : 'disabled'}>Föreslå veckan</button>`}
+    </section>
+    ${p ? `
+      <p class="hint">Senaste två veckorna: ${h.gym} gympass, ${h.home} hemmapass, ${h.swim} simpass och ${h.walk} promenader${painSummary() ? `. Hänsyn till: ${esc(painSummary().toLowerCase())}` : ''}.</p>
+      <ul class="ex-list week-proposal">${p.days.map((x, i) => `
+        <li class="week-day-item k-${x.kind}">
+          <span class="wd">${dayLabel(x.date, i)}</span>
+          <span class="wk"><b>${ACTIVITIES[x.kind]}</b><small>${esc(x.reason)}</small></span>
+        </li>`).join('')}</ul>
+      <div class="row">
+        <button class="btn secondary" data-action="week-cancel">Avbryt</button>
+        <button class="btn primary" data-action="week-apply">Använd</button>
+      </div>` : ''}`;
 }
 
 function savedRow(s) {
@@ -331,8 +366,12 @@ function loadSaved(id) {
 }
 
 // ---- Gym / Hemma ----------------------------------------------------------
-const exOpts = () => ({ hasDumbbells: data.settings.hasDumbbells, kneeFriendly: data.settings.kneeFriendly });
-const kneeWarn = (ex) => data.settings.kneeFriendly && ex.kneeHeavy;
+const exOpts = () => ({ hasDumbbells: data.settings.hasDumbbells, pain: data.settings.pain });
+const painNames = (areas) => areas.map((a) => AREAS[a].the).join(' och ');
+const painWarn = (ex) => {
+  const areas = painAreasFor(ex, data.settings.pain);
+  return areas.length ? `<em class="knee-warn">Belastar ${painNames(areas)}</em>` : '';
+};
 
 // Fysiopassen läggs in som sparade pass första gången appen startar.
 const PHYSIO_PASSES = [
@@ -405,7 +444,7 @@ function intervalView(place) {
           <div class="fig thumb" data-ex="${ex.id}"></div>
           <div class="ex-text"><strong>${esc(ex.name)}</strong><span>${text}</span>
             <small>${ex.physio ? 'Fysio · ' : ''}${muscleNames(ex)}</small>
-            ${kneeWarn(ex) ? '<em class="knee-warn">Belastar knäna</em>' : ''}</div>
+            ${painWarn(ex)}</div>
         </button>
         ${actions}
       </li>`;
@@ -443,6 +482,111 @@ function intervalView(place) {
       </div>
       <button class="btn secondary" data-action="save-plan" ${plan.stations.length ? '' : 'disabled'}>${ICON.save} Spara till senare</button>
     </div>`;
+}
+
+// ---- Fysio (inbyggd fysioterapeut) -------------------------------------------
+const painAreas = () => AREA_IDS.filter((a) => (data.settings.pain[a] || 0) > 0);
+const painSummary = () => painAreas().map((a) => `${AREAS[a].name} (${LEVELS[data.settings.pain[a]].name.toLowerCase()})`).join(', ');
+
+function ensurePain() {
+  if (data.settings.pain) return;
+  data.settings.pain = { shoulders: 0, back: 0, knees: data.settings.kneeFriendly ? 1 : 0 };
+  save();
+}
+
+/** Fysioövningar per kroppsdel där du har ont: [[område, [övningar]]]. */
+function rehabSuggestions(place, exclude = [], per = 2) {
+  const used = new Set(exclude);
+  return painAreas().map((a) => {
+    const list = REHAB[a].map((id) => BY_ID[id])
+      .filter((ex) => ex && !used.has(ex.id) && painOk(ex, data.settings.pain) && (place === 'gym' || ex.equipment !== 'gym'))
+      .slice(0, per);
+    list.forEach((ex) => used.add(ex.id));
+    return [a, list];
+  }).filter(([, list]) => list.length);
+}
+
+function painSelector(areas = AREA_IDS) {
+  const pain = data.settings.pain;
+  return `<div class="pain-box" data-areas="${areas.join(',')}">${areas.map((a) => `
+    <div class="pain-row"><b>${AREAS[a].name}</b>
+      <div class="segmented" role="radiogroup" aria-label="Ont i ${AREAS[a].the}">
+        ${LEVELS.map((l, i) => `<button role="radio" aria-checked="${(pain[a] || 0) === i}" data-action="pain" data-area="${a}" data-level="${i}">${l.name}</button>`).join('')}
+      </div></div>`).join('')}
+    <p class="hint">Lite ont: ${LEVELS[1].desc.toLowerCase()}. Ont: ${LEVELS[2].desc.toLowerCase()}.</p></div>`;
+}
+
+function focusNote(place) {
+  const i = weekIndex();
+  const focus = (data.weekFocus[i] || []).filter((m) => MUSCLES[m]);
+  if (data.week[i] !== place || !focus.length) return '';
+  const same = focus.length === groupsFor(place).length && focus.every((m) => groupsFor(place).includes(m));
+  return same ? '' : `<p class="note">${ICON.calendar} Veckoplanen föreslår fokus på ${esc(focus.map((m) => MUSCLES[m].name.toLowerCase()).join(', '))} idag. <button class="inline-link" data-action="use-focus">Använd</button></p>`;
+}
+
+function painNote() {
+  const sum = painSummary();
+  return sum ? `<p class="note">${ICON.shield} <b>Fysio:</b> förslagen tar hänsyn till ${esc(sum.toLowerCase())}. <button class="inline-link" data-action="tab" data-tab="physio">Ändra</button></p>` : '';
+}
+
+function physioCard() {
+  const sum = painSummary();
+  const days = data.settings.painUpdated ? daysBetween(data.settings.painUpdated, new Date()) : null;
+  const text = !sum ? 'Har du ont någonstans? Då anpassar jag träningen.'
+    : `${sum}${days >= 7 ? ' · Hur känns det nu?' : ''}`;
+  return `
+    <button class="card guide-card physio-card" data-action="tab" data-tab="physio">
+      <span class="today-icon">🩺</span>
+      <span class="today-text"><b>Fysioterapeuten</b><small>${esc(text)}</small></span>
+      <span class="chev">${ICON.chevronR}</span>
+    </button>`;
+}
+
+function physioView() {
+  const pain = data.settings.pain;
+  const areas = painAreas();
+  const exItem = (ex) => `
+    <li class="ex-item" data-group="${ex.muscles[0]}"><button class="ex-main" data-action="detail" data-id="${ex.id}">
+      <div class="fig thumb" data-ex="${ex.id}"></div>
+      <div class="ex-text"><strong>${esc(ex.name)}</strong><span>${ex.sets} set × ${ex.reps}</span><small>${ex.equipment === 'gym' ? 'På gymmet' : 'Hemma eller på gymmet'}</small></div>
+    </button></li>`;
+  return `
+    ${backButton()}
+    <header class="page-head"><h1>Fysio</h1><p class="sub">Din inbyggda fysioterapeut</p></header>
+    <section class="card">
+      <h3 class="card-title">Har du ont någonstans?</h3>
+      ${painSelector()}
+    </section>
+    ${areas.length ? '' : '<p class="note">Skönt! Säg till här om något börjar göra ont, så anpassar jag förslagen i gymmet och hemma.</p>'}
+    ${areas.map((a) => {
+      const adv = ADVICE[a];
+      const rehab = REHAB[a].map((id) => BY_ID[id]).filter((ex) => ex && painOk(ex, pain));
+      return `
+      <h2 class="section-title">${AREAS[a].name} · ${LEVELS[pain[a]].name.toLowerCase()}</h2>
+      <section class="card prose">
+        <b>Det här hoppar jag över i förslagen</b>
+        <ul>${adv.skips.slice(0, pain[a]).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        <b>Råd</b>
+        <ul>${adv.tips.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+      </section>
+      <h3 class="group-title">Övningar som brukar hjälpa</h3>
+      <ul class="ex-list">${rehab.map(exItem).join('')}</ul>
+      <section class="note warn"><b>Sök vård om:</b><ul>${adv.care.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
+    }).join('')}
+    ${areas.length ? `<div class="stack"><button class="btn primary big" data-action="rehab-start">${ICON.play} Kör ett kort fysiopass</button></div>` : ''}
+    <p class="hint">Jag ger allmänna råd och anpassar förslagen, men ställer inga diagnoser och ersätter inte en riktig fysioterapeut eller läkare. Har du haft ont i mer än 2–3 veckor, eller blir det värre? Ring 1177 eller boka tid hos en fysioterapeut.</p>`;
+}
+
+function painSheet(ex) {
+  const areas = painAreasFor(ex, Object.fromEntries(AREA_IDS.map((a) => [a, 1])));
+  const order = [...areas, ...AREA_IDS.filter((a) => !areas.includes(a))];
+  return `
+    <div class="sheet-head"><h2>Gör det ont?</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
+    <p class="note warn">Stoppa övningen om det gör mer ont än 3 av 10, eller om det blir värre för varje repetition. Skarp eller plötslig smärta: sluta direkt.</p>
+    <p>Var gör det ont? Jag byter ut övningar som belastar det stället, nu och framöver.</p>
+    ${painSelector(order)}
+    <button class="btn primary big" data-action="pain-swap">Välj en annan övning</button>
+    <button class="btn-text guide-link" data-action="close-sheet">Det går bra, fortsätt</button>`;
 }
 
 // ---- Fri styrketräning ------------------------------------------------------
@@ -486,11 +630,13 @@ function planView(place) {
   const queue = ui.plans[place];
   const done = exercisesToday();
   const gear = gearFor(place);
-  const preview = gear.length ? suggestNext({ done, groups: groupsFor(place), gear, kneeFriendly: data.settings.kneeFriendly,
+  const preview = gear.length ? suggestNext({ done, groups: groupsFor(place), gear, pain: data.settings.pain,
     exclude: queue.map((p) => p.exId), sessions: data.sessions, limit: 3 }).filter((x) => !x.busy) : [];
 
   return `
     ${placeHeader(place)}
+    ${focusNote(place)}
+    ${painNote()}
     ${done.length ? `<h2 class="section-title">Kört idag</h2>${todaySummary(done)}` : ''}
     ${queue.length ? `
       ${ui.fixed[place] ? physioNote(place) : ''}
@@ -516,7 +662,7 @@ function suggestionItem({ ex, reason, busy }, actions) {
           <strong>${esc(ex.name)}</strong>
           <span>${busy ? 'Upptagen' : esc(reason)}</span>
           <small>${GEAR[ex.gear]} · ${muscleNames(ex)}</small>
-          ${kneeWarn(ex) ? '<em class="knee-warn">Belastar knäna</em>' : ''}
+          ${painWarn(ex)}
         </div>
       </button>
       ${actions}
@@ -533,7 +679,7 @@ function planItem(p, i) {
           <strong>${esc(ex.name)}</strong>
           <span>${p.sets} set × ${ex.reps}</span>
           <small>${ex.physio ? 'Fysio · ' : ''}${muscleNames(ex)}</small>
-          ${kneeWarn(ex) ? '<em class="knee-warn">Belastar knäna</em>' : ''}
+          ${painWarn(ex)}
         </div>
       </button>
       <div class="ex-actions">
@@ -657,10 +803,10 @@ function settingsView() {
     <header class="page-head"><h1>Inställningar</h1></header>
 
     <section class="card list">
-      <label class="list-row">
-        <span class="row-text">Skonsamt för knäna<small>Tar bort knäböj, utfall, marklyft och hopp ur förslagen</small></span>
-        <input type="checkbox" class="switch" data-change="knee" ${s.kneeFriendly ? 'checked' : ''}>
-      </label>
+      <button class="list-row action" data-action="tab" data-tab="physio">
+        <span class="row-text">Ont i axlar, rygg eller knän<small>${painSummary() || 'Inget just nu'}</small></span>
+        <span class="chev">${ICON.chevronR}</span>
+      </button>
       <label class="list-row">
         <span class="row-text">Fysioövningar i alla pass<small>Gym- och hemmapass börjar alltid med dina fysioövningar</small></span>
         <input type="checkbox" class="switch" data-change="physio" ${s.physioAlways ? 'checked' : ''}>
@@ -750,7 +896,7 @@ function detailSheet(ex) {
     <div class="sheet-head"><h2>${esc(ex.name)}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
     <div class="fig big" data-ex="${ex.id}" data-play="1"></div>
     <div class="chips">${ex.physio ? '<span class="chip physio">Fysio</span>' : ''}${ex.muscles.map((m) => `<span class="chip">${MUSCLES[m].name}</span>`).join('')}</div>
-    ${kneeWarn(ex) ? '<p class="note warn">Den här övningen belastar knäna. Byt gärna ut den, eller kör den bara om din fysioterapeut tycker att den är okej.</p>' : ''}
+    ${painAreasFor(ex, data.settings.pain).length ? `<p class="note warn">Den här övningen belastar ${painNames(painAreasFor(ex, data.settings.pain))}, där du har ont. Kör den bara om det känns bra, högst 3 av 10.</p>` : ''}
     ${ex.physio ? '<p class="note">Övningen kommer från ditt fysioprogram. Följ fysioterapeutens instruktioner om de skiljer sig från tipsen här.</p>' : ''}
     <div class="card list">
       <div class="list-row"><span>Utrustning</span><b>${EQUIPMENT[ex.equipment]}</b></div>
@@ -1107,7 +1253,10 @@ function renderWorkout() {
       <div class="fig big" data-ex="${ex.id}" data-play="1"></div>
       <h2 class="wk-name">${esc(ex.name)}</h2>
       <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>
-      ${doneSets(item) || ex.physio ? '' : `<button class="btn-text busy-link" data-action="busy-now">Upptagen? Välj en annan övning</button>`}
+      <div class="wk-links">
+        ${doneSets(item) || ex.physio ? '' : '<button class="btn-text busy-link" data-action="busy-now">Upptagen?</button>'}
+        <button class="btn-text busy-link" data-action="pain-sheet">Gör det ont?</button>
+      </div>
       <details class="card">
         <summary>Så gör du</summary>
         <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
@@ -1131,7 +1280,7 @@ function renderPicker() {
   const done = exercisesToday();
   const qi = queueIndexes(w);
   const queueIds = qi.map((i) => w.items[i].exId);
-  const list = w.gear.length ? suggestNext({ done, groups: w.groups, gear: w.gear, kneeFriendly: data.settings.kneeFriendly,
+  const list = w.gear.length ? suggestNext({ done, groups: w.groups, gear: w.gear, pain: data.settings.pain,
     exclude: queueIds, busy: w.busy, sessions: data.sessions, limit: w.more ? 99 : 4 }) : [];
   const free = list.filter((x) => !x.busy);
   const busy = list.filter((x) => x.busy);
@@ -1173,6 +1322,13 @@ function renderPicker() {
         ${w.more ? '' : '<button class="btn-text" data-action="s-more">Visa fler förslag</button>'}`
         : '<p class="empty">Inga fler övningar passar. Välj fler muskelgrupper eller mer utrustning nedan.</p>'}
       </div>
+      ${rehabSuggestions(w.place, [...queueIds, ...done.map((d) => d.exId), ...free.map((x) => x.ex.id)]).map(([area, list]) => `
+        <div><h3 class="pk-title">Fysio för ${AREAS[area].the}</h3>
+        <ul class="ex-list">${list.map((ex) => suggestionItem({ ex, reason: `Stärker och avlastar ${AREAS[area].the}` }, `
+          <div class="ex-actions">
+            <button class="go-btn" data-action="s-go" data-id="${ex.id}">Kör</button>
+            <div class="pk-more">${btn('s-queue', `data-id="${ex.id}"`, `Lägg ${esc(ex.name)} i kön`, ICON.plus)}</div>
+          </div>`)).join('')}</ul></div>`).join('')}
       ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
         <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
       <details class="card"><summary>Ändra utrustning och muskelgrupper</summary><div class="controls pk-controls">${strengthControls(w.place, 'w')}</div></details>
@@ -1341,7 +1497,7 @@ document.addEventListener('click', (e) => {
     case 'tab': {
       const to = t.dataset.tab;
       if (SUB.has(to) && !SUB.has(ui.tab)) {
-        ui.back = ui.tab === 'plan' ? 'plan' : 'start';
+        ui.back = ui.tab;
         // Via startsidan eller Planera: börja med ett vanligt förslag, inte ett tidigare inläst pass.
         if (ui.loaded[to]) { ui.loaded[to] = null; ui.plans[to] = null; if (to !== 'swim') { ui.fixed[to] = null; ui.iplans[to] = null; } }
         if (to !== 'swim' && ui.skipPhysio[to] && data.settings.physioAlways) { ui.skipPhysio[to] = false; ui.plans[to] = null; ui.iplans[to] = null; }
@@ -1436,6 +1592,37 @@ document.addEventListener('click', (e) => {
     case 'run-done': unlockAudio(); runAdvance(true); break;
     case 'run-skip': unlockAudio(); runAdvance(false); break;
     case 'run-prev': runGo(data.active.index - 1); break;
+    case 'pain': {
+      data.settings.pain = { ...data.settings.pain, [t.dataset.area]: Number(t.dataset.level) };
+      data.settings.painUpdated = new Date().toISOString();
+      data.settings.kneeFriendly = data.settings.pain.knees > 0;
+      save();
+      for (const pl of ['gym', 'home']) if (!ui.loaded[pl]) ui.iplans[pl] = null;
+      const box = t.closest('.pain-box');
+      if (box) box.outerHTML = painSelector(box.dataset.areas.split(','));
+      if (!data.active) render();
+      else if (data.active.picking) renderWorkout();
+      break;
+    }
+    case 'rehab-start': {
+      unlockAudio();
+      const ids = rehabSuggestions('home', [], 3).flatMap(([, list]) => list.map((ex) => ex.id));
+      const items = [...new Set(ids)].map((id) => newItem(id));
+      data.active = { place: 'home', start: Date.now(), index: 0, restEnd: null, restBeeped: false,
+        gear: ['body'], groups: [], busy: {}, picking: false, items };
+      save(); openWorkout(); break;
+    }
+    case 'wdays': data.settings.weekDays = Number(t.dataset.value); save(); if (ui.weekProposal) makeWeek(); render(); break;
+    case 'wkind': data.settings.weekKinds = toggle(weekKinds(), t.dataset.value); save(); if (ui.weekProposal) makeWeek(); render(); break;
+    case 'week-suggest': makeWeek(); render(); break;
+    case 'week-cancel': ui.weekProposal = null; render(); break;
+    case 'week-apply':
+      for (const x of ui.weekProposal.days) {
+        data.week[weekIndex(x.date)] = x.kind;
+        data.weekFocus[weekIndex(x.date)] = x.focus ?? [];
+      }
+      ui.weekProposal = null; save(); render(); toast('Veckoplanen är uppdaterad'); break;
+    case 'use-focus': setPref('groups', place, [...data.weekFocus[weekIndex()]]); render(); break;
     case 'detail':
       openSheet(detailSheet(BY_ID[t.dataset.id])); break;
     case 'library':
@@ -1481,7 +1668,7 @@ document.addEventListener('click', (e) => {
     }
     case 'reset':
       confirmDialog({ title: 'Radera all data?', message: 'Alla pass och promenader tas bort från telefonen.', buttons: [
-        { label: 'Radera allt', style: 'danger', onClick: () => { resetAll(); resetPlans(); seedPhysio(); render(); toast('All data raderad'); } },
+        { label: 'Radera allt', style: 'danger', onClick: () => { resetAll(); ensurePain(); resetPlans(); seedPhysio(); render(); toast('All data raderad'); } },
         { label: 'Avbryt' }] });
       break;
 
@@ -1490,6 +1677,14 @@ document.addEventListener('click', (e) => {
     case 'finish': finishWorkout(); break;
     case 'next': goTo(w.index + 1); break;
     case 'pick': openPicker(); break;
+    case 'pain-sheet': openSheet(painSheet(BY_ID[w.items[w.index].exId])); break;
+    case 'pain-swap': {
+      closeSheet();
+      const it = w.items[w.index];
+      if (!doneSets(it) && !BY_ID[it.exId].physio) w.items.splice(w.index, 1);
+      w.index = Math.max(0, w.items.filter((x) => doneSets(x)).length - 1);
+      openPicker(); break;
+    }
     case 'pk-back': w.picking = false; save(); renderWorkout(); break;
     case 'busy-now':
       markBusy(w, w.items[w.index].exId);
@@ -1563,7 +1758,8 @@ document.addEventListener('change', (e) => {
     case 'swim-style':
       ui.swimStyle = t.value; regenerate('swim'); render(); break;
     case 'weekday':
-      data.week[Number(t.dataset.day)] = t.value; save(); render(); break;
+      data.week[Number(t.dataset.day)] = t.value;
+      data.weekFocus[Number(t.dataset.day)] = []; save(); render(); break;
     case 'steps-date':
       if (t.value) openSheet(stepsSheet(t.value));
       break;
@@ -1583,6 +1779,7 @@ document.addEventListener('change', (e) => {
       if (!file) break;
       file.text().then((text) => {
         importJSON(text);
+        ensurePain();
         resetPlans();
         seedPhysio();
         render();
@@ -1604,6 +1801,11 @@ document.addEventListener('input', (e) => {
     mountFigures($('#lib-list'));
   }
 });
+
+function makeWeek() {
+  ui.weekProposal = weekKinds().length ? suggestWeek({ days: weekDays(), kinds: weekKinds(), sessions: data.sessions,
+    swims: data.swims, walks: data.walks, pain: data.settings.pain }) : null;
+}
 
 function setPref(key, place, value) {
   data.settings[key] = { ...(data.settings[key] || {}), [place]: value };
@@ -1677,6 +1879,7 @@ $('#workout').addEventListener('touchend', (e) => {
 
 // ---------------------------------------------------------------------------
 // Start
+ensurePain();
 seedPhysio();
 render();
 if (data.active) openWorkout(); // återuppta pågående pass

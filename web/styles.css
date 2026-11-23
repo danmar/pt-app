@@ -655,3 +655,31 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .ex-item.is-busy { opacity: 0.6; }
 .pk-controls { margin-top: 12px; }
 .busy-link { align-self: center; font-size: 14px; margin-top: -6px; }
+
+/* --- Fysio --------------------------------------------------------------- */
+.pain-box { display: flex; flex-direction: column; gap: 10px; }
+.pain-row { display: flex; flex-direction: column; gap: 6px; }
+.pain-row b { font-size: 15px; }
+.card-title { margin: 0 0 10px; font-size: 17px; }
+.card.prose ul, .note ul { margin: 4px 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.note ul { margin-bottom: 0; }
+.wk-links { display: flex; justify-content: center; gap: 18px; margin-top: -6px; }
+.wk-links .busy-link { margin-top: 0; }
+.physio-card { --c: var(--green); }
+
+/* --- Veckoförslag -------------------------------------------------------- */
+.segmented.five { grid-template-columns: repeat(5, 1fr); }
+.week-proposal { gap: 6px; }
+.week-day-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--card); border-radius: 16px; padding: 10px 14px;
+  border-left: 5px solid var(--kc, var(--line));
+}
+.week-day-item .wd { width: 70px; flex: none; font-weight: 700; font-size: 14px; padding-top: 1px; }
+.week-day-item .wk { display: flex; flex-direction: column; min-width: 0; }
+.week-day-item .wk small { color: var(--muted); font-size: 13px; }
+.week-day-item.k-gym { --kc: var(--orange); }
+.week-day-item.k-home { --kc: var(--pink); }
+.week-day-item.k-swim { --kc: var(--swim); }
+.week-day-item.k-walk { --kc: var(--green); }
+.week-day-item.k-rest { --kc: var(--prop); }

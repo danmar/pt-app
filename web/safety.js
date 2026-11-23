@@ -73,6 +73,21 @@ export const SAFETY = {
     'Släpp tillbaka långsamt, utan att vikterna slår i.',
     'Kramp i baksida lår betyder att du ska vila.',
   ],
+  'external-rotation': [
+    'Lätt motstånd räcker. Det här är en övning för kontroll, inte styrka.',
+    'Håll armbågarna mot sidorna hela tiden.',
+    'Stoppa om det gör mer ont än 3 av 10.',
+  ],
+  'wall-angel': [
+    'Gå bara så högt du kan utan smärta och utan att svanka.',
+    'Det är okej om händerna inte når väggen i början.',
+    'Andas lugnt och pressa inte.',
+  ],
+  'bird-dog': [
+    'Lyft bara så högt att ryggen fortfarande är rak.',
+    'Långsamt och kontrollerat. Det är balansen som tränas.',
+    'Ont i handlederna? Stöd på knytnävarna.',
+  ],
   // Fysio
   'single-leg-extension': [
     'Ställ in maskinen ordentligt: knät ska vara i linje med maskinens vridpunkt.',

@@ -1,6 +1,6 @@
 // Föreslår pass. Prioriterar muskelgrupper du vilat längst, så att du får
 // en jämn fördelning över veckan utan att köra samma muskler två dagar i rad.
-import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, isAvailable } from './exercises.js';
+import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, isAvailable, painOk } from './exercises.js';
 
 export const LENGTHS = [
   { minutes: 20, count: 4 },
@@ -137,11 +137,11 @@ export function volumeByGroup(done) {
 
 /**
  * done: [{ exId, sets }] i den ordning de kördes idag (antal klara set).
- * groups: valda muskelgrupper (tom = alla utom kondition). gear: vald utrustning.
+ * groups: valda muskelgrupper (tom = alla utom kondition). gear: vald utrustning. pain: se painOk.
  * exclude: övningar som redan ligger i kön. busy: { exId: true } för upptagna maskiner.
  * Returnerar [{ ex, reason, busy }], bästa först. Upptagna hamnar sist.
  */
-export function suggestNext({ done, groups = [], gear, kneeFriendly, exclude = [], busy = {}, sessions = [], limit = 5 }) {
+export function suggestNext({ done, groups = [], gear, pain = {}, exclude = [], busy = {}, sessions = [], limit = 5 }) {
   const targets = groups.length ? groups : MUSCLE_IDS.filter((m) => m !== 'cardio');
   const doneIds = new Set(done.map((d) => d.exId));
   const vol = volumeByGroup(done);
@@ -153,7 +153,7 @@ export function suggestNext({ done, groups = [], gear, kneeFriendly, exclude = [
   const count = done.length;
 
   const scored = EXERCISES
-    .filter((e) => !e.physio && !e.noAuto && gear.includes(e.gear) && !(kneeFriendly && e.kneeHeavy))
+    .filter((e) => !e.physio && !e.noAuto && gear.includes(e.gear) && painOk(e, pain))
     .filter((e) => !doneIds.has(e.id) && !exclude.includes(e.id) && targets.includes(primary(e)))
     .map((ex) => {
       const g = primary(ex);
