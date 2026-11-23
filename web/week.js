@@ -4,13 +4,20 @@
 import { MUSCLES, MUSCLE_IDS } from './exercises.js';
 import { daysSinceTrained } from './planner.js';
 
+export const PRIORITIES = {
+  balanced: { name: 'Allround', desc: 'Lika mycket styrka och kondition' },
+  strength: { name: 'Styrka', desc: 'Fler styrkepass och tunga basövningar' },
+  cardio: { name: 'Kondition', desc: 'Mer simning och promenader, färre styrkepass' },
+  weightloss: { name: 'Viktnedgång', desc: 'Mycket vardagsrörelse plus styrka. Kosten betyder mest för vikten' },
+};
+
 export const WEEK_KINDS = { gym: 'Gym', home: 'Hemma', swim: 'Simma', walk: 'Promenad' };
 
 // Vilka av de sju dagarna (0 = idag) som blir träningsdagar.
 const PATTERNS = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 5], 5: [0, 1, 3, 4, 6], 6: [0, 1, 2, 4, 5, 6] };
 const DAY = 86_400_000;
 
-export function suggestWeek({ days, kinds, sessions, swims, walks, pain = {}, start = new Date() }) {
+export function suggestWeek({ days, kinds, sessions, swims, walks, pain = {}, priority = 'balanced', start = new Date() }) {
   const n = Math.max(1, Math.min(6, days));
   const recent = (list, test = () => true) => list.filter((x) => (start - new Date(x.date)) / DAY < 14 && test(x)).length;
   const hist = {
@@ -25,7 +32,9 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, pain = {}, st
   const sore = ['knees', 'back'].filter((a) => (pain[a] || 0) >= 2);
 
   // Antal styrkedagar: hälften om det finns simning, annars alla. Färre om knän eller rygg gör ont.
-  let nStrength = !strengthKinds.length ? 0 : canSwim || canWalk ? Math.ceil(n / 2) : n;
+  const other = canSwim || canWalk;
+  const share = { strength: 2 / 3, cardio: 1 / 3, weightloss: 1 / 2, balanced: 1 / 2 }[priority] ?? 1 / 2;
+  let nStrength = !strengthKinds.length ? 0 : other ? Math.max(1, Math.round(n * share)) : n;
   if (sore.length && (canSwim || canWalk) && nStrength > 1) nStrength--;
   if (canSwim && !hist.swim && nStrength === n && n > 1) nStrength--;
 
@@ -44,7 +53,8 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, pain = {}, st
 
   // Promenader på några lediga dagar, men minst en vilodag.
   const free = plan.map((k, d) => (k ? null : d)).filter((d) => d !== null);
-  free.forEach((d, i) => { plan[d] = canWalk && i < free.length - 1 ? 'walk' : 'rest'; });
+  const keepRest = priority === 'weightloss' ? 0 : 1; // promenader är lätta nog för varje dag
+  free.forEach((d, i) => { plan[d] = canWalk && i < free.length - keepRest ? 'walk' : 'rest'; });
 
   // Muskelfokus för styrkedagarna: de grupper du vilat längst först.
   const rest = daysSinceTrained(sessions, start);
@@ -62,16 +72,21 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, pain = {}, st
       const yesterday = plan[d - 1] === 'S';
       s++;
       const groupsText = f.map((m) => MUSCLES[m].name.toLowerCase()).join(', ');
-      return { date, kind, focus: f, reason: `Styrka med fokus på ${groupsText}${yesterday ? '. Andra muskler än igår' : ''}` };
+      const label = priority === 'weightloss' ? 'Styrka (bygger muskler som förbränner)' : 'Styrka';
+      return { date, kind, focus: f, reason: `${label} med fokus på ${groupsText}${yesterday ? '. Andra muskler än igår' : ''}` };
     }
     if (k === 'swim') {
       const why = d === swimIndex && !hist.swim ? 'Du har inte simmat på två veckor'
+        : priority === 'cardio' ? 'Kondition, ditt fokus just nu'
+        : priority === 'weightloss' ? 'Förbränner mycket och är skonsamt'
         : sore.length ? `Skonsam kondition för ${sore.map((a) => (a === 'knees' ? 'knäna' : 'ryggen')).join(' och ')}`
         : 'Kondition som är skonsam för lederna';
       return { date, kind: 'swim', reason: why };
     }
     if (k === 'walk') {
-      return { date, kind: 'walk', reason: pain.back ? 'Promenader är bra för ryggen' : 'Lätt rörelse som hjälper återhämtningen' };
+      return { date, kind: 'walk', reason: pain.back ? 'Promenader är bra för ryggen'
+        : priority === 'weightloss' ? 'Varje promenad räknas. Rör dig mycket varje dag'
+        : priority === 'cardio' && train.includes(d) ? 'Rask promenad för konditionen' : 'Lätt rörelse som hjälper återhämtningen' };
     }
     return { date, kind: 'rest', reason: 'Vila. Det är då musklerna bygger upp sig' };
   });

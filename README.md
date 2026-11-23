@@ -9,6 +9,8 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Planera:** lägg upp en veckoplan och spara pass till senare. Ett sparat pass kan du lägga in på en veckodag.
 - **Inbyggd fysioterapeut (Fysio):** ange om du har ont i axlar, rygg eller knän (inget, lite ont eller ont). Förslagen hoppar då över övningar som belastar det stället. Vid "lite ont" försvinner bara tung belastning, vid "ont" all belastning. Under passet föreslås fysioövningar för stället, till exempel utåtrotation, väggänglar, fågelhunden och raka benlyft. Du får råd och får veta när du ska söka vård. Med "Gör det ont?" mitt i en övning kan du ange var det gör ont och välja en annan övning. Råden är allmänna och ersätter inte en riktig fysioterapeut.
 - **Veckoförslag:** under Planera väljer du antal träningsdagar och aktiviteter (gym, hemma, simma, promenad). Appen föreslår de kommande sju dagarna. Styrkedagarna sprids ut så att musklerna hinner vila, och varje styrkedag får fokus på de muskelgrupper du vilat längst. Förslaget tar hänsyn till vad du gjort de senaste två veckorna och om du har ont. På dagen visar gymvyn veckans fokus, och du kan använda det med ett tryck.
+- **Prioritering:** under Planera väljer du Allround, Styrka, Kondition eller Viktnedgång. Valet styr hur många styrke-, sim- och promenaddagar veckoförslaget innehåller och vilka övningar som föreslås. Styrka ger tunga basövningar, viktnedgång ger stora muskelgrupper och promenader varje ledig dag.
+- **Mål:** sätt mål för en övning, till exempel 10 armhävningar i rad, 60 kg i bänkpress eller 60 sekunder plankan. Du ser hur långt du har kommit under Planera och på startsidan. Övningar med mål föreslås oftare under passet, och du får en pokal när du klarar målet.
 - **Fysiopass:** "Fysio gym" (benspark, bencurl och benpress med ett ben) och "Fysio hemma" (kort enbensknäböj och högt väggsittande) finns under Planera. Benövningarna ligger alltid först och fylls på med förslag för överkropp och bål.
 - **Träna säkert:** varje övning har en lista, ”Tänk på”, med vanliga misstag och hur du skyddar knän, rygg och axlar. En guide tar upp uppvärmning, en smärtregel för knäna, när du ska stoppa direkt, teknik och hur du ökar belastningen. Cirkel- och HIIT-passen börjar med en uppvärmning.
 - **Steg:** skriv in dagens steg från Hälsa-appen. Startsidan visar hur nära du är ditt stegmål och de senaste 7 dagarna.
@@ -74,4 +76,4 @@ Appen måste ligga på en **https**-adress för att fungera som app på telefone
 
 ## Uppdatera appen
 
-Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v13`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
+Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v14`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.

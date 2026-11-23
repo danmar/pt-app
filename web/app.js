@@ -5,7 +5,7 @@ import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinu
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
-import { WEEK_KINDS, suggestWeek } from './week.js';
+import { WEEK_KINDS, PRIORITIES, suggestWeek } from './week.js';
 import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
 
 // ---------------------------------------------------------------------------
@@ -129,6 +129,7 @@ function startView() {
       ${choice('swim', 'Simma', 'Simpass för bassängen', ICON.swim)}
       ${choice('plan', 'Planera', 'Veckoplan och sparade pass', ICON.calendar)}
     </div>
+    ${goalsCard()}
     ${stepsCard()}
     ${physioCard()}
     <button class="card guide-card" data-action="guide">
@@ -269,7 +270,9 @@ function planningView() {
 
   return `
     <header class="page-head"><h1>Planera</h1><p class="sub">Din vecka och sparade pass</p></header>
+    ${priorityCard()}
     ${weekSuggestCard()}
+    ${goalsSection()}
 
     <h2 class="section-title">Veckoplan</h2>
     <section class="card list">
@@ -290,6 +293,112 @@ function planningView() {
       <button class="btn secondary" data-action="tab" data-tab="home">+ Hemma</button>
       <button class="btn secondary" data-action="tab" data-tab="swim">+ Simma</button>
     </div>`;
+}
+
+// ---- Prioritering och mål -----------------------------------------------------
+const priority = () => data.settings.priority ?? 'balanced';
+
+function priorityCard() {
+  return `
+    <h2 class="section-title">Vad vill du prioritera?</h2>
+    <section class="card controls">
+      <div class="segmented types" role="radiogroup" aria-label="Prioritering">
+        ${Object.entries(PRIORITIES).map(([k, p]) => `<button role="radio" aria-checked="${priority() === k}" data-action="priority" data-value="${k}">${p.name}</button>`).join('')}
+      </div>
+      <p class="hint">${PRIORITIES[priority()].desc}. Påverkar veckoförslaget och vilka övningar som föreslås.</p>
+    </section>`;
+}
+
+const METRICS = { reps: 'reps i ett set', weight: 'kg', sec: 'sekunder' };
+const metricsFor = (ex) => (ex.timed ? ['sec'] : ex.equipment === 'none' ? ['reps'] : ['weight', 'reps']);
+const goalLabel = (g) => {
+  const ex = BY_ID[g.exId];
+  return g.metric === 'weight' ? `${fmtNum(g.target)} kg i ${ex.name.toLowerCase()}`
+    : g.metric === 'sec' ? `${g.target} s ${ex.name.toLowerCase()}` : `${g.target} ${ex.name.toLowerCase()} i rad`;
+};
+/** Bästa resultat hittills för målets mått. */
+function goalBest(g) {
+  let best = 0;
+  for (const s of data.sessions) for (const e of s.entries) {
+    if (e.exId !== g.exId) continue;
+    for (const set of e.sets) best = Math.max(best, g.metric === 'weight' ? (set.reps > 0 ? set.weight || 0 : 0) : set.reps || 0);
+  }
+  return best;
+}
+const activeGoals = () => data.goals.filter((g) => !g.achieved && BY_ID[g.exId]);
+const goalHints = () => activeGoals().map((g) => ({ exId: g.exId, label: goalLabel(g) }));
+
+function goalProgress(g) {
+  const best = goalBest(g);
+  const from = Math.min(g.start ?? 0, g.target);
+  const pct = g.achieved || best >= g.target ? 100 : Math.max(4, Math.round(((best - from) / Math.max(1e-9, g.target - from)) * 100));
+  return { best, pct };
+}
+
+function goalRow(g) {
+  const ex = BY_ID[g.exId];
+  const { best, pct } = goalProgress(g);
+  const unit = g.metric === 'weight' ? 'kg' : g.metric === 'sec' ? 's' : 'st';
+  return `
+    <li class="goal-item ${g.achieved ? 'done' : ''}" data-group="${ex.muscles[0]}">
+      <div class="goal-text">
+        <b>${g.achieved ? '🏆 ' : ''}${esc(goalLabel(g))}</b>
+        <small>${g.achieved ? `Klart ${new Date(g.achieved).toLocaleDateString('sv-SE')}` : `Bästa hittills: ${fmtNum(best)} ${unit}`}</small>
+        <div class="goal-bar"><div style="width:${pct}%"></div></div>
+      </div>
+      <button class="icon-btn" data-action="goal-delete" data-id="${esc(g.id)}" aria-label="Ta bort målet">${ICON.remove}</button>
+    </li>`;
+}
+
+function goalsSection() {
+  const list = [...activeGoals(), ...data.goals.filter((g) => g.achieved && BY_ID[g.exId])];
+  return `
+    <h2 class="section-title">Mina mål</h2>
+    ${list.length ? `<ul class="ex-list">${list.map(goalRow).join('')}</ul>
+      <p class="hint">Övningar med mål föreslås oftare. För fler reps: kör 3 set nära max 2–3 gånger i veckan. För mer vikt: öka lite när du klarar alla set.</p>`
+      : '<p class="empty">Inga mål än. Till exempel: 10 armhävningar i rad eller 60 sekunder plankan.</p>'}
+    <button class="btn secondary" data-action="goal-new">+ Nytt mål</button>`;
+}
+
+function goalsCard() {
+  const list = activeGoals().slice(0, 3);
+  if (!list.length) return '';
+  return `
+    <button class="card goals-card" data-action="tab" data-tab="plan">
+      <b>Mina mål</b>
+      ${list.map((g) => `<span class="goal-mini"><small>${esc(goalLabel(g))}</small><span class="goal-bar"><span style="width:${goalProgress(g).pct}%"></span></span></span>`).join('')}
+    </button>`;
+}
+
+function goalSheet(exId) {
+  const ex = BY_ID[exId] ?? BY_ID['push-up'];
+  const options = MUSCLE_IDS.map((m) => {
+    const items = EXERCISES.filter((e) => !e.physio && e.muscles[0] === m);
+    return items.length ? `<optgroup label="${MUSCLES[m].name}">${items.map((e) => `<option value="${e.id}" ${e.id === ex.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+  return `
+    <div class="sheet-head"><h2>Nytt mål</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
+    <form id="goal-form" class="form">
+      <label class="field"><span class="field-label">Övning</span><select name="exId" data-change="goal-ex">${options}</select></label>
+      <div id="goal-metric">${goalMetricFields(ex)}</div>
+      <button class="btn primary big" type="submit">Spara målet</button>
+    </form>`;
+}
+function goalMetricFields(ex) {
+  const ms = metricsFor(ex);
+  const best = goalBest({ exId: ex.id, metric: ms[0] });
+  return `
+    <label class="field"><span class="field-label">Mål</span>
+      <span class="goal-input"><input name="target" type="text" inputmode="decimal" required placeholder="${ms[0] === 'weight' ? '40' : ms[0] === 'sec' ? '60' : '10'}">
+      <select name="metric">${ms.map((m) => `<option value="${m}">${METRICS[m]}</option>`).join('')}</select></span></label>
+    ${best ? `<p class="hint">Ditt bästa hittills: ${fmtNum(best)} ${ms[0] === 'weight' ? 'kg' : ms[0] === 'sec' ? 's' : 'st'}.</p>` : ''}`;
+}
+
+/** Kollar mål efter ett pass. */
+function checkGoals() {
+  const reached = activeGoals().filter((g) => goalBest(g) >= g.target);
+  for (const g of reached) g.achieved = new Date().toISOString();
+  return reached;
 }
 
 const weekDays = () => data.settings.weekDays ?? 4;
@@ -630,7 +739,7 @@ function planView(place) {
   const queue = ui.plans[place];
   const done = exercisesToday();
   const gear = gearFor(place);
-  const preview = gear.length ? suggestNext({ done, groups: groupsFor(place), gear, pain: data.settings.pain,
+  const preview = gear.length ? suggestNext({ done, groups: groupsFor(place), gear, pain: data.settings.pain, goals: goalHints(), priority: priority(),
     exclude: queue.map((p) => p.exId), sessions: data.sessions, limit: 3 }).filter((x) => !x.busy) : [];
 
   return `
@@ -905,6 +1014,7 @@ function detailSheet(ex) {
     <h3>Så gör du</h3>
     <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
     ${safetyBlock(ex)}
+    ${ex.physio || data.active ? '' : `<button class="btn secondary" data-action="goal-new" data-id="${ex.id}">Sätt ett mål för ${esc(ex.name.toLowerCase())}</button>`}
     <button class="btn-text guide-link" data-action="guide">${ICON.shield} Läs mer om att träna säkert</button>`;
 }
 
@@ -1220,9 +1330,10 @@ function finishInterval() {
     data.sessions.push({ id: uid(), place: a.place, type: a.type, date: new Date(a.start).toISOString(), endDate: new Date().toISOString(), entries });
   }
   data.active = null;
+  const reached = checkGoals();
   save();
   closeWorkout();
-  if (entries.length) { ui.tab = 'log'; toast('Passet sparat 💪'); }
+  if (entries.length) { ui.tab = 'log'; toast(reached.length ? `🏆 Mål klart: ${goalLabel(reached[0])}!` : 'Passet sparat 💪'); }
   render();
 }
 
@@ -1280,7 +1391,7 @@ function renderPicker() {
   const done = exercisesToday();
   const qi = queueIndexes(w);
   const queueIds = qi.map((i) => w.items[i].exId);
-  const list = w.gear.length ? suggestNext({ done, groups: w.groups, gear: w.gear, pain: data.settings.pain,
+  const list = w.gear.length ? suggestNext({ done, groups: w.groups, gear: w.gear, pain: data.settings.pain, goals: goalHints(), priority: priority(),
     exclude: queueIds, busy: w.busy, sessions: data.sessions, limit: w.more ? 99 : 4 }) : [];
   const free = list.filter((x) => !x.busy);
   const busy = list.filter((x) => x.busy);
@@ -1377,12 +1488,13 @@ function finishWorkout() {
   }
   const place = w.place;
   data.active = null;
+  const reached = checkGoals();
   save();
   closeWorkout();
   regenerate(place);
   if (entries.length) {
     ui.tab = 'log';
-    toast('Passet sparat 💪');
+    toast(reached.length ? `🏆 Mål klart: ${goalLabel(reached[0])}!` : 'Passet sparat 💪');
   }
   render();
 }
@@ -1612,6 +1724,13 @@ document.addEventListener('click', (e) => {
         gear: ['body'], groups: [], busy: {}, picking: false, items };
       save(); openWorkout(); break;
     }
+    case 'priority': data.settings.priority = t.dataset.value; save(); if (ui.weekProposal) makeWeek(); render(); break;
+    case 'goal-new': openSheet(goalSheet(t.dataset.id)); break;
+    case 'goal-delete':
+      confirmDialog({ title: 'Ta bort målet?', buttons: [
+        { label: 'Ta bort', style: 'danger', onClick: () => { data.goals = data.goals.filter((g) => g.id !== t.dataset.id); save(); render(); } },
+        { label: 'Avbryt' }] });
+      break;
     case 'wdays': data.settings.weekDays = Number(t.dataset.value); save(); if (ui.weekProposal) makeWeek(); render(); break;
     case 'wkind': data.settings.weekKinds = toggle(weekKinds(), t.dataset.value); save(); if (ui.weekProposal) makeWeek(); render(); break;
     case 'week-suggest': makeWeek(); render(); break;
@@ -1757,6 +1876,8 @@ document.addEventListener('change', (e) => {
       ui.focus.swim = t.value; regenerate('swim'); render(); break;
     case 'swim-style':
       ui.swimStyle = t.value; regenerate('swim'); render(); break;
+    case 'goal-ex':
+      $('#goal-metric').innerHTML = goalMetricFields(BY_ID[t.value]); break;
     case 'weekday':
       data.week[Number(t.dataset.day)] = t.value;
       data.weekFocus[Number(t.dataset.day)] = []; save(); render(); break;
@@ -1804,7 +1925,7 @@ document.addEventListener('input', (e) => {
 
 function makeWeek() {
   ui.weekProposal = weekKinds().length ? suggestWeek({ days: weekDays(), kinds: weekKinds(), sessions: data.sessions,
-    swims: data.swims, walks: data.walks, pain: data.settings.pain }) : null;
+    swims: data.swims, walks: data.walks, pain: data.settings.pain, priority: priority() }) : null;
 }
 
 function setPref(key, place, value) {
@@ -1837,6 +1958,14 @@ const FORMS = {
     });
     if (f.get('fromPlan')) { regenerate('swim'); ui.tab = 'log'; }
     toast('Simpasset sparat 🏊');
+  },
+  'goal-form'(f) {
+    const exId = f.get('exId');
+    const metric = f.get('metric');
+    const target = parseFloat(String(f.get('target')).replace(',', '.'));
+    if (!BY_ID[exId] || !(target > 0)) { toast('Skriv in ett mål'); return; }
+    data.goals.push({ id: uid(), exId, metric, target, start: goalBest({ exId, metric }), created: new Date().toISOString() });
+    toast('Målet är sparat 🎯');
   },
   'save-plan-form'(f) {
     const place = f.get('place');

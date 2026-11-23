@@ -141,7 +141,7 @@ export function volumeByGroup(done) {
  * exclude: övningar som redan ligger i kön. busy: { exId: true } för upptagna maskiner.
  * Returnerar [{ ex, reason, busy }], bästa först. Upptagna hamnar sist.
  */
-export function suggestNext({ done, groups = [], gear, pain = {}, exclude = [], busy = {}, sessions = [], limit = 5 }) {
+export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], priority = 'balanced', exclude = [], busy = {}, sessions = [], limit = 5 }) {
   const targets = groups.length ? groups : MUSCLE_IDS.filter((m) => m !== 'cardio');
   const doneIds = new Set(done.map((d) => d.exId));
   const vol = volumeByGroup(done);
@@ -151,9 +151,10 @@ export function suggestNext({ done, groups = [], gear, pain = {}, exclude = [], 
   const lastPattern = lastEx ? patternOf(lastEx) : null;
   const rest = groups.length ? {} : daysSinceTrained(sessions.filter((s) => daysBetween(s.date, new Date()) > 0));
   const count = done.length;
+  const goalFor = Object.fromEntries(goals.map((g) => [g.exId, g.label]));
 
   const scored = EXERCISES
-    .filter((e) => !e.physio && !e.noAuto && gear.includes(e.gear) && painOk(e, pain))
+    .filter((e) => !e.physio && (!e.noAuto || goalFor[e.id]) && gear.includes(e.gear) && painOk(e, pain))
     .filter((e) => !doneIds.has(e.id) && !exclude.includes(e.id) && targets.includes(primary(e)))
     .map((ex) => {
       const g = primary(ex);
@@ -170,6 +171,11 @@ export function suggestNext({ done, groups = [], gear, pain = {}, exclude = [], 
       if (COMPOUND.has(pattern) && count < 2 && !patternsDone.has(pattern)) { score += 1.5; reasons.push([2, 'Basövning, bra tidigt i passet']); }
       if (!COMPOUND.has(pattern) && count >= 3) { score += 1; reasons.push([2, 'Isolering, passar mot slutet']); }
       if (!groups.length) score += Math.min(rest[g] ?? 7, 7) * 0.2;
+      if (goalFor[ex.id]) { score += 2.5; reasons.push([5, `Mot ditt mål: ${goalFor[ex.id]}`]); }
+      // Prioritering: styrka = tunga basövningar, viktnedgång = stora muskelgrupper, kondition = mer bål och tempo.
+      if (priority === 'strength' && COMPOUND.has(pattern) && ex.gear !== 'body') score += 1;
+      if (priority === 'weightloss' && COMPOUND.has(pattern)) { score += 1.2; if (v === 0) reasons.push([1.5, 'Stora muskler förbränner mest']); }
+      if (priority === 'cardio' && (g === 'core' || ex.gear === 'body')) score += 0.8;
       reasons.sort((a, b) => b[0] - a[0]);
       return { ex, score, busy: !!busy[ex.id], reason: reasons[0]?.[1] ?? `Komplement för ${MUSCLES[g].name.toLowerCase()}` };
     })
