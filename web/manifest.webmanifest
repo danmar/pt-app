@@ -1,0 +1,17 @@
+{
+  "name": "Min PT",
+  "short_name": "Min PT",
+  "description": "Passförslag för gym, hemma och simning, animerade övningar och träningslogg.",
+  "lang": "sv",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf7ff",
+  "theme_color": "#6d4aff",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

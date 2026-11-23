@@ -1,0 +1,659 @@
+// Övningar, muskelgrupper och animationsställningar.
+import { SAFETY } from './safety.js';
+
+export const MUSCLES = {
+  cardio:    { name: 'Kondition',   order: 0 },
+  legs:      { name: 'Ben & rumpa', order: 1 },
+  back:      { name: 'Rygg',        order: 2 },
+  chest:     { name: 'Bröst',       order: 3 },
+  shoulders: { name: 'Axlar',       order: 4 },
+  arms:      { name: 'Armar',       order: 5 },
+  core:      { name: 'Mage & bål',  order: 6 },
+};
+export const MUSCLE_IDS = Object.keys(MUSCLES);
+
+export const EQUIPMENT = {
+  none: 'Ingen utrustning',
+  dumbbells: 'Hantlar',
+  gym: 'Gymutrustning',
+};
+
+// ---------------------------------------------------------------------------
+// Ställningar för streckgubben. Koordinater: x 0–1 vänster→höger, y 0–1 uppifrån
+// och ner, golvet vid y ≈ 0.96. Gubben tittar åt höger. N = närmsta arm/ben,
+// F = bortre (ritas svagare).
+const P = (x, y) => [x, y];
+const mod = (base, changes) => ({ ...base, ...changes });
+
+const standing = {
+  head: P(0.50, 0.12), neck: P(0.50, 0.22), hip: P(0.50, 0.50),
+  elbowN: P(0.52, 0.36), handN: P(0.53, 0.49),
+  elbowF: P(0.48, 0.36), handF: P(0.47, 0.49),
+  kneeN: P(0.52, 0.72), footN: P(0.53, 0.95),
+  kneeF: P(0.48, 0.72), footF: P(0.47, 0.95),
+};
+
+const squatTop = mod(standing, {
+  elbowN: P(0.62, 0.24), handN: P(0.75, 0.24), elbowF: P(0.61, 0.25), handF: P(0.74, 0.25),
+});
+const squatBottom = {
+  head: P(0.58, 0.34), neck: P(0.52, 0.43), hip: P(0.36, 0.66),
+  elbowN: P(0.65, 0.45), handN: P(0.78, 0.44),
+  elbowF: P(0.64, 0.46), handF: P(0.77, 0.45),
+  kneeN: P(0.58, 0.71), footN: P(0.53, 0.95),
+  kneeF: P(0.56, 0.72), footF: P(0.47, 0.95),
+};
+const gobletTop = mod(standing, {
+  elbowN: P(0.55, 0.35), handN: P(0.60, 0.28), elbowF: P(0.54, 0.35), handF: P(0.59, 0.28),
+});
+const gobletBottom = mod(squatBottom, {
+  elbowN: P(0.58, 0.55), handN: P(0.64, 0.47), elbowF: P(0.57, 0.55), handF: P(0.63, 0.47),
+});
+const barbellSquatTop = mod(standing, {
+  elbowN: P(0.42, 0.30), handN: P(0.46, 0.20), elbowF: P(0.41, 0.30), handF: P(0.45, 0.20),
+});
+const barbellSquatBottom = mod(squatBottom, {
+  elbowN: P(0.44, 0.50), handN: P(0.49, 0.41), elbowF: P(0.43, 0.50), handF: P(0.48, 0.41),
+});
+
+const deadliftBottom = {
+  head: P(0.67, 0.42), neck: P(0.58, 0.46), hip: P(0.32, 0.60),
+  elbowN: P(0.59, 0.60), handN: P(0.59, 0.73),
+  elbowF: P(0.58, 0.60), handF: P(0.58, 0.73),
+  kneeN: P(0.52, 0.72), footN: P(0.53, 0.95),
+  kneeF: P(0.50, 0.73), footF: P(0.47, 0.95),
+};
+
+const lungeTop = {
+  head: P(0.50, 0.13), neck: P(0.50, 0.23), hip: P(0.50, 0.51),
+  elbowN: P(0.51, 0.37), handN: P(0.52, 0.50),
+  elbowF: P(0.49, 0.37), handF: P(0.48, 0.50),
+  kneeN: P(0.60, 0.73), footN: P(0.68, 0.95),
+  kneeF: P(0.38, 0.73), footF: P(0.25, 0.94),
+};
+const lungeBottom = {
+  head: P(0.50, 0.30), neck: P(0.50, 0.40), hip: P(0.50, 0.68),
+  elbowN: P(0.51, 0.54), handN: P(0.52, 0.67),
+  elbowF: P(0.49, 0.54), handF: P(0.48, 0.67),
+  kneeN: P(0.69, 0.72), footN: P(0.68, 0.95),
+  kneeF: P(0.42, 0.90), footF: P(0.24, 0.93),
+};
+
+const bridgeDown = {
+  head: P(0.20, 0.88), neck: P(0.30, 0.90), hip: P(0.56, 0.90),
+  elbowN: P(0.38, 0.93), handN: P(0.48, 0.93),
+  elbowF: P(0.37, 0.93), handF: P(0.47, 0.93),
+  kneeN: P(0.68, 0.72), footN: P(0.79, 0.94),
+  kneeF: P(0.67, 0.73), footF: P(0.78, 0.94),
+};
+const bridgeUp = mod(bridgeDown, { hip: P(0.55, 0.74), kneeN: P(0.74, 0.69), kneeF: P(0.73, 0.70) });
+
+const benchUp = {
+  head: P(0.78, 0.66), neck: P(0.68, 0.69), hip: P(0.40, 0.69),
+  elbowN: P(0.68, 0.55), handN: P(0.68, 0.42),
+  elbowF: P(0.67, 0.55), handF: P(0.67, 0.42),
+  kneeN: P(0.20, 0.67), footN: P(0.18, 0.95),
+  kneeF: P(0.22, 0.68), footF: P(0.21, 0.95),
+};
+const benchDown = mod(benchUp, {
+  elbowN: P(0.60, 0.76), handN: P(0.66, 0.62), elbowF: P(0.59, 0.77), handF: P(0.65, 0.63),
+});
+
+const pushUpTop = {
+  head: P(0.77, 0.58), neck: P(0.68, 0.62), hip: P(0.40, 0.775),
+  elbowN: P(0.68, 0.78), handN: P(0.68, 0.94),
+  elbowF: P(0.67, 0.78), handF: P(0.67, 0.94),
+  kneeN: P(0.26, 0.853), footN: P(0.12, 0.94),
+  kneeF: P(0.27, 0.85), footF: P(0.13, 0.94),
+};
+const pushUpBottom = {
+  head: P(0.77, 0.77), neck: P(0.68, 0.80), hip: P(0.40, 0.865),
+  elbowN: P(0.58, 0.81), handN: P(0.68, 0.94),
+  elbowF: P(0.57, 0.82), handF: P(0.67, 0.94),
+  kneeN: P(0.26, 0.90), footN: P(0.12, 0.94),
+  kneeF: P(0.27, 0.90), footF: P(0.13, 0.94),
+};
+
+const pressDown = mod(standing, {
+  elbowN: P(0.60, 0.30), handN: P(0.59, 0.17), elbowF: P(0.59, 0.31), handF: P(0.58, 0.18),
+});
+const pressUp = mod(standing, {
+  elbowN: P(0.55, 0.09), handN: P(0.56, -0.04), elbowF: P(0.54, 0.09), handF: P(0.55, -0.04),
+});
+const curlDown = mod(standing, {
+  elbowN: P(0.52, 0.36), handN: P(0.55, 0.49), elbowF: P(0.50, 0.36), handF: P(0.53, 0.49),
+});
+const curlUp = mod(curlDown, { handN: P(0.63, 0.26), handF: P(0.61, 0.26) });
+const tricepsUp = mod(standing, {
+  elbowN: P(0.54, 0.09), handN: P(0.55, -0.04), elbowF: P(0.53, 0.09), handF: P(0.54, -0.04),
+});
+const tricepsDown = mod(standing, {
+  elbowN: P(0.55, 0.09), handN: P(0.43, 0.15), elbowF: P(0.54, 0.09), handF: P(0.42, 0.15),
+});
+
+const rowDown = {
+  head: P(0.73, 0.36), neck: P(0.64, 0.40), hip: P(0.38, 0.52),
+  elbowN: P(0.64, 0.54), handN: P(0.64, 0.67),
+  elbowF: P(0.63, 0.54), handF: P(0.63, 0.67),
+  kneeN: P(0.50, 0.72), footN: P(0.47, 0.95),
+  kneeF: P(0.48, 0.72), footF: P(0.45, 0.95),
+};
+const rowUp = mod(rowDown, {
+  elbowN: P(0.52, 0.37), handN: P(0.56, 0.50), elbowF: P(0.51, 0.38), handF: P(0.55, 0.51),
+});
+
+const pullDown = {
+  head: P(0.49, 0.12), neck: P(0.50, 0.22), hip: P(0.50, 0.50),
+  elbowN: P(0.52, 0.085), handN: P(0.53, -0.05),
+  elbowF: P(0.51, 0.085), handF: P(0.52, -0.05),
+  kneeN: P(0.49, 0.72), footN: P(0.38, 0.90),
+  kneeF: P(0.48, 0.72), footF: P(0.37, 0.90),
+};
+const pullUp = {
+  head: P(0.50, -0.08), neck: P(0.50, 0.02), hip: P(0.50, 0.30),
+  elbowN: P(0.41, 0.04), handN: P(0.53, -0.05),
+  elbowF: P(0.40, 0.04), handF: P(0.52, -0.05),
+  kneeN: P(0.49, 0.52), footN: P(0.38, 0.70),
+  kneeF: P(0.48, 0.52), footF: P(0.37, 0.70),
+};
+
+const supermanDown = {
+  head: P(0.80, 0.89), neck: P(0.70, 0.92), hip: P(0.42, 0.92),
+  elbowN: P(0.83, 0.92), handN: P(0.96, 0.92),
+  elbowF: P(0.82, 0.925), handF: P(0.95, 0.925),
+  kneeN: P(0.26, 0.925), footN: P(0.10, 0.93),
+  kneeF: P(0.27, 0.93), footF: P(0.11, 0.935),
+};
+const supermanUp = mod(supermanDown, {
+  neck: P(0.69, 0.87), head: P(0.79, 0.82),
+  elbowN: P(0.82, 0.83), handN: P(0.95, 0.78),
+  elbowF: P(0.81, 0.835), handF: P(0.94, 0.785),
+  kneeN: P(0.26, 0.90), footN: P(0.11, 0.85),
+  kneeF: P(0.27, 0.905), footF: P(0.12, 0.855),
+});
+
+const plankA = {
+  head: P(0.76, 0.74), neck: P(0.66, 0.78), hip: P(0.40, 0.85),
+  elbowN: P(0.66, 0.94), handN: P(0.80, 0.94),
+  elbowF: P(0.65, 0.94), handF: P(0.79, 0.94),
+  kneeN: P(0.26, 0.89), footN: P(0.12, 0.94),
+  kneeF: P(0.27, 0.89), footF: P(0.13, 0.94),
+};
+const plankB = mod(plankA, { hip: P(0.40, 0.835), neck: P(0.66, 0.775), head: P(0.76, 0.735) });
+
+const crunchDown = {
+  head: P(0.20, 0.88), neck: P(0.30, 0.90), hip: P(0.56, 0.90),
+  elbowN: P(0.30, 0.79), handN: P(0.21, 0.83),
+  elbowF: P(0.29, 0.80), handF: P(0.20, 0.84),
+  kneeN: P(0.68, 0.72), footN: P(0.80, 0.94),
+  kneeF: P(0.67, 0.73), footF: P(0.79, 0.94),
+};
+const crunchUp = mod(crunchDown, {
+  neck: P(0.37, 0.77), head: P(0.29, 0.71),
+  elbowN: P(0.42, 0.66), handN: P(0.30, 0.66),
+  elbowF: P(0.41, 0.67), handF: P(0.29, 0.67),
+});
+
+const jackIn = {
+  head: P(0.50, 0.11), neck: P(0.50, 0.21), hip: P(0.50, 0.50),
+  elbowN: P(0.58, 0.35), handN: P(0.60, 0.48),
+  elbowF: P(0.42, 0.35), handF: P(0.40, 0.48),
+  kneeN: P(0.53, 0.72), footN: P(0.54, 0.95),
+  kneeF: P(0.47, 0.72), footF: P(0.46, 0.95),
+};
+const jackOut = {
+  head: P(0.50, 0.09), neck: P(0.50, 0.19), hip: P(0.50, 0.47),
+  elbowN: P(0.62, 0.08), handN: P(0.58, -0.05),
+  elbowF: P(0.38, 0.08), handF: P(0.42, -0.05),
+  kneeN: P(0.59, 0.71), footN: P(0.67, 0.94),
+  kneeF: P(0.41, 0.71), footF: P(0.33, 0.94),
+};
+
+const climberA = mod(pushUpTop, { kneeN: P(0.58, 0.82), footN: P(0.50, 0.93) });
+const climberB = mod(pushUpTop, { kneeF: P(0.58, 0.82), footF: P(0.50, 0.93) });
+
+// Skonsamma övningar för knäna
+const sideLyingDown = {
+  head: P(0.86, 0.80), neck: P(0.76, 0.86), hip: P(0.45, 0.89),
+  elbowN: P(0.64, 0.86), handN: P(0.62, 0.935),
+  elbowF: P(0.82, 0.94), handF: P(0.88, 0.85),
+  kneeN: P(0.24, 0.885), footN: P(0.03, 0.89),
+  kneeF: P(0.24, 0.915), footF: P(0.03, 0.93),
+};
+const sideLyingUp = mod(sideLyingDown, { kneeN: P(0.25, 0.80), footN: P(0.06, 0.71) });
+
+const slrDown = {
+  head: P(0.20, 0.88), neck: P(0.30, 0.90), hip: P(0.56, 0.90),
+  elbowN: P(0.42, 0.93), handN: P(0.52, 0.93),
+  elbowF: P(0.41, 0.93), handF: P(0.51, 0.93),
+  kneeN: P(0.78, 0.915), footN: P(1.00, 0.93),
+  kneeF: P(0.67, 0.73), footF: P(0.78, 0.94),
+};
+const slrUp = mod(slrDown, { kneeN: P(0.73, 0.76), footN: P(0.90, 0.62) });
+
+const calfUp = Object.fromEntries(Object.entries(standing).map(([k, [x, y]]) => [k, k.startsWith('foot') ? P(x + 0.01, 0.935) : P(x, y - 0.04)]));
+
+const marchA = mod(standing, {
+  kneeN: P(0.63, 0.60), footN: P(0.58, 0.80),
+  elbowN: P(0.45, 0.36), handN: P(0.42, 0.47), elbowF: P(0.57, 0.35), handF: P(0.64, 0.29),
+});
+const marchB = mod(standing, {
+  kneeF: P(0.63, 0.60), footF: P(0.58, 0.80),
+  elbowF: P(0.45, 0.36), handF: P(0.42, 0.47), elbowN: P(0.57, 0.35), handN: P(0.64, 0.29),
+});
+
+const bikeBase = {
+  head: P(0.71, 0.22), neck: P(0.62, 0.29), hip: P(0.40, 0.50),
+  elbowN: P(0.70, 0.36), handN: P(0.79, 0.42),
+  elbowF: P(0.69, 0.37), handF: P(0.78, 0.43),
+};
+const bike = [
+  { kneeN: P(0.635, 0.514), footN: P(0.500, 0.725), kneeF: P(0.588, 0.641), footF: P(0.500, 0.875) },
+  { kneeN: P(0.628, 0.556), footN: P(0.575, 0.800), kneeF: P(0.601, 0.622), footF: P(0.425, 0.800) },
+  { kneeN: P(0.588, 0.641), footN: P(0.500, 0.875), kneeF: P(0.635, 0.514), footF: P(0.500, 0.725) },
+  { kneeN: P(0.601, 0.622), footN: P(0.425, 0.800), kneeF: P(0.628, 0.556), footF: P(0.575, 0.800) },
+].map((legs) => ({ ...bikeBase, ...legs }));
+
+const hipThrustDown = mod(bridgeDown, { elbowN: P(0.47, 0.84), handN: P(0.56, 0.85), elbowF: P(0.46, 0.845), handF: P(0.55, 0.855) });
+const hipThrustUp = mod(bridgeUp, { elbowN: P(0.45, 0.72), handN: P(0.55, 0.69), elbowF: P(0.44, 0.725), handF: P(0.54, 0.695) });
+
+// Fysio: maskiner med ett ben i taget
+const seated = {
+  head: P(0.33, 0.20), neck: P(0.35, 0.30), hip: P(0.40, 0.58),
+  elbowN: P(0.42, 0.46), handN: P(0.47, 0.585),
+  elbowF: P(0.41, 0.46), handF: P(0.46, 0.585),
+  kneeN: P(0.63, 0.575), footN: P(0.64, 0.83),
+  kneeF: P(0.62, 0.585), footF: P(0.61, 0.84),
+};
+const extensionUp = mod(seated, { footN: P(0.88, 0.55) });
+const curlBent = mod(seated, { footN: P(0.52, 0.79) });
+
+const pressBase = {
+  head: P(0.13, 0.43), neck: P(0.20, 0.51), hip: P(0.38, 0.72),
+  elbowN: P(0.30, 0.71), handN: P(0.38, 0.77),
+  elbowF: P(0.29, 0.715), handF: P(0.37, 0.775),
+  kneeF: P(0.53, 0.63), footF: P(0.51, 0.86),
+};
+const pressBent = { ...pressBase, kneeN: P(0.432, 0.496), footN: P(0.66, 0.53) };
+const pressStraight = { ...pressBase, kneeN: P(0.575, 0.575), footN: P(0.75, 0.465) };
+
+// Fysio hemma
+const miniSquatTop = {
+  head: P(0.50, 0.12), neck: P(0.50, 0.22), hip: P(0.50, 0.50),
+  elbowN: P(0.58, 0.33), handN: P(0.68, 0.35),
+  elbowF: P(0.57, 0.34), handF: P(0.67, 0.36),
+  kneeN: P(0.52, 0.72), footN: P(0.52, 0.95),
+  kneeF: P(0.46, 0.72), footF: P(0.38, 0.86),
+};
+const miniSquatBottom = {
+  head: P(0.55, 0.19), neck: P(0.52, 0.29), hip: P(0.45, 0.56),
+  elbowN: P(0.60, 0.38), handN: P(0.70, 0.40),
+  elbowF: P(0.59, 0.39), handF: P(0.69, 0.41),
+  kneeN: P(0.57, 0.75), footN: P(0.52, 0.95),
+  kneeF: P(0.42, 0.77), footF: P(0.34, 0.90),
+};
+const wallSitA = {
+  head: P(0.31, 0.17), neck: P(0.31, 0.27), hip: P(0.32, 0.55),
+  elbowN: P(0.36, 0.41), handN: P(0.44, 0.50),
+  elbowF: P(0.35, 0.415), handF: P(0.43, 0.505),
+  kneeN: P(0.50, 0.70), footN: P(0.55, 0.95),
+  kneeF: P(0.49, 0.705), footF: P(0.53, 0.95),
+};
+const wallSitB = mod(wallSitA, { neck: P(0.31, 0.265), head: P(0.31, 0.165), elbowN: P(0.36, 0.405), elbowF: P(0.35, 0.41) });
+
+// Kondition utan hopp
+const guard = {
+  head: P(0.52, 0.12), neck: P(0.51, 0.22), hip: P(0.49, 0.50),
+  elbowN: P(0.57, 0.36), handN: P(0.61, 0.25),
+  elbowF: P(0.56, 0.37), handF: P(0.59, 0.26),
+  kneeN: P(0.57, 0.72), footN: P(0.61, 0.95),
+  kneeF: P(0.45, 0.72), footF: P(0.40, 0.95),
+};
+const punchN = mod(guard, { elbowN: P(0.67, 0.26), handN: P(0.81, 0.25), head: P(0.53, 0.12) });
+const punchF = mod(guard, { elbowF: P(0.66, 0.27), handF: P(0.80, 0.26), head: P(0.53, 0.12) });
+
+const ropeBase = {
+  head: P(0.56, 0.18), neck: P(0.53, 0.28), hip: P(0.46, 0.54),
+  kneeN: P(0.55, 0.74), footN: P(0.52, 0.95),
+  kneeF: P(0.52, 0.745), footF: P(0.44, 0.95),
+};
+const ropeA = { ...ropeBase, elbowN: P(0.61, 0.36), handN: P(0.72, 0.31), elbowF: P(0.59, 0.45), handF: P(0.70, 0.53) };
+const ropeB = { ...ropeBase, elbowN: P(0.59, 0.45), handN: P(0.70, 0.53), elbowF: P(0.61, 0.36), handF: P(0.72, 0.31) };
+
+// Maskiner och kabel (t.ex. Friskis & Svettis)
+const pulldownUp = {
+  head: P(0.36, 0.20), neck: P(0.37, 0.30), hip: P(0.40, 0.58),
+  elbowN: P(0.45, 0.12), handN: P(0.47, -0.01),
+  elbowF: P(0.44, 0.12), handF: P(0.46, -0.01),
+  kneeN: P(0.63, 0.575), footN: P(0.64, 0.83),
+  kneeF: P(0.62, 0.585), footF: P(0.61, 0.84),
+};
+const pulldownDown = mod(pulldownUp, {
+  head: P(0.34, 0.205), neck: P(0.355, 0.305),
+  elbowN: P(0.34, 0.42), handN: P(0.46, 0.29), elbowF: P(0.33, 0.42), handF: P(0.45, 0.29),
+});
+const rowOut = {
+  head: P(0.36, 0.40), neck: P(0.35, 0.50), hip: P(0.30, 0.77),
+  elbowN: P(0.47, 0.57), handN: P(0.62, 0.61),
+  elbowF: P(0.46, 0.575), handF: P(0.61, 0.615),
+  kneeN: P(0.50, 0.66), footN: P(0.69, 0.79),
+  kneeF: P(0.49, 0.665), footF: P(0.68, 0.80),
+};
+const rowIn = mod(rowOut, {
+  head: P(0.34, 0.40), neck: P(0.33, 0.50),
+  elbowN: P(0.22, 0.62), handN: P(0.38, 0.66), elbowF: P(0.21, 0.625), handF: P(0.37, 0.665),
+});
+const chestPressIn = mod(seated, {
+  elbowN: P(0.32, 0.40), handN: P(0.47, 0.35), elbowF: P(0.31, 0.405), handF: P(0.46, 0.355),
+});
+const chestPressOut = mod(seated, {
+  elbowN: P(0.52, 0.34), handN: P(0.68, 0.34), elbowF: P(0.51, 0.345), handF: P(0.67, 0.345),
+});
+const pushdownUp = mod(standing, {
+  head: P(0.53, 0.12), neck: P(0.52, 0.22),
+  elbowN: P(0.53, 0.37), handN: P(0.62, 0.29), elbowF: P(0.52, 0.37), handF: P(0.61, 0.29),
+});
+const pushdownDown = mod(pushdownUp, { handN: P(0.57, 0.51), handF: P(0.56, 0.51) });
+
+/** period = sekunder för ett helt varv genom alla ställningar (två ställningar = fram och tillbaka). */
+export const ANIMATIONS = {
+  squat:            { period: 2.6, frames: [squatTop, squatBottom] },
+  gobletSquat:      { period: 2.6, frames: [gobletTop, gobletBottom] },
+  barbellSquat:     { period: 2.6, frames: [barbellSquatTop, barbellSquatBottom] },
+  deadlift:         { period: 2.6, frames: [standing, deadliftBottom] },
+  lunge:            { period: 2.6, frames: [lungeTop, lungeBottom] },
+  gluteBridge:      { period: 2.6, frames: [bridgeDown, bridgeUp] },
+  benchPress:       { period: 2.6, frames: [benchUp, benchDown] },
+  pushUp:           { period: 2.4, frames: [pushUpTop, pushUpBottom] },
+  shoulderPress:    { period: 2.6, frames: [pressDown, pressUp] },
+  bicepCurl:        { period: 2.0, frames: [curlDown, curlUp] },
+  tricepsExtension: { period: 2.6, frames: [tricepsUp, tricepsDown] },
+  row:              { period: 2.4, frames: [rowDown, rowUp] },
+  pullUp:           { period: 2.6, frames: [pullDown, pullUp] },
+  superman:         { period: 2.6, frames: [supermanDown, supermanUp] },
+  plank:            { period: 3.0, frames: [plankA, plankB] },
+  crunch:           { period: 2.0, frames: [crunchDown, crunchUp] },
+  jumpingJack:      { period: 1.0, frames: [jackIn, jackOut], front: true },
+  mountainClimber:  { period: 0.8, frames: [climberA, climberB] },
+  sideLegRaise:     { period: 2.6, frames: [sideLyingDown, sideLyingUp] },
+  straightLegRaise: { period: 3.0, frames: [slrDown, slrUp] },
+  calfRaise:        { period: 1.8, frames: [standing, calfUp] },
+  march:            { period: 1.6, frames: [standing, marchA, standing, marchB] },
+  bike:             { period: 1.2, frames: bike },
+  hipThrust:        { period: 2.6, frames: [hipThrustDown, hipThrustUp] },
+  legExtension:     { period: 2.8, frames: [seated, extensionUp] },
+  legCurl:          { period: 2.8, frames: [extensionUp, curlBent] },
+  legPress:         { period: 2.8, frames: [pressBent, pressStraight] },
+  miniSquat:        { period: 2.6, frames: [miniSquatTop, miniSquatBottom] },
+  shadowBox:        { period: 1.2, frames: [guard, punchN, guard, punchF] },
+  latPulldown:      { period: 2.6, frames: [pulldownUp, pulldownDown] },
+  seatedRow:        { period: 2.6, frames: [rowOut, rowIn] },
+  chestPress:       { period: 2.6, frames: [chestPressIn, chestPressOut] },
+  pushdown:         { period: 2.2, frames: [pushdownUp, pushdownDown] },
+  battleRopes:      { period: 0.7, frames: [ropeA, ropeB] },
+  wallSit:          { period: 3.0, frames: [wallSitA, wallSitB] },
+};
+
+// ---------------------------------------------------------------------------
+// Övningsbibliotek. Första muskeln är den primära.
+export const EXERCISES = [
+  // Ben
+  { kneeHeavy: true, id: 'squat', name: 'Knäböj', muscles: ['legs', 'core'], equipment: 'none',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'squat',
+    tips: ['Stå med fötterna axelbrett isär och tårna lätt utåt.',
+           'Skjut bak höften som om du ska sätta dig på en stol.',
+           'Håll bröstet uppe och knäna i linje med tårna.',
+           'Gå ner tills låren är parallella med golvet och tryck upp genom hälarna.'] },
+  { kneeHeavy: true, id: 'goblet-squat', name: 'Gobletknäböj', muscles: ['legs', 'core'], equipment: 'dumbbells',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'gobletSquat', props: ['dumbbells'],
+    tips: ['Håll en hantel lodrätt mot bröstet med båda händerna.',
+           'Sitt ner mellan hälarna med rak rygg.',
+           'Armbågarna pekar nedåt och kan nudda knäna i bottenläget.',
+           'Pressa upp kontrollerat.'] },
+  { kneeHeavy: true, id: 'barbell-squat', name: 'Knäböj med skivstång', muscles: ['legs', 'core'], equipment: 'gym',
+    sets: 4, reps: '6–10', defaultReps: 8, anim: 'barbellSquat', props: ['barbell'],
+    tips: ['Lägg stången på övre delen av ryggen, inte på nacken.',
+           'Andas in och spänn magen innan du går ner.',
+           'Knäna följer tårnas riktning.',
+           'Börja med lätt vikt och fokusera på tekniken.'] },
+  { kneeHeavy: true, id: 'lunge', name: 'Utfallssteg', muscles: ['legs'], equipment: 'none',
+    sets: 3, reps: '10 per ben', defaultReps: 10, anim: 'lunge',
+    tips: ['Ta ett långt steg framåt.',
+           'Sänk bakre knät mot golvet tills båda knäna är i ca 90 grader.',
+           'Håll överkroppen upprätt.',
+           'Tryck ifrån med det främre benet och byt ben.'] },
+  { kneeHeavy: true, id: 'db-lunge', name: 'Utfall med hantlar', muscles: ['legs'], equipment: 'dumbbells',
+    sets: 3, reps: '8–10 per ben', defaultReps: 8, anim: 'lunge', props: ['dumbbells'],
+    tips: ['Håll en hantel i varje hand med raka armar.',
+           'Kliv fram och sänk bakre knät mot golvet.',
+           'Främre knät ska vara ovanför foten, inte framför tårna.',
+           'Växla ben varje repetition eller kör alla på ett ben först.'] },
+  { id: 'glute-bridge', name: 'Höftlyft', muscles: ['legs', 'core'], equipment: 'none',
+    sets: 3, reps: '15', defaultReps: 15, anim: 'gluteBridge',
+    tips: ['Ligg på rygg med böjda knän och fötterna i golvet.',
+           'Spänn rumpan och lyft höften tills kroppen är rak från knä till axel.',
+           'Håll uppe en sekund.',
+           'Sänk långsamt.'] },
+  { id: 'rdl', name: 'Rumänska marklyft', muscles: ['legs', 'back'], equipment: 'dumbbells',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'deadlift', props: ['dumbbells'],
+    tips: ['Stå med lätt böjda knän och hantlarna framför låren.',
+           'Fäll framåt från höften och för hantlarna nära benen.',
+           'Håll ryggen rak – känn sträckningen på baksida lår.',
+           'Res dig genom att skjuta fram höften.'] },
+
+  { id: 'straight-leg-raise', name: 'Raka benlyft', muscles: ['legs', 'core'], equipment: 'none',
+    sets: 3, reps: '10–12 per ben', defaultReps: 10, anim: 'straightLegRaise',
+    tips: ['Ligg på rygg med ena benet böjt och foten i golvet.',
+           'Spänn framsidan av låret på det raka benet så att knät är helt rakt.',
+           'Lyft benet långsamt till samma höjd som det böjda knät.',
+           'Sänk lika långsamt. Byt ben.'] },
+  { id: 'side-leg-raise', name: 'Sidoliggande benlyft', muscles: ['legs'], equipment: 'none',
+    sets: 3, reps: '12–15 per ben', defaultReps: 12, anim: 'sideLegRaise',
+    tips: ['Ligg på sidan med benen raka och huvudet vilande på armen.',
+           'Lyft det översta benet snett uppåt, med tån pekande framåt.',
+           'Håll höften stilla. Rotera inte bakåt.',
+           'Sänk långsamt. Byt sida.'] },
+  { id: 'calf-raise', name: 'Tåhävningar', muscles: ['legs'], equipment: 'none',
+    sets: 3, reps: '15–20', defaultReps: 15, anim: 'calfRaise',
+    tips: ['Stå med fötterna höftbrett isär, gärna med lätt stöd mot en vägg.',
+           'Res dig upp på tå så högt du kan.',
+           'Håll en sekund i toppen.',
+           'Sänk långsamt. Knäna är raka men inte låsta.'] },
+  { id: 'hip-thrust', name: 'Höftlyft med skivstång', muscles: ['legs', 'core'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'hipThrust', props: ['barbell'],
+    tips: ['Ligg på rygg med stången över höften. Använd gärna en dyna.',
+           'Fötterna i golvet, ungefär under knäna.',
+           'Spänn rumpan och lyft höften tills kroppen är rak från knä till axel.',
+           'Sänk kontrollerat. Rörelsen sker i höften, knävinkeln är densamma.'] },
+
+  // Fysio (ordinerade av fysioterapeut – föreslås inte automatiskt)
+  { id: 'single-leg-extension', name: 'Benspark med ett ben', muscles: ['legs'], equipment: 'gym', physio: true,
+    sets: 3, reps: '8 per ben', defaultReps: 8, anim: 'legExtension', props: ['machine', 'pad'],
+    tips: ['Ställ in maskinen så att knät är i linje med maskinens vridpunkt och dynan ligger mot nedre delen av smalbenet.',
+           'Sträck benet lugnt tills det är rakt, utan att låsa knät med en smäll.',
+           'Sänk långsamt, ungefär 3 sekunder ner.',
+           'Följ din fysioterapeuts råd om vikt och hur långt du böjer knät.'] },
+  { id: 'single-leg-curl', name: 'Bencurl med ett ben', muscles: ['legs'], equipment: 'gym', physio: true,
+    sets: 3, reps: '8 per ben', defaultReps: 8, anim: 'legCurl', props: ['machine', 'pad'],
+    tips: ['Ställ in maskinen så att knät är i linje med vridpunkten och dynan ligger strax ovanför hälen.',
+           'Böj knät och dra hälen in under sätet med baksidan av låret.',
+           'Släpp tillbaka långsamt och kontrollerat.',
+           'Följ din fysioterapeuts råd om vikt och rörelseomfång.'] },
+  { id: 'single-leg-press', name: 'Benpress med ett ben', muscles: ['legs'], equipment: 'gym', physio: true,
+    sets: 3, reps: '8 per ben', defaultReps: 8, anim: 'legPress', props: ['legpress'],
+    tips: ['Sätt foten mitt på plattan, med knät i linje med tårna.',
+           'Pressa ut tills benet är nästan rakt, utan att låsa knät.',
+           'Sänk långsamt så långt det känns bra i knät.',
+           'Börja lätt och följ din fysioterapeuts råd om vikt och djup.'] },
+  { id: 'single-leg-mini-squat', name: 'Knäböj på ett ben (kort)', muscles: ['legs'], equipment: 'none', physio: true,
+    sets: 3, reps: '8 per ben', defaultReps: 8, anim: 'miniSquat',
+    tips: ['Stå på ett ben med lätt stöd mot en vägg eller stol om du behöver.',
+           'Skjut bak höften och böj knät bara en liten bit, inte djupt.',
+           'Håll knät rakt över foten så att det inte faller inåt.',
+           'Res dig lugnt. Gå bara så djupt som din fysioterapeut sagt och det känns bra.'] },
+  { id: 'wall-sit-high', name: 'Väggsittande (högt)', muscles: ['legs'], equipment: 'none', physio: true,
+    sets: 3, reps: '30–45 s', defaultReps: 30, anim: 'wallSit', props: ['wall'], timed: true,
+    tips: ['Stå med ryggen mot en vägg och fötterna en bit ut från väggen.',
+           'Glid ner tills knäna är lätt böjda. Stanna högre än 90 grader.',
+           'Knäna ska vara ovanför fötterna, inte framför tårna.',
+           'Håll ställningen och andas lugnt. Res dig genom att glida upp längs väggen.'] },
+
+  // Rygg
+  { kneeHeavy: true, id: 'deadlift', name: 'Marklyft', muscles: ['back', 'legs'], equipment: 'gym',
+    sets: 3, reps: '5–8', defaultReps: 6, anim: 'deadlift', props: ['barbell'],
+    tips: ['Stå med mitten av foten under stången.',
+           'Greppa stången, sänk höften och håll ryggen rak.',
+           'Lyft genom att trycka golvet ifrån dig – stången nära kroppen.',
+           'Stå upprätt utan att svanka, sänk sedan kontrollerat.'] },
+  { id: 'db-row', name: 'Hantelrodd', muscles: ['back', 'arms'], equipment: 'dumbbells',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'row', props: ['dumbbells'],
+    tips: ['Fäll fram överkroppen med rak rygg och lätt böjda knän.',
+           'Dra hantlarna mot höften.',
+           'Kläm ihop skulderbladen i toppläget.',
+           'Sänk långsamt.'] },
+  { id: 'barbell-row', name: 'Skivstångsrodd', muscles: ['back', 'arms'], equipment: 'gym',
+    sets: 4, reps: '8–10', defaultReps: 8, anim: 'row', props: ['barbell'],
+    tips: ['Fäll fram ca 45 grader med rak rygg.',
+           'Dra stången mot naveln.',
+           'Armbågarna nära kroppen.',
+           'Undvik att gunga med överkroppen.'] },
+  { id: 'lat-pulldown', name: 'Latsdrag', muscles: ['back', 'arms'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'latPulldown', props: ['machine', 'thighpad'], cable: [0.47, -0.17],
+    tips: ['Sätt dig med låren under dynan och greppa stången lite bredare än axelbrett.',
+           'Luta dig bakåt en aning och dra stången ner mot övre delen av bröstet.',
+           'Tänk att du drar armbågarna ner mot sidorna och klämmer ihop skulderbladen.',
+           'Släpp upp stången långsamt tills armarna är raka.'] },
+  { id: 'seated-row', name: 'Sittande rodd (kabel)', muscles: ['back', 'arms'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'seatedRow', props: ['rowseat'], cable: [1.04, 0.69],
+    tips: ['Sätt dig med fötterna mot fotplattan och knäna lätt böjda.',
+           'Sitt upprätt med rak rygg och greppa handtaget.',
+           'Dra handtaget mot magen och kläm ihop skulderbladen.',
+           'Sträck armarna långsamt framåt igen, utan att luta dig fram.'] },
+  { id: 'chest-press-machine', name: 'Bröstpress i maskin', muscles: ['chest', 'arms', 'shoulders'], equipment: 'gym',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'chestPress', props: ['machine', 'dumbbells'],
+    tips: ['Ställ in sätet så att handtagen är i höjd med mitten av bröstet.',
+           'Sitt med ryggen mot ryggstödet och fötterna i golvet.',
+           'Pressa handtagen framåt tills armarna är nästan raka.',
+           'För tillbaka långsamt tills du känner en lätt sträckning i bröstet.'] },
+  { id: 'triceps-pushdown', name: 'Triceps pushdown (kabel)', muscles: ['arms'], equipment: 'gym',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'pushdown', props: [], cable: [0.66, -0.15],
+    tips: ['Stå nära kabelmaskinen och greppa repet eller stången med armbågarna intill kroppen.',
+           'Pressa ner tills armarna är raka.',
+           'Bara underarmarna rör sig. Överarmarna är stilla.',
+           'Släpp upp kontrollerat till ungefär 90 grader i armbågen.'] },
+  { noAuto: true, id: 'pull-up', name: 'Chins', muscles: ['back', 'arms'], equipment: 'gym',
+    sets: 3, reps: '5–10', defaultReps: 6, anim: 'pullUp', props: ['pullUpBar'],
+    tips: ['Häng i stången med raka armar.',
+           'Dra dig upp tills hakan är över stången.',
+           'Sänk dig kontrollerat hela vägen ner.',
+           'För tungt? Använd assisterad chinsmaskin eller ett gummiband.'] },
+  { id: 'superman', name: 'Superman', muscles: ['back', 'core'], equipment: 'none',
+    sets: 3, reps: '12', defaultReps: 12, anim: 'superman',
+    tips: ['Ligg på mage med armarna sträckta framåt.',
+           'Lyft armar, bröst och ben samtidigt från golvet.',
+           'Håll två sekunder och titta ner i golvet.',
+           'Sänk långsamt.'] },
+
+  // Bröst
+  { id: 'bench-press', name: 'Bänkpress', muscles: ['chest', 'arms', 'shoulders'], equipment: 'gym',
+    sets: 4, reps: '6–10', defaultReps: 8, anim: 'benchPress', props: ['bench', 'barbell'],
+    tips: ['Ligg med ögonen under stången och fötterna i golvet.',
+           'Greppa lite bredare än axelbrett.',
+           'Sänk stången mot nedre delen av bröstet.',
+           'Pressa upp. Använd gärna en spotter vid tunga vikter.'] },
+  { id: 'db-bench', name: 'Hantelpress på bänk', muscles: ['chest', 'arms'], equipment: 'gym',
+    sets: 3, reps: '8–12', defaultReps: 10, anim: 'benchPress', props: ['bench', 'dumbbells'],
+    tips: ['Ligg på bänken med en hantel i varje hand.',
+           'Sänk hantlarna till bröstets sidor.',
+           'Pressa upp och för ihop hantlarna lätt i toppen.',
+           'Håll skulderbladen ihop mot bänken.'] },
+  { id: 'push-up', name: 'Armhävningar', muscles: ['chest', 'arms', 'core'], equipment: 'none',
+    sets: 3, reps: '8–15', defaultReps: 10, anim: 'pushUp',
+    tips: ['Händerna lite bredare än axlarna.',
+           'Kroppen ska vara rak som en planka från huvud till häl.',
+           'Sänk bröstet mot golvet med armbågarna snett bakåt.',
+           'För tungt? Gör dem på knä eller mot en bänk.'] },
+
+  // Axlar & armar
+  { id: 'shoulder-press', name: 'Axelpress med hantlar', muscles: ['shoulders', 'arms'], equipment: 'dumbbells',
+    sets: 3, reps: '8–12', defaultReps: 10, anim: 'shoulderPress', props: ['dumbbells'],
+    tips: ['Håll hantlarna i axelhöjd.',
+           'Spänn magen så att du inte svankar.',
+           'Pressa rakt upp tills armarna är nästan raka.',
+           'Sänk kontrollerat.'] },
+  { id: 'bicep-curl', name: 'Bicepscurl', muscles: ['arms'], equipment: 'dumbbells',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'bicepCurl', props: ['dumbbells'],
+    tips: ['Armbågarna stilla intill kroppen.',
+           'Böj armarna och lyft hantlarna mot axlarna.',
+           'Undvik att gunga med ryggen.',
+           'Sänk långsamt hela vägen.'] },
+  { id: 'triceps-ext', name: 'Tricepspress över huvudet', muscles: ['arms'], equipment: 'dumbbells',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'tricepsExtension', props: ['dumbbells'],
+    tips: ['Håll hanteln med båda händerna ovanför huvudet.',
+           'Sänk hanteln bakom huvudet genom att böja armbågarna.',
+           'Överarmarna ska peka rakt upp och vara stilla.',
+           'Sträck upp igen.'] },
+
+  // Mage & bål
+  { id: 'plank', name: 'Plankan', muscles: ['core'], equipment: 'none',
+    sets: 3, reps: '30–45 s', defaultReps: 30, anim: 'plank', timed: true,
+    tips: ['Stöd på underarmarna med armbågarna under axlarna.',
+           'Kroppen rak – varken rumpa upp eller svank.',
+           'Spänn mage och rumpa.',
+           'Andas lugnt under hela tiden.'] },
+  { id: 'crunch', name: 'Crunches', muscles: ['core'], equipment: 'none',
+    sets: 3, reps: '15–20', defaultReps: 15, anim: 'crunch',
+    tips: ['Ligg på rygg med böjda knän.',
+           'Händerna lätt vid huvudet – dra inte i nacken.',
+           'Rulla upp axlarna från golvet med magmusklerna.',
+           'Sänk långsamt.'] },
+
+  // Kondition
+  { kneeHeavy: true, id: 'jumping-jack', name: 'Jumping jacks', muscles: ['cardio'], equipment: 'none',
+    sets: 3, reps: '45 s', defaultReps: 45, anim: 'jumpingJack', timed: true,
+    tips: ['Hoppa ut med benen samtidigt som armarna går upp.',
+           'Hoppa ihop och för ner armarna.',
+           'Landa mjukt på framfoten.',
+           'Bra uppvärmning!'] },
+  { id: 'mountain-climber', name: 'Mountain climbers', muscles: ['cardio', 'core'], equipment: 'none',
+    sets: 3, reps: '30 s', defaultReps: 30, anim: 'mountainClimber', timed: true,
+    tips: ['Starta i armhävningsposition.',
+           'Dra växelvis knäna mot bröstet i högt tempo.',
+           'Håll höften låg och stilla.',
+           'Händerna rakt under axlarna.'] },
+  { id: 'march', name: 'Marsch på stället', muscles: ['cardio'], equipment: 'none',
+    sets: 3, reps: '60 s', defaultReps: 60, anim: 'march', timed: true,
+    tips: ['Marschera på stället och lyft knäna i lagom höjd.',
+           'Pendla med armarna.',
+           'Sätt ner fötterna mjukt, utan hopp.',
+           'Öka tempot efter hand om det känns bra.'] },
+  { id: 'shadow-box', name: 'Skuggboxning', muscles: ['cardio', 'shoulders'], equipment: 'none',
+    sets: 3, reps: '45 s', defaultReps: 45, anim: 'shadowBox', timed: true,
+    tips: ['Stå med ena foten lite framför den andra och händerna uppe vid hakan.',
+           'Slå raka slag växelvis med höger och vänster.',
+           'Vrid lätt i höften och spänn magen i varje slag.',
+           'Håll fötterna i golvet, utan hopp. Skonsamt för knäna men får upp pulsen.'] },
+  { id: 'battle-ropes', name: 'Battle ropes', muscles: ['cardio', 'shoulders'], equipment: 'gym',
+    sets: 3, reps: '30 s', defaultReps: 30, anim: 'battleRopes', props: ['rope'], timed: true,
+    tips: ['Håll i ett rep i varje hand och stå med lätt böjda knän.',
+           'Slå växelvis upp och ner med armarna så att det blir vågor i repen.',
+           'Håll ryggen rak och magen spänd.',
+           'Pulsen går upp snabbt utan stötar mot knäna.'] },
+  { id: 'bike', name: 'Motionscykel', muscles: ['cardio', 'legs'], equipment: 'gym',
+    sets: 1, reps: '10 min', defaultReps: 600, anim: 'bike', props: ['bike'], timed: true,
+    tips: ['Ställ in sadeln så att knät är nästan rakt när pedalen är längst ner.',
+           'Börja med lätt motstånd.',
+           'Trampa i jämnt tempo.',
+           'Cykling är ett av de skonsammaste sätten att träna kondition för knäna.'] },
+];
+
+for (const e of EXERCISES) e.safety = SAFETY[e.id] ?? [];
+
+export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
+
+/** opts: { hasDumbbells, kneeFriendly } */
+export function isAvailable(exercise, place, { hasDumbbells = false, kneeFriendly = false } = {}) {
+  if (kneeFriendly && exercise.kneeHeavy) return false;
+  if (place === 'gym') return true;
+  return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells);
+}
