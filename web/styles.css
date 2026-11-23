@@ -704,3 +704,18 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .goal-mini small { color: var(--muted); font-size: 13px; }
 .goal-input { display: flex; gap: 8px; }
 .goal-input input { flex: 1; min-width: 0; }
+
+/* --- Logga övningar ------------------------------------------------------- */
+.segmented.two { grid-template-columns: 1fr 1fr; }
+.m-ex { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.m-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.m-head b { font-size: 16px; }
+.m-set { display: flex; align-items: center; gap: 10px; }
+.m-set .kg input { width: 64px; }
+.icon-btn.small { width: 30px; height: 30px; margin-left: auto; }
+.icon-btn.small svg { width: 14px; height: 14px; }
+.create-btn { width: 100%; margin: 10px 0 4px; }
+.custom-form { margin: 10px 0; }
+.custom-form b { color: var(--text); font-size: 16px; }
+.check-row { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.check-row input { width: auto; }

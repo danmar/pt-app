@@ -8,6 +8,7 @@ const defaults = () => ({
   steps: {},     // { 'ÅÅÅÅ-MM-DD': antal }
   saved: [],     // sparade pass: { id, name, place, items, minutes }
   week: ['', '', '', '', '', '', ''], // veckoplan, måndag först: '', rest, gym, home, swim, walk eller saved:<id>
+  customExercises: [], // egna övningar: { id, name, muscles: [grupp], gear, timed }
   goals: [],     // { id, exId, metric: 'reps' | 'weight' | 'sec', target, created, achieved }
   weekFocus: [[], [], [], [], [], [], []], // föreslagna muskelgrupper per veckodag (från veckoförslaget)
   settings: { hasDumbbells: false, restSeconds: 90, stepGoal: 8000, kneeFriendly: true, physioAlways: true, seeded: [] },
@@ -25,6 +26,7 @@ function normalize(raw) {
     saved: Array.isArray(raw.saved) ? raw.saved : [],
     week: Array.isArray(raw.week) && raw.week.length === 7 ? raw.week.map((v) => (typeof v === 'string' ? v : '')) : base.week,
     goals: Array.isArray(raw.goals) ? raw.goals : [],
+    customExercises: Array.isArray(raw.customExercises) ? raw.customExercises.filter((c) => c && c.id && c.name) : [],
     weekFocus: Array.isArray(raw.weekFocus) && raw.weekFocus.length === 7 ? raw.weekFocus.map((v) => (Array.isArray(v) ? v : [])) : base.weekFocus,
     settings: { ...base.settings, ...(raw.settings || {}) },
     active: raw.active && (Array.isArray(raw.active.items) || Array.isArray(raw.active.steps)) ? raw.active : null,

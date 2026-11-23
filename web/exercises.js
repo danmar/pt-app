@@ -423,6 +423,7 @@ export const ANIMATIONS = {
   pushdown:         { period: 2.2, frames: [pushdownUp, pushdownDown] },
   battleRopes:      { period: 0.7, frames: [ropeA, ropeB] },
   wallSit:          { period: 3.0, frames: [wallSitA, wallSitB] },
+  idle:             { period: 3.0, frames: [standing, standing] },
   externalRotation: { period: 2.6, frames: [rotIn, rotOut], front: true },
   wallAngel:        { period: 3.0, frames: [angelW, angelY], front: true },
   birdDog:          { period: 3.2, frames: [fourPoint, birdDogOut] },
@@ -768,6 +769,19 @@ for (const e of EXERCISES) {
   e.gear = GEAR_OF[e.id] ?? 'body';
   e.load = { ...(LOAD[e.id] || {}) };
   if (e.kneeHeavy) e.load.knees = 2;
+}
+
+/** Egna övningar som du skapat själv. Läggs till i biblioteket när appen startar. */
+export function addCustomExercise(def) {
+  if (BY_ID[def.id]) return BY_ID[def.id];
+  const ex = {
+    sets: 3, reps: def.timed ? '30 s' : '10', defaultReps: def.timed ? 30 : 10, anim: 'idle', tips: [], noAuto: true,
+    ...def, custom: true, safety: [], load: {},
+    equipment: def.gear === 'body' ? 'none' : def.gear === 'dumbbells' ? 'dumbbells' : 'gym',
+  };
+  EXERCISES.push(ex);
+  BY_ID[ex.id] = ex;
+  return ex;
 }
 
 /**

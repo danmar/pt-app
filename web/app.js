@@ -1,4 +1,4 @@
-import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk } from './exercises.js';
+import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk, addCustomExercise } from './exercises.js';
 import { mountFigures } from './figure.js';
 import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
 import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor } from './workouts.js';
@@ -852,6 +852,7 @@ function logView() {
       </div>
     </section>
 
+    <button class="btn primary" data-action="manual-new">${ICON.gym} Logga övningar</button>
     <div class="row">
       <button class="btn primary" data-action="walk-new">${ICON.walk} Promenad</button>
       <button class="btn primary swim-btn" data-action="swim-log">${ICON.swim} Simpass</button>
@@ -1011,8 +1012,8 @@ function detailSheet(ex) {
       <div class="list-row"><span>Utrustning</span><b>${EQUIPMENT[ex.equipment]}</b></div>
       <div class="list-row"><span>Rekommenderat</span><b>${ex.sets} set × ${ex.reps}</b></div>
     </div>
-    <h3>Så gör du</h3>
-    <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
+    ${ex.tips.length ? `<h3>Så gör du</h3>
+    <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>` : ex.custom ? '<p class="muted">Egen övning.</p>' : ''}
     ${safetyBlock(ex)}
     ${ex.physio || data.active ? '' : `<button class="btn secondary" data-action="goal-new" data-id="${ex.id}">Sätt ett mål för ${esc(ex.name.toLowerCase())}</button>`}
     <button class="btn-text guide-link" data-action="guide">${ICON.shield} Läs mer om att träna säkert</button>`;
@@ -1098,6 +1099,119 @@ function savePlanSheet(place) {
       <p class="hint">Passet hamnar under Planera. Där kan du starta det eller lägga in det i veckoplanen.</p>
       <button class="btn primary big" type="submit">Spara</button>
     </form>`;
+}
+
+// ---- Logga övningar i efterhand och välja valfri övning -------------------------
+// ui.manual = { date, place, minutes, items: [{ exId, sets: [{ reps, weight }] }], picking, creating, query }
+function sheetBody(html) {
+  const body = $('#sheet .sheet-body');
+  body.innerHTML = html;
+  mountFigures(body);
+}
+
+function manualMain() {
+  const m = ui.manual;
+  const today = dayKey(new Date());
+  return `
+    <div class="sheet-head"><h2>Logga övningar</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
+    <div class="form">
+      <label>Datum<input type="date" value="${m.date}" max="${today}" data-minput="date"></label>
+      <div class="segmented two" role="radiogroup" aria-label="Var">
+        ${['gym', 'home'].map((p) => `<button type="button" role="radio" aria-checked="${m.place === p}" data-action="m-place" data-value="${p}">${PLACE_NAME[p]}</button>`).join('')}
+      </div>
+      <label>Hur länge tränade du? (minuter)<input type="number" inputmode="numeric" min="1" max="600" value="${m.minutes}" data-minput="minutes"></label>
+    </div>
+    ${m.items.map((it, i) => {
+      const ex = BY_ID[it.exId];
+      return `
+      <div class="card m-ex">
+        <div class="m-head"><b>${esc(ex.name)}</b>
+          <button class="icon-btn" data-action="m-remove" data-i="${i}" aria-label="Ta bort ${esc(ex.name)}">${ICON.remove}</button></div>
+        ${it.sets.map((set, k) => `
+          <div class="m-set">
+            <span class="set-no">${k + 1}</span>
+            <label class="kg"><input type="text" inputmode="numeric" value="${set.reps}" data-minput="reps" data-i="${i}" data-k="${k}" aria-label="Reps set ${k + 1}"><span>${ex.timed ? 's' : 'st'}</span></label>
+            ${ex.timed ? '' : `<label class="kg"><input type="text" inputmode="decimal" placeholder="0" value="${set.weight ? fmtNum(set.weight, 2) : ''}" data-minput="weight" data-i="${i}" data-k="${k}" aria-label="Vikt set ${k + 1}"><span>kg</span></label>`}
+            ${it.sets.length > 1 ? `<button class="icon-btn small" data-action="m-unset" data-i="${i}" data-k="${k}" aria-label="Ta bort set ${k + 1}">${ICON.remove}</button>` : ''}
+          </div>`).join('')}
+        <button class="btn-text" data-action="m-addset" data-i="${i}">+ Set</button>
+      </div>`;
+    }).join('')}
+    <button class="btn secondary" data-action="m-pick-open">+ Lägg till övning</button>
+    <button class="btn primary big" data-action="m-save" ${m.items.length ? '' : 'disabled'}>Spara</button>`;
+}
+
+function pickPane() {
+  const st = ui.pick;
+  return `
+    <div class="sheet-head"><h2>Välj övning</h2><button class="btn-text" data-action="${st.for === 'manual' ? 'm-pick-close' : 'close-sheet'}">${st.for === 'manual' ? 'Tillbaka' : 'Avbryt'}</button></div>
+    <input type="search" class="search" placeholder="Sök övning" value="${esc(st.query)}" data-input="pick-search" aria-label="Sök övning">
+    <div id="pick-list">${pickList()}</div>`;
+}
+
+function pickList() {
+  const q = ui.pick.query.trim().toLowerCase();
+  const list = EXERCISES.filter((e) => !q || e.name.toLowerCase().includes(q));
+  const exact = list.some((e) => e.name.toLowerCase() === q);
+  return `
+    ${ui.pick.creating ? customForm() : `<button class="btn secondary create-btn" data-action="c-open">+ Skapa egen övning${q && !exact ? ` ”${esc(ui.pick.query.trim())}”` : ''}</button>`}
+    ${MUSCLE_IDS.map((m) => {
+      const items = list.filter((e) => e.muscles[0] === m);
+      return items.length ? `<h3 class="group-title">${MUSCLES[m].name}</h3><ul class="ex-list">${items.map((ex) => `
+        <li class="ex-item" data-group="${ex.muscles[0]}"><button class="ex-main" data-action="pick-ex" data-id="${ex.id}">
+          <div class="fig thumb" data-ex="${ex.id}"></div>
+          <div class="ex-text"><strong>${esc(ex.name)}</strong><small>${ex.custom ? 'Egen · ' : ex.physio ? 'Fysio · ' : ''}${GEAR[ex.gear]}</small></div>
+        </button></li>`).join('')}</ul>` : '';
+    }).join('')}`;
+}
+
+function customForm() {
+  return `
+    <div class="card form custom-form">
+      <b>Egen övning</b>
+      <label>Namn<input type="text" id="c-name" value="${esc(ui.pick.query.trim())}" placeholder="t.ex. Kettlebell swing" autocomplete="off"></label>
+      <label>Muskelgrupp<select id="c-group">${MUSCLE_IDS.map((m) => `<option value="${m}">${MUSCLES[m].name}</option>`).join('')}</select></label>
+      <label>Utrustning<select id="c-gear">${Object.entries(GEAR).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label class="check-row"><input type="checkbox" id="c-timed"> Mäts i sekunder (som plankan)</label>
+      <div class="row"><button class="btn secondary" data-action="c-cancel">Avbryt</button><button class="btn primary" data-action="c-create">Skapa</button></div>
+    </div>`;
+}
+
+function openPick(forWhat) {
+  ui.pick = { for: forWhat, query: '', creating: false };
+  if (forWhat === 'manual') sheetBody(pickPane()); else openSheet(pickPane());
+}
+
+/** En övning är vald i listan, för loggningen eller för pågående pass. */
+function pickExercise(exId) {
+  if (ui.pick.for === 'manual') {
+    const ex = BY_ID[exId];
+    const w = lastWeights(data.sessions)[exId] ?? 0;
+    ui.manual.items.push({ exId, sets: [...Array(ex.sets)].map(() => ({ reps: ex.defaultReps, weight: w })) });
+    sheetBody(manualMain());
+  } else {
+    closeSheet();
+    runItem(data.active, newItem(exId));
+  }
+}
+
+function saveManual() {
+  const m = ui.manual;
+  const minutes = Math.max(1, Math.min(600, Number(m.minutes) || 30));
+  const isToday = m.date === dayKey(new Date());
+  const end = isToday ? new Date() : new Date(`${m.date}T12:00:00`);
+  const start = new Date(end.getTime() - minutes * 60000);
+  const entries = m.items
+    .map((it) => ({ exId: it.exId, sets: it.sets.filter((x) => x.reps > 0).map((x) => (BY_ID[it.exId].timed ? { reps: x.reps, weight: 0, sec: true } : { reps: x.reps, weight: x.weight || 0 })) }))
+    .filter((e) => e.sets.length);
+  if (!entries.length) { toast('Lägg till minst ett set'); return; }
+  data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), endDate: end.toISOString(), entries, manual: true });
+  const reached = checkGoals();
+  save();
+  ui.manual = null;
+  closeSheet();
+  render();
+  toast(reached.length ? `🏆 Mål klart: ${goalLabel(reached[0])}!` : 'Övningarna är sparade 💪');
 }
 
 function walkSheet() {
@@ -1442,6 +1556,7 @@ function renderPicker() {
           </div>`)).join('')}</ul></div>`).join('')}
       ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
         <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
+      <button class="btn secondary" data-action="any-exercise">Valfri övning…</button>
       <details class="card"><summary>Ändra utrustning och muskelgrupper</summary><div class="controls pk-controls">${strengthControls(w.place, 'w')}</div></details>
     </div>
     <div id="rest" class="rest" hidden></div>
@@ -1752,6 +1867,34 @@ document.addEventListener('click', (e) => {
       openSheet(guideSheet()); break;
 
     // Logg
+    case 'manual-new':
+      ui.manual = { date: dayKey(new Date()), place: 'gym', minutes: 45, items: [] };
+      openSheet(manualMain()); break;
+    case 'm-place': ui.manual.place = t.dataset.value; sheetBody(manualMain()); break;
+    case 'm-remove': ui.manual.items.splice(Number(t.dataset.i), 1); sheetBody(manualMain()); break;
+    case 'm-addset': {
+      const sets = ui.manual.items[Number(t.dataset.i)].sets;
+      sets.push({ ...(sets[sets.length - 1] ?? { reps: 10, weight: 0 }) });
+      sheetBody(manualMain()); break;
+    }
+    case 'm-unset': ui.manual.items[Number(t.dataset.i)].sets.splice(k, 1); sheetBody(manualMain()); break;
+    case 'm-pick-open': openPick('manual'); break;
+    case 'm-pick-close': sheetBody(manualMain()); break;
+    case 'm-save': saveManual(); break;
+    case 'any-exercise': openPick('workout'); break;
+    case 'pick-ex': pickExercise(t.dataset.id); break;
+    case 'c-open': ui.pick.creating = true; $('#pick-list').innerHTML = pickList(); mountFigures($('#pick-list')); $('#c-name')?.focus(); break;
+    case 'c-cancel': ui.pick.creating = false; $('#pick-list').innerHTML = pickList(); mountFigures($('#pick-list')); break;
+    case 'c-create': {
+      const name = $('#c-name').value.trim();
+      if (!name) { toast('Skriv ett namn'); break; }
+      const def = { id: `c-${uid()}`, name, muscles: [$('#c-group').value], gear: $('#c-gear').value, timed: $('#c-timed').checked };
+      data.customExercises.push(def);
+      save();
+      addCustomExercise(def);
+      pickExercise(def.id);
+      break;
+    }
     case 'walk-new':
       openSheet(walkSheet()); break;
     case 'walk-quick':
@@ -1900,6 +2043,7 @@ document.addEventListener('change', (e) => {
       if (!file) break;
       file.text().then((text) => {
         importJSON(text);
+        for (const c of data.customExercises) addCustomExercise(c);
         ensurePain();
         resetPlans();
         seedPhysio();
@@ -1917,6 +2061,29 @@ document.addEventListener('input', (e) => {
     const v = parseFloat(String(t.value).replace(',', '.'));
     data.active.items[data.active.index].sets[Number(t.dataset.k)].weight = Number.isFinite(v) ? v : 0;
     save();
+  } else if (t.dataset.minput && ui.manual) {
+    const v = t.dataset.minput;
+    if (v === 'date' || v === 'minutes') ui.manual[v] = t.value;
+    else {
+      const i = Number(t.dataset.i);
+      const k = Number(t.dataset.k);
+      const sets = ui.manual.items[i].sets;
+      const n = parseFloat(String(t.value).replace(',', '.'));
+      const old = sets[k][v];
+      const value = Number.isFinite(n) && n > 0 ? (v === 'reps' ? Math.round(n) : n) : 0;
+      sets[k][v] = value;
+      // Följande set som hade samma värde följer med, så att man bara behöver skriva en gång.
+      for (let j = k + 1; j < sets.length && sets[j][v] === old; j++) {
+        sets[j][v] = value;
+        const input = $(`[data-minput="${v}"][data-i="${i}"][data-k="${j}"]`);
+        if (input) input.value = value ? fmtNum(value, 2) : '';
+      }
+    }
+  } else if (t.dataset.input === 'pick-search') {
+    ui.pick.query = t.value;
+    ui.pick.creating = false;
+    $('#pick-list').innerHTML = pickList();
+    mountFigures($('#pick-list'));
   } else if (t.dataset.input === 'search') {
     $('#lib-list').innerHTML = libraryList(ui.tab, t.value);
     mountFigures($('#lib-list'));
@@ -2008,6 +2175,7 @@ $('#workout').addEventListener('touchend', (e) => {
 
 // ---------------------------------------------------------------------------
 // Start
+for (const c of data.customExercises) addCustomExercise(c);
 ensurePain();
 seedPhysio();
 render();

@@ -16,6 +16,7 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Steg:** skriv in dagens steg från Hälsa-appen. Startsidan visar hur nära du är ditt stegmål och de senaste 7 dagarna.
 - **Animationer:** varje övning visas med en animerad streckgubbe och en kort instruktion.
 - **Under passet:** logga kg och reps per set. En vilotimer piper när det är dags för nästa set, och skärmen hålls tänd. Svep mellan övningarna. Stängs appen mitt i passet återupptas det nästa gång du öppnar den.
+- **Logga i efterhand:** under Logg trycker du på *Logga övningar*. Välj datum, plats och tid, och lägg till valfria övningar med set, reps och kg. Finns övningen inte i listan skapar du en egen. Egna övningar går också att välja under ett pass via *Valfri övning…*.
 - **Logg:** historik över pass och promenader, med ett diagram över aktiva minuter de senaste 7 dagarna. Promenader loggar du för hand.
 - **Fungerar offline**, och all data sparas bara på telefonen. Du kan exportera och importera en säkerhetskopia under Inställningar.
 
@@ -76,4 +77,4 @@ Appen måste ligga på en **https**-adress för att fungera som app på telefone
 
 ## Uppdatera appen
 
-Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v14`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
+Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v15`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
