@@ -1,4 +1,4 @@
-import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk, addCustomExercise } from './exercises.js';
+import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk, addCustomExercise, matchesQuery } from './exercises.js';
 import { mountFigures } from './figure.js';
 import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
 import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor } from './workouts.js';
@@ -67,6 +67,7 @@ const ICON = {
   calendar: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
   steps: '<svg viewBox="0 0 24 24"><path d="M8 3c1.6 0 2.5 2 2.5 4.5S9.6 12 8 12 5.5 10 5.5 7.5 6.4 3 8 3zM6 14.5h4V17a2 2 0 0 1-4 0zM16 7c1.6 0 2.5 2 2.5 4.5S17.6 16 16 16s-2.5-2-2.5-4.5S14.4 7 16 7zM14 18.5h4V20a2 2 0 0 1-4 0z"/></svg>',
   save: '<svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4-6 4z"/></svg>',
+  info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
   up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
@@ -760,14 +761,15 @@ function planView(place) {
       <p class="hint">Förslagen ändras under passet efter det du har kört.</p>`}
     <div class="stack">
       <button class="btn primary big" data-action="start" ${gear.length ? '' : 'disabled'}>${ICON.play} Börja träna</button>
+      <button class="btn secondary" data-action="setup-any">+ Välj övningar från listan</button>
       <button class="btn secondary" data-action="library">Alla övningar</button>
     </div>`;
 }
 
-function suggestionItem({ ex, reason, busy }, actions) {
+function suggestionItem({ ex, reason, busy }, actions, main = `data-action="detail" data-id="${ex.id}"`) {
   return `
     <li class="ex-item ${busy ? 'is-busy' : ''}" data-group="${ex.muscles[0]}">
-      <button class="ex-main" data-action="detail" data-id="${ex.id}">
+      <button class="ex-main" ${main}>
         <div class="fig thumb" data-ex="${ex.id}"></div>
         <div class="ex-text">
           <strong>${esc(ex.name)}</strong>
@@ -1160,7 +1162,7 @@ function librarySheet(place) {
 
 function libraryList(place, query) {
   const q = query.trim().toLowerCase();
-  const list = EXERCISES.filter((e) => (e.physio || isAvailable(e, place, exOpts())) && (place === 'gym' || e.equipment !== 'gym') && (!q || e.name.toLowerCase().includes(q)));
+  const list = EXERCISES.filter((e) => (e.physio || isAvailable(e, place, exOpts())) && (place === 'gym' || e.equipment !== 'gym') && matchesQuery(e, q));
   return MUSCLE_IDS.map((m) => {
     const items = list.filter((e) => e.muscles[0] === m);
     if (!items.length) return '';
@@ -1261,38 +1263,45 @@ function manualMain() {
           <button class="icon-btn" data-action="m-remove" data-i="${i}" aria-label="Ta bort ${esc(ex.name)}">${ICON.remove}</button></div>
         ${it.sets.map((set, k) => `
           <div class="m-set">
-            <span class="set-no">${k + 1}</span>
-            <label class="kg"><input type="text" inputmode="numeric" value="${set.reps}" data-minput="reps" data-i="${i}" data-k="${k}" aria-label="Reps set ${k + 1}"><span>${ex.timed ? 's' : 'st'}</span></label>
+            ${set.side ? `<button class="side" data-action="m-side" data-i="${i}" data-k="${k}" aria-label="Set ${k + 1}, ${set.side === 'H' ? 'höger' : 'vänster'}. Tryck för att byta">${set.side}</button>` : `<span class="set-no">${k + 1}</span>`}
+            <label class="kg"><input type="text" inputmode="numeric" value="${inMinutes(ex) ? fmtNum(set.reps / 60) : set.reps}" data-minput="reps" data-i="${i}" data-k="${k}" aria-label="${inMinutes(ex) ? 'Minuter' : ex.timed ? 'Sekunder' : 'Reps'} set ${k + 1}"><span>${inMinutes(ex) ? 'min' : ex.timed ? 's' : 'st'}</span></label>
             ${ex.timed ? '' : `<label class="kg"><input type="text" inputmode="decimal" placeholder="0" value="${set.weight ? fmtNum(set.weight, 2) : ''}" data-minput="weight" data-i="${i}" data-k="${k}" aria-label="Vikt set ${k + 1}"><span>kg</span></label>`}
             ${it.sets.length > 1 ? `<button class="icon-btn small" data-action="m-unset" data-i="${i}" data-k="${k}" aria-label="Ta bort set ${k + 1}">${ICON.remove}</button>` : ''}
           </div>`).join('')}
         <button class="btn-text" data-action="m-addset" data-i="${i}">+ Set</button>
       </div>`;
     }).join('')}
-    <button class="btn secondary" data-action="m-pick-open">+ Lägg till övning</button>
+    <button class="btn secondary" data-action="m-pick-open">+ Lägg till övningar</button>
     <button class="btn primary big" data-action="m-save" ${m.items.length ? '' : 'disabled'}>Spara</button>`;
 }
 
 function pickPane() {
   const st = ui.pick;
   return `
-    <div class="sheet-head"><h2>Välj övning</h2><button class="btn-text" data-action="${st.for === 'manual' ? 'm-pick-close' : 'close-sheet'}">${st.for === 'manual' ? 'Tillbaka' : 'Avbryt'}</button></div>
+    <div class="sheet-head"><h2>Välj övningar</h2><button class="btn-text" data-action="${st.for === 'manual' ? 'm-pick-close' : 'close-sheet'}">${st.for === 'manual' ? 'Tillbaka' : 'Avbryt'}</button></div>
     <input type="search" class="search" placeholder="Sök övning" value="${esc(st.query)}" data-input="pick-search" aria-label="Sök övning">
-    <div id="pick-list">${pickList()}</div>`;
+    <p class="hint">Bocka för de övningar du vill ha med.</p>
+    <div id="pick-list">${pickList()}</div>
+    <div class="pick-footer"><button class="btn primary big" data-action="pick-done" id="pick-done" ${st.selected.length ? '' : 'disabled'}>${pickDoneLabel()}</button></div>`;
 }
+const pickDoneLabel = () => {
+  const n = ui.pick.selected.length;
+  return n ? `Lägg till ${n} ${n === 1 ? 'övning' : 'övningar'}` : 'Välj övningar';
+};
 
 function pickList() {
   const q = ui.pick.query.trim().toLowerCase();
-  const list = EXERCISES.filter((e) => !q || e.name.toLowerCase().includes(q));
+  const list = EXERCISES.filter((e) => matchesQuery(e, q));
   const exact = list.some((e) => e.name.toLowerCase() === q);
   return `
     ${ui.pick.creating ? customForm() : `<button class="btn secondary create-btn" data-action="c-open">+ Skapa egen övning${q && !exact ? ` ”${esc(ui.pick.query.trim())}”` : ''}</button>`}
     ${MUSCLE_IDS.map((m) => {
       const items = list.filter((e) => e.muscles[0] === m);
       return items.length ? `<h3 class="group-title">${MUSCLES[m].name}</h3><ul class="ex-list">${items.map((ex) => `
-        <li class="ex-item" data-group="${ex.muscles[0]}"><button class="ex-main" data-action="pick-ex" data-id="${ex.id}">
+        <li class="ex-item pick-item" data-group="${ex.muscles[0]}"><button class="ex-main" data-action="pick-toggle" data-id="${ex.id}" aria-pressed="${ui.pick.selected.includes(ex.id)}">
           <div class="fig thumb" data-ex="${ex.id}"></div>
-          <div class="ex-text"><strong>${esc(ex.name)}</strong><small>${ex.custom ? 'Egen · ' : ex.physio ? 'Fysio · ' : ''}${GEAR[ex.gear]}</small></div>
+          <div class="ex-text"><strong>${esc(ex.name)}</strong><small>${ex.custom ? 'Egen · ' : ex.physio ? 'Fysio · ' : ''}${GEAR[ex.gear]}${ex.unilateral ? ' · H/V' : ''}</small></div>
+          <span class="check" aria-hidden="true">${ICON.check}</span>
         </button></li>`).join('')}</ul>` : '';
     }).join('')}`;
 }
@@ -1305,26 +1314,41 @@ function customForm() {
       <label>Muskelgrupp<select id="c-group">${MUSCLE_IDS.map((m) => `<option value="${m}">${MUSCLES[m].name}</option>`).join('')}</select></label>
       <label>Utrustning<select id="c-gear">${Object.entries(GEAR).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
       <label class="check-row"><input type="checkbox" id="c-timed"> Mäts i sekunder (som plankan)</label>
+      <label class="check-row"><input type="checkbox" id="c-uni"> Ett ben eller en arm i taget (H/V)</label>
       <div class="row"><button class="btn secondary" data-action="c-cancel">Avbryt</button><button class="btn primary" data-action="c-create">Skapa</button></div>
     </div>`;
 }
 
 function openPick(forWhat) {
-  ui.pick = { for: forWhat, query: '', creating: false };
+  ui.pick = { for: forWhat, query: '', creating: false, selected: [] };
   if (forWhat === 'manual') sheetBody(pickPane()); else openSheet(pickPane());
 }
 
-/** En övning är vald i listan, för loggningen eller för pågående pass. */
-function pickExercise(exId) {
+/** Lägger till de förbockade övningarna: i passet före start, i loggningen eller i kön under passet. */
+function finishPick() {
+  const ids = ui.pick.selected;
+  if (!ids.length) return;
+  const n = ids.length;
   if (ui.pick.for === 'manual') {
-    const ex = BY_ID[exId];
-    const w = lastWeights(data.sessions)[exId] ?? 0;
-    ui.manual.items.push({ exId, sets: [...Array(ex.sets)].map(() => ({ reps: ex.defaultReps, weight: w })) });
+    for (const exId of ids) {
+      const ex = BY_ID[exId];
+      ui.manual.items.push({ exId, sets: makeSets(ex, ex.sets, lastWeights(data.sessions)[exId] ?? 0) });
+    }
     sheetBody(manualMain());
-  } else {
-    closeSheet();
-    runItem(data.active, newItem(exId));
+    return;
   }
+  closeSheet();
+  if (ui.pick.for === 'setup') {
+    for (const exId of ids) ui.plans[ui.tab].push({ exId, sets: BY_ID[exId].sets });
+    render();
+  } else {
+    const w = data.active;
+    for (const exId of ids) w.items.push(newItem(exId));
+    w.picking = true;
+    save();
+    renderWorkout();
+  }
+  toast(`${n} ${n === 1 ? 'övning' : 'övningar'} tillagda`);
 }
 
 function saveManual() {
@@ -1334,7 +1358,10 @@ function saveManual() {
   const end = isToday ? new Date() : new Date(`${m.date}T12:00:00`);
   const start = new Date(end.getTime() - minutes * 60000);
   const entries = m.items
-    .map((it) => ({ exId: it.exId, sets: it.sets.filter((x) => x.reps > 0).map((x) => (BY_ID[it.exId].timed ? { reps: x.reps, weight: 0, sec: true } : { reps: x.reps, weight: x.weight || 0 })) }))
+    .map((it) => ({ exId: it.exId, sets: it.sets.filter((x) => x.reps > 0).map((x) => ({
+      ...(BY_ID[it.exId].timed ? { reps: x.reps, weight: 0, sec: true } : { reps: x.reps, weight: x.weight || 0 }),
+      ...(x.side ? { side: x.side } : {}),
+    })) }))
     .filter((e) => e.sets.length);
   if (!entries.length) { toast('Lägg till minst ett set'); return; }
   data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), endDate: end.toISOString(), entries, manual: true });
@@ -1374,7 +1401,7 @@ function sessionSheet(s) {
       const ex = BY_ID[e.exId];
       return `<div class="card list">
         <div class="list-row head"><b>${esc(ex ? ex.name : e.exId)}</b></div>
-        ${e.sets.map((set, i) => `<div class="list-row"><span>Set ${i + 1}</span><b>${ex?.timed || set.sec ? `${set.reps} s` : set.weight > 0 ? `${set.reps} × ${fmtNum(set.weight)} kg` : `${set.reps} st`}</b></div>`).join('')}
+        ${e.sets.map((set, i) => `<div class="list-row"><span>Set ${i + 1}${sideTag(set)}</span><b>${ex && (ex.timed || set.sec) ? fmtAmount(ex, set.reps) : set.weight > 0 ? `${set.reps} × ${fmtNum(set.weight)} kg` : `${set.reps} st`}</b></div>`).join('')}
       </div>`;
     }).join('')}
     <button class="btn danger-outline" data-action="delete-session" data-id="${esc(s.id)}">Radera passet</button>`;
@@ -1423,9 +1450,21 @@ function toast(text) {
 
 // ---------------------------------------------------------------------------
 // Träningspass
+/** Långa tidsövningar (cykel, roddmaskin) visas i minuter. */
+const inMinutes = (ex) => ex.timed && ex.defaultReps >= 120;
+const fmtAmount = (ex, reps) => (inMinutes(ex) ? `${fmtNum(reps / 60)} min` : `${reps} ${ex.timed ? 's' : 'st'}`);
+
+/** Set för en övning. Enbensövningar får H och V växelvis, så antalet set dubbleras. */
+function makeSets(ex, n = ex.sets, weight = 0, extra = {}) {
+  const count = ex.unilateral ? n * 2 : n;
+  return [...Array(count)].map((_, i) => ({ reps: ex.defaultReps, weight, ...extra, ...(ex.unilateral ? { side: i % 2 ? 'V' : 'H' } : {}) }));
+}
+const flip = (side) => (side === 'H' ? 'V' : side === 'V' ? 'H' : undefined);
+const sideTag = (set) => (set.side ? ` (${set.side})` : '');
+
 function newItem(exId, sets = BY_ID[exId].sets) {
-  const weight = lastWeights(data.sessions)[exId] ?? 0;
-  return { exId, sets: [...Array(sets)].map(() => ({ reps: BY_ID[exId].defaultReps, weight, done: false })) };
+  const ex = BY_ID[exId];
+  return { exId, sets: makeSets(ex, sets, lastWeights(data.sessions)[exId] ?? 0, { done: false }) };
 }
 
 function startWorkout(place) {
@@ -1439,7 +1478,7 @@ function startWorkout(place) {
     gear: [...gearFor(place)],
     groups: [...groupsFor(place)],
     busy: {},
-    picking: !items.length,
+    picking: true, // man trycker själv på övningen man ska köra
     items,
   };
   save();
@@ -1659,31 +1698,33 @@ function renderPicker() {
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body picker" id="wk-body">
+      <p class="hint center">Tryck på övningen du ska köra.</p>
       ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
       ${qi.length ? `
         <div><h3 class="pk-title">Din kö <small>flytta om något är upptaget</small></h3>
         <ul class="ex-list">${qi.map((i, n) => {
           const ex = BY_ID[w.items[i].exId];
-          return suggestionItem({ ex, reason: `${w.items[i].sets.length} set × ${ex.reps}`, busy: w.busy[ex.id] }, `
+          return suggestionItem({ ex, reason: `${ex.unilateral ? w.items[i].sets.length / 2 : w.items[i].sets.length} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`, busy: w.busy[ex.id] }, `
             <div class="ex-actions">
-              <button class="go-btn" data-action="q-go" data-k="${i}">Kör</button>
               <div class="pk-more">
+                ${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}
                 ${n ? btn('q-up', `data-k="${i}"`, `Flytta upp ${esc(ex.name)}`, ICON.up) : ''}
                 ${btn('q-busy', `data-k="${i}"`, `${esc(ex.name)} är upptagen, flytta sist`, ICON.clock)}
                 ${btn('q-remove', `data-k="${i}"`, `Ta bort ${esc(ex.name)}`, ICON.remove)}
               </div>
-            </div>`);
+            </div>`, `data-action="q-go" data-k="${i}"`);
         }).join('')}</ul></div>` : ''}
+      <button class="btn secondary" data-action="any-exercise">+ Välj övningar från listan</button>
       <div><h3 class="pk-title">${qi.length ? 'Eller välj ett förslag' : 'Förslag'}</h3>
       ${!w.gear.length ? '<p class="note warn">Välj minst en typ av utrustning nedan.</p>' : free.length ? `
         <ul class="ex-list">${free.map((x) => suggestionItem(x, `
           <div class="ex-actions">
-            <button class="go-btn" data-action="s-go" data-id="${x.ex.id}">Kör</button>
             <div class="pk-more">
+              ${btn('detail', `data-id="${x.ex.id}"`, `Om ${esc(x.ex.name)}`, ICON.info)}
               ${btn('s-queue', `data-id="${x.ex.id}"`, `Lägg ${esc(x.ex.name)} i kön`, ICON.plus)}
               ${btn('s-busy', `data-id="${x.ex.id}"`, `${esc(x.ex.name)} är upptagen`, ICON.clock)}
             </div>
-          </div>`)).join('')}</ul>
+          </div>`, `data-action="s-go" data-id="${x.ex.id}"`)).join('')}</ul>
         ${w.more ? '' : '<button class="btn-text" data-action="s-more">Visa fler förslag</button>'}`
         : '<p class="empty">Inga fler övningar passar. Välj fler muskelgrupper eller mer utrustning nedan.</p>'}
       </div>
@@ -1691,12 +1732,10 @@ function renderPicker() {
         <div><h3 class="pk-title">Fysio för ${AREAS[area].the}</h3>
         <ul class="ex-list">${list.map((ex) => suggestionItem({ ex, reason: `Stärker och avlastar ${AREAS[area].the}` }, `
           <div class="ex-actions">
-            <button class="go-btn" data-action="s-go" data-id="${ex.id}">Kör</button>
-            <div class="pk-more">${btn('s-queue', `data-id="${ex.id}"`, `Lägg ${esc(ex.name)} i kön`, ICON.plus)}</div>
-          </div>`)).join('')}</ul></div>`).join('')}
+            <div class="pk-more">${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}${btn('s-queue', `data-id="${ex.id}"`, `Lägg ${esc(ex.name)} i kön`, ICON.plus)}</div>
+          </div>`, `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul></div>`).join('')}
       ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
         <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
-      <button class="btn secondary" data-action="any-exercise">Valfri övning…</button>
       <details class="card"><summary>Ändra utrustning och muskelgrupper</summary><div class="controls pk-controls">${strengthControls(w.place, 'w')}</div></details>
     </div>
     <div id="rest" class="rest" hidden></div>
@@ -1711,12 +1750,12 @@ function renderPicker() {
 function setRow(ex, s, k) {
   return `
     <div class="set ${s.done ? 'done' : ''}">
-      <span class="set-no">${k + 1}</span>
+      ${s.side ? `<button class="side" data-action="side" data-k="${k}" aria-label="Set ${k + 1}, ${s.side === 'H' ? 'höger' : 'vänster'} ben. Tryck för att byta">${s.side}</button>` : `<span class="set-no">${k + 1}</span>`}
       ${ex.equipment !== 'none' ? `
         <label class="kg"><input type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="${s.weight ? fmtNum(s.weight, 2) : ''}" data-input="weight" data-k="${k}" aria-label="Vikt set ${k + 1}"><span>kg</span></label>` : ''}
       <div class="stepper">
         <button data-action="reps" data-k="${k}" data-d="-1" aria-label="Minska">−</button>
-        <b id="reps-${k}">${s.reps} ${ex.timed ? 's' : 'st'}</b>
+        <b id="reps-${k}">${fmtAmount(ex, s.reps)}</b>
         <button data-action="reps" data-k="${k}" data-d="1" aria-label="Öka">+</button>
       </div>
       <button class="check" data-action="toggle-set" data-k="${k}" aria-pressed="${s.done}" aria-label="Set ${k + 1} klart">${ICON.check}</button>
@@ -1736,7 +1775,7 @@ function goTo(index) {
 function finishWorkout() {
   const w = data.active;
   const entries = w.items
-    .map((it) => ({ exId: it.exId, sets: it.sets.filter((s) => s.done).map(({ reps, weight }) => ({ reps, weight: Number(weight) || 0 })) }))
+    .map((it) => ({ exId: it.exId, sets: it.sets.filter((s) => s.done).map(({ reps, weight, side }) => ({ reps, weight: Number(weight) || 0, ...(side ? { side } : {}) })) }))
     .filter((e) => e.sets.length);
   if (entries.length) {
     data.sessions.push({ id: uid(), place: w.place, date: new Date(w.start).toISOString(), endDate: new Date().toISOString(), entries });
@@ -2030,9 +2069,15 @@ document.addEventListener('click', (e) => {
       openSheet(manualMain()); break;
     case 'm-place': ui.manual.place = t.dataset.value; sheetBody(manualMain()); break;
     case 'm-remove': ui.manual.items.splice(Number(t.dataset.i), 1); sheetBody(manualMain()); break;
+    case 'm-side': {
+      const set = ui.manual.items[Number(t.dataset.i)].sets[k];
+      set.side = flip(set.side);
+      sheetBody(manualMain()); break;
+    }
     case 'm-addset': {
       const sets = ui.manual.items[Number(t.dataset.i)].sets;
-      sets.push({ ...(sets[sets.length - 1] ?? { reps: 10, weight: 0 }) });
+      const prev = sets[sets.length - 1] ?? { reps: 10, weight: 0 };
+      sets.push({ ...prev, ...(prev.side ? { side: flip(prev.side) } : {}) });
       sheetBody(manualMain()); break;
     }
     case 'm-unset': ui.manual.items[Number(t.dataset.i)].sets.splice(k, 1); sheetBody(manualMain()); break;
@@ -2040,17 +2085,33 @@ document.addEventListener('click', (e) => {
     case 'm-pick-close': sheetBody(manualMain()); break;
     case 'm-save': saveManual(); break;
     case 'any-exercise': openPick('workout'); break;
-    case 'pick-ex': pickExercise(t.dataset.id); break;
+    case 'setup-any': openPick('setup'); break;
+    case 'pick-toggle': {
+      const sel = ui.pick.selected;
+      const id = t.dataset.id;
+      const on = !sel.includes(id);
+      if (on) sel.push(id); else sel.splice(sel.indexOf(id), 1);
+      t.setAttribute('aria-pressed', on);
+      const done = $('#pick-done');
+      done.disabled = !sel.length;
+      done.textContent = pickDoneLabel();
+      break;
+    }
+    case 'pick-done': finishPick(); break;
     case 'c-open': ui.pick.creating = true; $('#pick-list').innerHTML = pickList(); mountFigures($('#pick-list')); $('#c-name')?.focus(); break;
     case 'c-cancel': ui.pick.creating = false; $('#pick-list').innerHTML = pickList(); mountFigures($('#pick-list')); break;
     case 'c-create': {
       const name = $('#c-name').value.trim();
       if (!name) { toast('Skriv ett namn'); break; }
-      const def = { id: `c-${uid()}`, name, muscles: [$('#c-group').value], gear: $('#c-gear').value, timed: $('#c-timed').checked };
+      const def = { id: `c-${uid()}`, name, muscles: [$('#c-group').value], gear: $('#c-gear').value, timed: $('#c-timed').checked, unilateral: $('#c-uni').checked };
       data.customExercises.push(def);
       save();
       addCustomExercise(def);
-      pickExercise(def.id);
+      ui.pick.selected.push(def.id);
+      ui.pick.creating = false;
+      ui.pick.query = '';
+      sheetBody(pickPane());
+      toast(`${name} är skapad och förbockad`);
       break;
     }
     case 'walk-new':
@@ -2136,10 +2197,10 @@ document.addEventListener('click', (e) => {
     case 'reps': {
       const item = w.items[w.index];
       const ex = BY_ID[item.exId];
-      const step = ex.timed ? 5 : 1;
+      const step = inMinutes(ex) ? 60 : ex.timed ? 5 : 1;
       const s = item.sets[k];
-      s.reps = Math.min(300, Math.max(1, s.reps + Number(t.dataset.d) * step));
-      $(`#reps-${k}`).textContent = `${s.reps} ${ex.timed ? 's' : 'st'}`;
+      s.reps = Math.min(inMinutes(ex) ? 7200 : 300, Math.max(1, s.reps + Number(t.dataset.d) * step));
+      $(`#reps-${k}`).textContent = fmtAmount(ex, s.reps);
       save();
       break;
     }
@@ -2155,10 +2216,15 @@ document.addEventListener('click', (e) => {
       updateTimers();
       break;
     }
+    case 'side': {
+      const set = w.items[w.index].sets[k];
+      set.side = flip(set.side);
+      save(); renderWorkout(); break;
+    }
     case 'add-set': {
       const sets = w.items[w.index].sets;
       const prev = sets[sets.length - 1];
-      sets.push({ reps: prev?.reps ?? 10, weight: prev?.weight ?? 0, done: false });
+      sets.push({ reps: prev?.reps ?? 10, weight: prev?.weight ?? 0, done: false, ...(prev?.side ? { side: flip(prev.side) } : {}) });
       save();
       renderWorkout();
       break;
@@ -2229,13 +2295,14 @@ document.addEventListener('input', (e) => {
       const sets = ui.manual.items[i].sets;
       const n = parseFloat(String(t.value).replace(',', '.'));
       const old = sets[k][v];
-      const value = Number.isFinite(n) && n > 0 ? (v === 'reps' ? Math.round(n) : n) : 0;
+      const mins = v === 'reps' && inMinutes(BY_ID[ui.manual.items[i].exId]);
+      const value = Number.isFinite(n) && n > 0 ? (v === 'reps' ? Math.round(mins ? n * 60 : n) : n) : 0;
       sets[k][v] = value;
       // Följande set som hade samma värde följer med, så att man bara behöver skriva en gång.
       for (let j = k + 1; j < sets.length && sets[j][v] === old; j++) {
         sets[j][v] = value;
         const input = $(`[data-minput="${v}"][data-i="${i}"][data-k="${j}"]`);
-        if (input) input.value = value ? fmtNum(value, 2) : '';
+        if (input) input.value = value ? fmtNum(mins ? value / 60 : value, 2) : '';
       }
     }
   } else if (t.dataset.input === 'pick-search') {

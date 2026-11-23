@@ -731,6 +731,12 @@ export const EXERCISES = [
            'Slå växelvis upp och ner med armarna så att det blir vågor i repen.',
            'Håll ryggen rak och magen spänd.',
            'Pulsen går upp snabbt utan stötar mot knäna.'] },
+  { id: 'rowing-machine', name: 'Roddmaskin', muscles: ['cardio', 'back'], equipment: 'gym',
+    sets: 1, reps: '5–10 min', defaultReps: 300, anim: 'seatedRow', props: ['rowseat'], timed: true,
+    tips: ['Spänn fast fötterna och börja med benen: tryck ifrån, luta dig sedan lätt bakåt och dra handtaget mot magen.',
+           'På vägen tillbaka: armarna fram först, sedan överkroppen, sist böjer du knäna.',
+           'Håll ryggen rak och axlarna avslappnade.',
+           'Bra uppvärmning: 5 minuter i lugnt tempo.'] },
   { id: 'bike', name: 'Motionscykel', muscles: ['cardio', 'legs'], equipment: 'gym',
     sets: 1, reps: '10 min', defaultReps: 600, anim: 'bike', props: ['bike'], timed: true,
     tips: ['Ställ in sadeln så att knät är nästan rakt när pedalen är längst ner.',
@@ -747,7 +753,7 @@ const GEAR_OF = {
   'leg-press': 'machine', 'leg-extension': 'machine', 'leg-curl': 'machine', 'single-leg-extension': 'machine',
   'single-leg-curl': 'machine', 'single-leg-press': 'machine', 'lat-pulldown': 'machine', 'seated-row': 'machine',
   'chest-press-machine': 'machine', 'triceps-pushdown': 'machine', 'machine-shoulder-press': 'machine',
-  'battle-ropes': 'machine', bike: 'machine',
+  'battle-ropes': 'machine', bike: 'machine', 'rowing-machine': 'machine',
 };
 
 // Belastning på kroppsdelar som kan göra ont: 1 = viss, 2 = hög.
@@ -761,14 +767,43 @@ const LOAD = {
   'shoulder-press': { shoulders: 2, back: 1 }, 'barbell-press': { shoulders: 2, back: 1 }, 'machine-shoulder-press': { shoulders: 2 },
   'triceps-ext': { shoulders: 2, back: 1 }, crunch: { back: 1 }, plank: { back: 1, shoulders: 1 },
   'jumping-jack': { knees: 2, shoulders: 1 }, 'mountain-climber': { knees: 1, shoulders: 1, back: 1 },
-  'shadow-box': { shoulders: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
+  'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
 };
 
+// Andra namn som sökningen ska hitta.
+const ALIASES = {
+  'db-bench': ['liggande hantelpress', 'hantelpress liggande', 'bröstpress med hantlar'],
+  'bench-press': ['liggande skivstångspress'],
+  'seated-row': ['kabelrodd', 'rodd'],
+  'rowing-machine': ['rodd', 'concept2', 'uppvärmning'],
+  'db-row': ['rodd med hantel', 'enarmsrodd'],
+  'barbell-row': ['rodd'],
+  'triceps-pushdown': ['pushdown', 'triceps kabel'],
+  'leg-extension': ['benspark', 'quadriceps'],
+  'leg-curl': ['bencurl', 'hamstrings', 'lårcurl'],
+  'lat-pulldown': ['latsdrag', 'pulldown'],
+  'chest-press-machine': ['bröstpress'],
+  'bike': ['cykel', 'uppvärmning'],
+  'push-up': ['armhävning'],
+  'pull-up': ['pull-ups', 'chins'],
+  'plank': ['planka'],
+};
+// Övningar som görs ett ben i taget: varje set får H eller V.
+const UNILATERAL = new Set(['single-leg-extension', 'single-leg-curl', 'single-leg-press', 'single-leg-mini-squat']);
+
 for (const e of EXERCISES) {
+  e.aliases = ALIASES[e.id] ?? [];
+  if (UNILATERAL.has(e.id)) e.unilateral = true;
   e.safety = SAFETY[e.id] ?? [];
   e.gear = GEAR_OF[e.id] ?? 'body';
   e.load = { ...(LOAD[e.id] || {}) };
   if (e.kneeHeavy) e.load.knees = 2;
+}
+
+/** Sökning på namn och andra namn. */
+export function matchesQuery(ex, q) {
+  const t = q.trim().toLowerCase();
+  return !t || ex.name.toLowerCase().includes(t) || (ex.aliases || []).some((a) => a.includes(t));
 }
 
 /** Egna övningar som du skapat själv. Läggs till i biblioteket när appen startar. */
@@ -776,7 +811,7 @@ export function addCustomExercise(def) {
   if (BY_ID[def.id]) return BY_ID[def.id];
   const ex = {
     sets: 3, reps: def.timed ? '30 s' : '10', defaultReps: def.timed ? 30 : 10, anim: 'idle', tips: [], noAuto: true,
-    ...def, custom: true, safety: [], load: {},
+    ...def, custom: true, safety: [], load: {}, aliases: [],
     equipment: def.gear === 'body' ? 'none' : def.gear === 'dumbbells' ? 'dumbbells' : 'gym',
   };
   EXERCISES.push(ex);

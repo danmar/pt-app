@@ -773,3 +773,18 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .fb-icon { font-size: 20px; line-height: 1.2; }
 .fb-tip { background: var(--purple-bg); }
 .fb-tip p { margin: 4px 0 0; font-size: 15px; }
+
+/* --- Välj övningar (flerval) och H/V --------------------------------------- */
+.pick-item .check { margin-left: auto; width: 32px; height: 32px; border-width: 2px; }
+.pick-item .ex-main[aria-pressed="true"] .check { background: var(--success); border-color: var(--success); color: #fff; }
+.pick-item:has(.ex-main[aria-pressed="true"]) { outline: 2px solid var(--success); outline-offset: -2px; }
+.pick-footer { position: sticky; bottom: 0; padding: 12px 0 calc(env(safe-area-inset-bottom) + 4px); background: linear-gradient(transparent, var(--bg) 30%); margin-top: 8px; }
+.pick-footer .btn { width: 100%; }
+.side {
+  width: 30px; height: 30px; border-radius: 50%; flex: none; border: 0;
+  background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px;
+}
+.hint.center { text-align: center; margin: 0; }
+.picker .ex-main { cursor: pointer; }
+.picker .ex-text strong { white-space: normal; line-height: 1.25; }
+.picker .ex-text small { white-space: normal; }
