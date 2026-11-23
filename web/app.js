@@ -6,6 +6,8 @@ import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js'
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
 import { WEEK_KINDS, PRIORITIES, suggestWeek } from './week.js';
+import { workoutFeedback, cardioFeedback } from './feedback.js';
+import { columns, hbars, line, table } from './charts.js';
 import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
 
 // ---------------------------------------------------------------------------
@@ -76,7 +78,7 @@ const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON
 // Rendering
 function render() {
   const view = $('#view');
-  const views = { start: startView, plan: planningView, log: logView, settings: settingsView, swim: swimView, physio: physioView };
+  const views = { start: startView, plan: planningView, log: logView, stats: statsView, settings: settingsView, swim: swimView, physio: physioView };
   view.innerHTML = views[ui.tab] ? views[ui.tab]() : planView(ui.tab);
   const current = SUB.has(ui.tab) ? ui.back : ui.tab;
   for (const b of document.querySelectorAll('.tabbar button')) {
@@ -797,6 +799,136 @@ function planItem(p, i) {
     </li>`;
 }
 
+// ---- Grafer -----------------------------------------------------------------
+const SERIES = [
+  { key: 'train', name: 'Träning', cls: 's-train' },
+  { key: 'swim', name: 'Simning', cls: 's-swim' },
+  { key: 'walk', name: 'Promenad', cls: 's-walk' },
+];
+const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - weekIndex(x)); return x; };
+function isoWeek(d) {
+  const x = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  x.setUTCDate(x.getUTCDate() + 4 - (x.getUTCDay() || 7));
+  return Math.ceil(((x - Date.UTC(x.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+}
+const chartCard = (title, sub, legend, body, tbl) => `
+  <section class="card chart-card">
+    <h3>${title}</h3>${sub ? `<p class="chart-sub">${sub}</p>` : ''}
+    ${legend}
+    <p class="readout" aria-live="polite">Tryck på diagrammet för att se värden</p>
+    ${body}
+    ${tbl}
+  </section>`;
+const legendHtml = () => `<div class="legend">${SERIES.map((x) => `<span><i class="sw ${x.cls}"></i>${x.name}</span>`).join('')}</div>`;
+
+/** Bästa resultat per pass för en övning: vikt om övningen körs med vikt, annars reps eller sekunder. */
+function exerciseSeries(exId) {
+  const rows = data.sessions.filter((s) => s.entries.some((e) => e.exId === exId)).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const weighted = rows.some((s) => s.entries.some((e) => e.exId === exId && e.sets.some((x) => x.weight > 0)));
+  const points = rows.map((s) => {
+    const sets = s.entries.filter((e) => e.exId === exId).flatMap((e) => e.sets);
+    const y = weighted ? Math.max(0, ...sets.map((x) => x.weight || 0)) : Math.max(0, ...sets.map((x) => x.reps || 0));
+    return { x: new Date(s.date), y };
+  }).filter((p) => p.y > 0);
+  const ex = BY_ID[exId];
+  const unit = weighted ? ' kg' : ex?.timed ? ' s' : ' st';
+  return { points: points.map((p) => ({ ...p, tip: `${p.x.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })}: ${fmtNum(p.y)}${unit}` })), unit, weighted };
+}
+
+function statsView() {
+  const now = new Date();
+  const minutesIn = (from, to) => {
+    const inR = (d) => new Date(d) >= from && new Date(d) < to;
+    return {
+      train: data.sessions.filter((s) => inR(s.date)).reduce((n, s) => n + minutesOf(s), 0),
+      swim: data.swims.filter((x) => inR(x.date)).reduce((n, x) => n + (Number(x.minutes) || 0), 0),
+      walk: data.walks.filter((x) => inR(x.date)).reduce((n, x) => n + (Number(x.minutes) || 0), 0),
+    };
+  };
+  // 12 veckor, måndag–söndag
+  const thisMonday = mondayOf(now);
+  const weeks = [...Array(12)].map((_, i) => {
+    const from = new Date(thisMonday); from.setDate(from.getDate() - 7 * (11 - i));
+    const to = new Date(from); to.setDate(to.getDate() + 7);
+    const v = minutesIn(from, to);
+    const total = v.train + v.swim + v.walk;
+    return { label: `v${isoWeek(from)}`, values: v, total, tip: `Vecka ${isoWeek(from)}: ${total} min (träning ${v.train}, simning ${v.swim}, promenad ${v.walk})` };
+  });
+  const sum = (v) => v.train + v.swim + v.walk;
+  const thisWeek = sum(weeks[11].values);
+  const lastWeek = sum(weeks[10].values);
+  const delta = thisWeek - lastWeek;
+
+  // Pass och personbästa senaste 30 dagarna
+  const since30 = new Date(now.getTime() - 30 * 86400000);
+  const passes30 = data.sessions.filter((s) => new Date(s.date) >= since30).length + data.swims.filter((s) => new Date(s.date) >= since30).length;
+  const bestSoFar = {};
+  let prs30 = 0;
+  for (const s of [...data.sessions].sort((a, b) => new Date(a.date) - new Date(b.date))) {
+    for (const e of s.entries) {
+      const v = Math.max(0, ...e.sets.map((x) => (x.weight > 0 ? x.weight * 1000 : x.reps || 0)));
+      if (bestSoFar[e.exId] !== undefined && v > bestSoFar[e.exId] && new Date(s.date) >= since30) prs30++;
+      bestSoFar[e.exId] = Math.max(bestSoFar[e.exId] ?? 0, v);
+    }
+  }
+
+  // Set per muskelgrupp, 4 veckor
+  const since28 = new Date(now.getTime() - 28 * 86400000);
+  const setsBy = {};
+  for (const s of data.sessions) if (new Date(s.date) >= since28) for (const e of s.entries) {
+    const g = BY_ID[e.exId]?.muscles[0];
+    if (g && g !== 'cardio') setsBy[g] = (setsBy[g] ?? 0) + e.sets.length;
+  }
+  const groupRows = MUSCLE_IDS.filter((m) => m !== 'cardio').map((m) => ({ label: MUSCLES[m].name, value: setsBy[m] ?? 0, tip: `${MUSCLES[m].name}: ${setsBy[m] ?? 0} set på fyra veckor` }));
+
+  // Övningsutveckling
+  const freq = {};
+  for (const s of data.sessions) for (const e of s.entries) freq[e.exId] = (freq[e.exId] ?? 0) + 1;
+  const exIds = Object.keys(freq).filter((id) => BY_ID[id]).sort((a, b) => freq[b] - freq[a]);
+  if (!exIds.includes(ui.statsEx)) ui.statsEx = exIds[0];
+  const series = ui.statsEx ? exerciseSeries(ui.statsEx) : { points: [] };
+
+  // Steg, 30 dagar
+  const stepDays = lastDays(30).map((d) => {
+    const n = data.steps[dayKey(d)] ?? 0;
+    return { label: String(d.getDate()), values: { steps: n }, tip: `${d.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })}: ${fmtNum(n, 0)} steg` };
+  });
+  const hasSteps = stepDays.some((d) => d.values.steps > 0);
+
+  return `
+    <header class="page-head"><h1>Grafer</h1><p class="sub">Din utveckling</p></header>
+    <div class="tiles three">
+      <div class="tile"><span>Pass 30 dagar</span><b>${passes30}</b></div>
+      <div class="tile"><span>Aktiva min i veckan</span><b>${thisWeek}</b>
+        ${lastWeek || thisWeek ? `<small class="delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)} mot förra</small>` : ''}</div>
+      <div class="tile"><span>Personbästa 30 d</span><b>${prs30}</b></div>
+    </div>
+
+    ${chartCard('Aktiva minuter per vecka', 'Senaste 12 veckorna', legendHtml(),
+      columns({ cols: weeks, series: SERIES, unit: 'minuter' }),
+      table(['Vecka', 'Träning', 'Simning', 'Promenad'], weeks.map((w) => [w.label, w.values.train, w.values.swim, w.values.walk])))}
+
+    ${chartCard('Set per muskelgrupp', 'Senaste fyra veckorna', '',
+      hbars({ rows: groupRows, cls: 's-train' }),
+      table(['Muskelgrupp', 'Set'], groupRows.map((r) => [r.label, r.value])))}
+
+    <section class="card chart-card">
+      <h3>Utveckling per övning</h3>
+      ${exIds.length ? `
+        <label class="select-row"><span class="chart-sub">${series.weighted ? 'Tyngsta vikt per pass' : 'Flest reps per pass'}</span>
+          <select data-change="stats-ex">${exIds.map((id) => `<option value="${id}" ${id === ui.statsEx ? 'selected' : ''}>${esc(BY_ID[id].name)}</option>`).join('')}</select></label>
+        <p class="readout" aria-live="polite">Tryck på en punkt för att se värdet</p>
+        ${series.points.length ? line({ points: series.points, unit: series.unit, cls: 's-train' }) : '<p class="empty">Inga värden för övningen än.</p>'}
+        ${table(['Datum', 'Bästa'], series.points.map((p) => [p.x.toLocaleDateString('sv-SE'), `${fmtNum(p.y)}${series.unit}`]))}`
+        : '<p class="empty">Kör eller logga några pass, så ser du hur du blir starkare här.</p>'}
+    </section>
+
+    ${chartCard('Steg per dag', `Senaste 30 dagarna · linjen visar ditt mål på ${fmtNum(data.settings.stepGoal, 0)} steg`, '',
+      hasSteps ? columns({ cols: stepDays, series: [{ key: 'steps', name: 'Steg', cls: 's-walk' }], unit: 'steg', goal: { value: data.settings.stepGoal, label: 'Mål' } })
+        : '<p class="empty">Inga steg inlagda än. Skriv in dina steg på startsidan.</p>',
+      hasSteps ? table(['Dag', 'Steg'], stepDays.filter((d) => d.values.steps).map((d) => [d.tip.split(':')[0], d.values.steps])) : '')}`;
+}
+
 // ---- Logg -----------------------------------------------------------------
 function logView() {
   const now = new Date();
@@ -1206,12 +1338,11 @@ function saveManual() {
     .filter((e) => e.sets.length);
   if (!entries.length) { toast('Lägg till minst ett set'); return; }
   data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), endDate: end.toISOString(), entries, manual: true });
-  const reached = checkGoals();
+  checkGoals();
   save();
   ui.manual = null;
-  closeSheet();
   render();
-  toast(reached.length ? `🏆 Mål klart: ${goalLabel(reached[0])}!` : 'Övningarna är sparade 💪');
+  showFeedback(data.sessions[data.sessions.length - 1]);
 }
 
 function walkSheet() {
@@ -1227,10 +1358,18 @@ function walkSheet() {
     </form>`;
 }
 
+function sessionPraise(s) {
+  if (s.type && s.type !== 'strength') return '';
+  const before = data.sessions.filter((x) => x !== s && new Date(x.date) < new Date(s.date));
+  const fb = workoutFeedback({ session: s, before, swims: data.swims.filter((x) => new Date(x.date) < new Date(s.date)), pain: {}, goalLabel });
+  return `<ul class="fb-list small">${fb.highlights.slice(0, 3).map((h) => `<li><span class="fb-icon">${h.icon}</span><span>${esc(h.text)}</span></li>`).join('')}</ul>`;
+}
+
 function sessionSheet(s) {
   return `
     <div class="sheet-head"><h2>${s.place === 'gym' ? 'Gympass' : 'Hemmapass'}${s.type && s.type !== 'strength' ? ` · ${TYPES[s.type].name.toLowerCase()}` : ''}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
     <p class="muted">${fmtDate(s.date)} · ${minutesOf(s)} min</p>
+    ${sessionPraise(s)}
     ${s.entries.map((e) => {
       const ex = BY_ID[e.exId];
       return `<div class="card list">
@@ -1444,11 +1583,12 @@ function finishInterval() {
     data.sessions.push({ id: uid(), place: a.place, type: a.type, date: new Date(a.start).toISOString(), endDate: new Date().toISOString(), entries });
   }
   data.active = null;
-  const reached = checkGoals();
+  checkGoals();
   save();
   closeWorkout();
-  if (entries.length) { ui.tab = 'log'; toast(reached.length ? `🏆 Mål klart: ${goalLabel(reached[0])}!` : 'Passet sparat 💪'); }
+  if (entries.length) ui.tab = 'log';
   render();
+  if (entries.length) showFeedback(data.sessions[data.sessions.length - 1]);
 }
 
 function closeWorkout() {
@@ -1603,15 +1743,33 @@ function finishWorkout() {
   }
   const place = w.place;
   data.active = null;
-  const reached = checkGoals();
+  checkGoals();
   save();
   closeWorkout();
   regenerate(place);
-  if (entries.length) {
-    ui.tab = 'log';
-    toast(reached.length ? `🏆 Mål klart: ${goalLabel(reached[0])}!` : 'Passet sparat 💪');
-  }
+  if (entries.length) ui.tab = 'log';
   render();
+  if (entries.length) showFeedback(data.sessions[data.sessions.length - 1]);
+}
+
+/** Visar PT:ns omdöme för ett nyss sparat pass. */
+function showFeedback(session) {
+  const before = data.sessions.filter((x) => x !== session && new Date(x.date) < new Date(session.date));
+  const fb = session.type && session.type !== 'strength'
+    ? cardioFeedback({ minutes: minutesOf(session), kind: TYPES[session.type].name.toLowerCase(), before, swims: data.swims })
+    : workoutFeedback({ session, before, swims: data.swims, walks: data.walks, goals: data.goals, pain: data.settings.pain, goalLabel });
+  openSheet(feedbackSheet(fb));
+}
+
+function feedbackSheet(fb) {
+  return `
+    <div class="feedback">
+      <div class="fb-badge">💪</div>
+      <h2>${esc(fb.title)}</h2>
+      <ul class="fb-list">${fb.highlights.map((h) => `<li><span class="fb-icon">${h.icon}</span><span>${esc(h.text)}</span></li>`).join('')}</ul>
+      <div class="card fb-tip"><b>Till nästa gång</b><p>${esc(fb.tip)}</p></div>
+      <button class="btn primary big" data-action="close-sheet">Tack!</button>
+    </div>`;
 }
 
 function endWorkoutDialog() {
@@ -2021,6 +2179,7 @@ document.addEventListener('change', (e) => {
       ui.swimStyle = t.value; regenerate('swim'); render(); break;
     case 'goal-ex':
       $('#goal-metric').innerHTML = goalMetricFields(BY_ID[t.value]); break;
+    case 'stats-ex': ui.statsEx = t.value; render(); break;
     case 'weekday':
       data.week[Number(t.dataset.day)] = t.value;
       data.weekFocus[Number(t.dataset.day)] = []; save(); render(); break;
@@ -2155,6 +2314,21 @@ document.addEventListener('submit', (e) => {
   closeSheet();
   render();
 });
+
+// Avläsning av diagram: tryck (mobil) eller hovra (dator) på en markering.
+function showTip(e) {
+  const hit = e.target.closest?.('[data-tip]');
+  if (!hit) return;
+  const card = hit.closest('.chart-card');
+  const out = card?.querySelector('.readout');
+  if (!out) return;
+  out.textContent = hit.dataset.tip;
+  out.classList.add('on');
+  card.querySelectorAll('.hit.active').forEach((x) => x.classList.remove('active'));
+  hit.classList.add('active');
+}
+document.addEventListener('click', showTip);
+document.addEventListener('pointerover', (e) => { if (e.pointerType === 'mouse') showTip(e); });
 
 // Stäng ark vid tryck utanför
 $('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });

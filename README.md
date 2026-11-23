@@ -16,6 +16,8 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Steg:** skriv in dagens steg från Hälsa-appen. Startsidan visar hur nära du är ditt stegmål och de senaste 7 dagarna.
 - **Animationer:** varje övning visas med en animerad streckgubbe och en kort instruktion.
 - **Under passet:** logga kg och reps per set. En vilotimer piper när det är dags för nästa set, och skärmen hålls tänd. Svep mellan övningarna. Stängs appen mitt i passet återupptas det nästa gång du öppnar den.
+- **Omdöme efter passet:** som hos en PT får du direkt efter passet ett positivt omdöme som lyfter fram vad som gick bra. Det kan vara nya personbästan, mer jobb än förra gången, framsteg mot dina mål, bra balans mellan press och drag, att du gjorde dina fysioövningar, att du tränade smart runt ont, eller fin kontinuitet. Du får också ett konkret tips till nästa gång, till exempel "Prova 62,5 kg". Omdömet syns även när du öppnar ett pass i loggen.
+- **Grafer:** en egen flik med aktiva minuter per vecka (träning, simning, promenad), set per muskelgrupp, utveckling per övning (vikt eller reps över tid) och steg per dag mot ditt mål. Tryck på diagrammen för att se värden. Varje diagram kan också visas som tabell.
 - **Logga i efterhand:** under Logg trycker du på *Logga övningar*. Välj datum, plats och tid, och lägg till valfria övningar med set, reps och kg. Finns övningen inte i listan skapar du en egen. Egna övningar går också att välja under ett pass via *Valfri övning…*.
 - **Logg:** historik över pass och promenader, med ett diagram över aktiva minuter de senaste 7 dagarna. Promenader loggar du för hand.
 - **Fungerar offline**, och all data sparas bara på telefonen. Du kan exportera och importera en säkerhetskopia under Inställningar.
@@ -34,6 +36,8 @@ web/
   safety.js             Säkerhetsråd per övning och guiden Träna säkert
   physio.js             Den inbyggda fysioterapeuten: kroppsdelar, råd och rehabövningar
   week.js               Förslag på aktiviteter för kommande vecka
+  feedback.js           Omdöme och tips efter passet
+  charts.js             Diagram (SVG) till Grafer
   workouts.js           Cirkel, HIIT och kondition (stationer och timersteg)
   storage.js            Sparar data i telefonen
   sw.js                 Offlinestöd (höj VERSION när du ändrar filer)
@@ -77,4 +81,4 @@ Appen måste ligga på en **https**-adress för att fungera som app på telefone
 
 ## Uppdatera appen
 
-Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v15`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
+Ändra filerna och höj `VERSION` i `web/sw.js` (t.ex. `minpt-v16`). Publicera sedan igen. Telefonen hämtar den nya versionen nästa gång appen öppnas, och den börjar gälla gången därpå.
