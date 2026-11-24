@@ -722,7 +722,8 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .goal-mini { display: flex; flex-direction: column; }
 .goal-mini small { color: var(--muted); font-size: 13px; }
 .goal-input { display: flex; gap: 8px; }
-.goal-input input { flex: 1; min-width: 0; }
+.goal-input input { flex: 1 1 6em; min-width: 6em; }
+.goal-input select { flex: 0 1 auto; width: auto; min-width: 0; }
 
 /* --- Logga övningar ------------------------------------------------------- */
 .segmented.two { grid-template-columns: 1fr 1fr; }
