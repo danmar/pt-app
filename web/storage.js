@@ -8,13 +8,16 @@ const defaults = () => ({
   cardio: [],    // löpning, cykling m.m.: { id, date, kind: 'run' | 'bike' | 'ski' | 'other', minutes, km, name }
   steps: {},     // { 'ÅÅÅÅ-MM-DD': antal }
   saved: [],     // sparade pass: { id, name, place, items, minutes }
-  week: ['', '', '', '', '', '', ''], // veckoplan, måndag först: '', rest, gym, home, swim, walk eller saved:<id>
+  week: ['', '', '', '', '', '', ''], // dagar du själv lagt in, måndag först: '' (appen föreslår), rest, gym, home, swim, walk eller saved:<id>
   customExercises: [], // egna övningar: { id, name, muscles: [grupp], gear, timed }
   goals: [],     // { id, exId, metric: 'reps' | 'weight' | 'sec', target, created, achieved }
-  weekFocus: [[], [], [], [], [], [], []], // föreslagna muskelgrupper per veckodag (från veckoförslaget)
   settings: { hasDumbbells: false, restSeconds: 90, stepGoal: 8000, kneeFriendly: true, physioAlways: true, seeded: [] },
   active: null,  // pågående pass, sparas så att det överlever om appen stängs
 });
+
+// Förr lades hela veckoförslaget in i veckoplanen. Nu föreslås dagarna direkt, så en sådan
+// vecka töms en gång så att förslagen syns och kan anpassas efter det du lägger in själv.
+const oldProposal = (raw) => Array.isArray(raw.weekFocus) && raw.weekFocus.some((v) => Array.isArray(v) && v.length);
 
 function normalize(raw) {
   const base = defaults();
@@ -26,10 +29,9 @@ function normalize(raw) {
     cardio: Array.isArray(raw.cardio) ? raw.cardio.filter((c) => c && c.kind && c.date) : [],
     steps: raw.steps && typeof raw.steps === 'object' && !Array.isArray(raw.steps) ? raw.steps : {},
     saved: Array.isArray(raw.saved) ? raw.saved : [],
-    week: Array.isArray(raw.week) && raw.week.length === 7 ? raw.week.map((v) => (typeof v === 'string' ? v : '')) : base.week,
+    week: oldProposal(raw) ? base.week : Array.isArray(raw.week) && raw.week.length === 7 ? raw.week.map((v) => (typeof v === 'string' ? v : '')) : base.week,
     goals: Array.isArray(raw.goals) ? raw.goals : [],
     customExercises: Array.isArray(raw.customExercises) ? raw.customExercises.filter((c) => c && c.id && c.name) : [],
-    weekFocus: Array.isArray(raw.weekFocus) && raw.weekFocus.length === 7 ? raw.weekFocus.map((v) => (Array.isArray(v) ? v : [])) : base.weekFocus,
     settings: { ...base.settings, ...(raw.settings || {}) },
     active: raw.active && (Array.isArray(raw.active.items) || Array.isArray(raw.active.steps)) ? raw.active : null,
   };

@@ -87,9 +87,9 @@ export function buildInterval({ type, place, minutes, sessions, opts, physio = [
   // Gym + kondition: börja med cykel om den finns
   if (type === 'cardio' && place === 'gym' && isAvailable(BY_ID.bike, place, opts)) bikeSec = Math.round(minutes * 0.4) * 60;
 
-  // Uppvärmning (utom gymmets konditionspass, som redan börjar med cykel)
+  // Uppvärmning före cirkel och HIIT. Konditionspass börjar lugnt och behöver ingen egen uppvärmning.
   let warmup = null;
-  if (!bikeSec) {
+  if (type !== 'cardio') {
     const useBike = place === 'gym' && isAvailable(BY_ID.bike, place, opts);
     warmup = { exId: useBike ? 'bike' : 'march', sec: place === 'gym' ? 180 : minutes <= 10 ? 90 : 120 };
   }
@@ -151,7 +151,7 @@ export function expandSteps(plan) {
   if (plan.physio.length) { steps.pop(); pause(45, 'Vila innan intervallerna'); }
 
   if (plan.bikeSec) {
-    work('bike', { label: 'Uppvärmning och grund', sec: plan.bikeSec });
+    work('bike', { label: 'Jämnt tempo på cykeln', sec: plan.bikeSec });
     pause(60, 'Vila');
   }
 

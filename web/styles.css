@@ -366,6 +366,7 @@ svg { display: block; }
   padding-top: env(safe-area-inset-top);
 }
 .wk-top { display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; padding: 6px 12px; }
+.wk-end { flex-basis: 100%; padding: 4px; margin-top: -2px; color: var(--muted); font-size: 15px; }
 .wk-title { display: flex; flex-direction: column; align-items: center; }
 .wk-title span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .progress { height: 4px; background: var(--card-2); margin: 4px 16px 0; border-radius: 2px; overflow: hidden; }
@@ -418,7 +419,7 @@ details.card .tips { margin-top: 12px; }
 .rest .grow { flex: 1; }
 .rest button { border: 0; background: var(--card); border-radius: 99px; padding: 6px 12px; font-weight: 600; font-size: 14px; color: var(--accent); }
 .wk-bottom {
-  display: flex; gap: 10px;
+  display: flex; flex-wrap: wrap; gap: 10px;
   padding: 10px 16px calc(env(safe-area-inset-bottom) + 12px);
   width: 100%; max-width: 560px; margin: 0 auto;
 }
@@ -631,6 +632,7 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .quick-tip { display: flex; gap: 8px; align-items: flex-start; text-align: left; margin: 4px 0 0; padding: 12px 14px; border-radius: 16px; background: var(--card); font-size: 15px; }
 .quick-tip svg { color: var(--green); margin-top: 1px; }
 .note svg.ic { color: var(--green); }
+.note > svg:not(.ic) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: inline-block; vertical-align: -3px; color: var(--accent); }
 
 /* --- Fri styrketräning -------------------------------------------------- */
 .field { display: flex; flex-direction: column; gap: 8px; }
@@ -683,13 +685,23 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
   border-left: 5px solid var(--kc, var(--line));
 }
 .week-day-item .wd { width: 70px; flex: none; font-weight: 700; font-size: 14px; padding-top: 1px; }
-.week-day-item .wk { display: flex; flex-direction: column; min-width: 0; }
+.week-day-item { position: relative; }
+.week-day-item .wk { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.week-day-item .wtag {
+  flex: none; align-self: center; font-size: 11px; font-weight: 700; color: var(--muted);
+  border: 1px dashed var(--line); border-radius: 99px; padding: 2px 8px;
+}
+.week-day-item.pinned .wtag { color: #fff; background: var(--kc, var(--muted)); border: 1px solid transparent; }
+.week-day-item:not(.pinned):not(.done) .wk b { font-weight: 600; }
+.week-day-item.done { opacity: 0.7; }
+.week-pick { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
 .week-day-item .wk small { color: var(--muted); font-size: 13px; }
 .week-day-item.k-gym { --kc: var(--orange); }
 .week-day-item.k-home { --kc: var(--pink); }
 .week-day-item.k-swim { --kc: var(--swim); }
 .week-day-item.k-walk { --kc: var(--green); }
 .week-day-item.k-rest { --kc: var(--prop); }
+.week-day-item.k-run, .week-day-item.k-bike, .week-day-item.k-ski { --kc: var(--blue); }
 
 /* --- Mål ------------------------------------------------------------------ */
 .goal-item {

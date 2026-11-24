@@ -14,12 +14,7 @@ export const PRIORITIES = {
 export const WEEK_KINDS = { gym: 'Gym', home: 'Hemma', swim: 'Simma', run: 'Löpning', bike: 'Cykling', walk: 'Promenad' };
 const CARDIO_KINDS = ['swim', 'run', 'bike'];
 
-// Vilka av de sju dagarna (0 = idag) som blir träningsdagar.
-const PATTERNS = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 5], 5: [0, 1, 3, 4, 6], 6: [0, 1, 2, 4, 5, 6] };
 const DAY = 86_400_000;
-
-/** m träningsdagar utspridda över dag 1–6 (när idag redan är avklarad). */
-const spread = (m) => [...Array(m)].map((_, i) => 1 + Math.round((i * 6) / m));
 
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -34,7 +29,15 @@ function doneToday({ sessions, swims, walks, cardio, start }) {
   return null;
 }
 
-export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], pain = {}, priority = 'balanced', start = new Date() }) {
+// Vilken plats i veckan en aktivitet tar: styrka, kondition, promenad eller vila.
+const slotOf = (kind) => (kind === 'gym' || kind === 'home' ? 'S' : kind === 'walk' ? 'walk' : kind === 'rest' ? 'rest' : 'swim');
+
+/**
+ * Veckan från idag och sju dagar framåt. pinned[d] är det du själv har bestämt för dag d
+ * (gym, home, swim, run, bike, ski, walk eller rest), annars null. Dagarna du har bestämt
+ * ligger fast och resten av veckan anpassas efter dem.
+ */
+export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], pain = {}, priority = 'balanced', pinned = [], start = new Date() }) {
   const n = Math.max(1, Math.min(6, days));
   const recent = (list, test = () => true) => list.filter((x) => (start - new Date(x.date)) / DAY < 14 && test(x)).length;
   const hist = {
@@ -60,54 +63,75 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], 
   if (sore.length && (canSwim || canWalk) && nStrength > 1) nStrength--;
   if (canSwim && !cardioKinds.some((k) => hist[k]) && nStrength === n && n > 1) nStrength--;
 
-  // Har du redan tränat idag räknas idag som klar och resten planeras från imorgon.
+  // Det du redan har gjort idag och det du själv har lagt in ligger fast.
   const done = doneToday({ sessions, swims, walks, cardio, start });
-  const trained = done && done.slot !== 'walk';
-  const train = !done ? PATTERNS[n] : trained ? [0, ...spread(n - 1)] : spread(n);
-  const plan = Array(7).fill(null);
-  if (done) plan[0] = done.slot;
+  const fixed = [...Array(7)].map((_, d) => (d === 0 && done ? done.kind : pinned[d] || null));
+  const plan = fixed.map((k) => (k ? slotOf(k) : null));
+  const isTrain = (k) => k === 'S' || k === 'swim';
 
-  // Lägg styrkedagarna så att de inte ligger dag efter dag, om det går.
+  // Fler träningsdagar på de lediga dagarna, så långt från andra träningsdagar som möjligt.
+  // Avståndet räknas runt veckan, eftersom nästa vecka börjar där den här slutar.
+  const added = [];
+  let missing = n - plan.filter(isTrain).length;
+  while (missing-- > 0) {
+    const free = plan.map((k, d) => (k ? null : d)).filter((d) => d !== null);
+    if (!free.length) break;
+    const trainDays = plan.map((k, d) => (isTrain(k) || added.includes(d) ? d : null)).filter((d) => d !== null);
+    const dist = (d) => (trainDays.length ? Math.min(...trainDays.map((t) => Math.min(Math.abs(d - t), 7 - Math.abs(d - t)))) : 99);
+    const best = free.reduce((a, d) => (dist(d) > dist(a) ? d : a), free[0]);
+    added.push(best);
+    plan[best] = 'new';
+  }
+
+  // Styrka på de nya dagarna så att den inte hamnar dag efter dag, om det går.
+  let needStrength = nStrength - plan.filter((k) => k === 'S').length;
+  added.sort((a, b) => a - b);
   for (const pass of [true, false]) {
-    for (const d of train) {
-      if (plan.filter((k) => k === 'S').length >= nStrength) break;
-      if (plan[d]) continue;
+    for (const d of added) {
+      if (needStrength <= 0) break;
+      if (plan[d] !== 'new') continue;
       if (pass && (plan[d - 1] === 'S' || plan[d + 1] === 'S')) continue;
       plan[d] = 'S';
+      needStrength--;
     }
   }
-  for (const d of train) if (!plan[d]) plan[d] = canSwim ? 'swim' : canWalk ? 'walk' : strengthKinds.length ? 'S' : 'walk';
+  for (const d of added) if (plan[d] === 'new') plan[d] = canSwim ? 'swim' : canWalk ? 'walk' : strengthKinds.length ? 'S' : 'walk';
 
   // Promenader på några lediga dagar, men minst en vilodag.
   const free = plan.map((k, d) => (k ? null : d)).filter((d) => d !== null);
-  const keepRest = priority === 'weightloss' ? 0 : 1; // promenader är lätta nog för varje dag
+  const keepRest = Math.max(0, (priority === 'weightloss' ? 0 : 1) - plan.filter((k) => k === 'rest').length);
   free.forEach((d, i) => { plan[d] = canWalk && i < free.length - keepRest ? 'walk' : 'rest'; });
 
   // Muskelfokus för styrkedagarna: de grupper du vilat längst först.
   const rest = daysSinceTrained(sessions, start);
   const groups = MUSCLE_IDS.filter((m) => m !== 'cardio').sort((a, b) => (rest[b] ?? 99) - (rest[a] ?? 99));
   const strengthDays = plan.map((k, d) => (k === 'S' && !(done && d === 0) ? d : null)).filter((d) => d !== null);
-  const focus = strengthDays.map((_, i) => groups.filter((__, j) => j % strengthDays.length === i));
+  const focusOf = (d) => groups.filter((_, j) => j % strengthDays.length === strengthDays.indexOf(d));
 
-  // Konditionsdagarna turas om, det du gjort minst av på sistone först.
-  const order = [...cardioKinds].sort((a, b) => hist[a] - hist[b]);
-  let c = 0;
-  let s = 0;
-  const swimIndex = plan.findIndex((k, d) => k === 'swim' && !(done && d === 0));
+  // Styrka och kondition turas om: det du gjort minst av, inräknat det du har lagt in, först.
+  const count = { ...hist };
+  for (const k of fixed) if (k) count[k] = (count[k] ?? 0) + 1;
+  const pick = (list) => {
+    const k = list.reduce((a, b) => ((count[b] ?? 0) < (count[a] ?? 0) ? b : a), list[0]);
+    count[k] = (count[k] ?? 0) + 1;
+    return k;
+  };
+  const swimIndex = plan.findIndex((k, d) => k === 'swim' && !fixed[d]);
   const list = plan.map((k, d) => {
     const date = new Date(start.getTime() + d * DAY);
     if (done && d === 0) return { date, kind: done.kind, done: true, reason: `Redan gjort idag. ${done.slot === 'walk' ? 'Bra rörelse' : 'Bra jobbat'}!` };
+    const mine = fixed[d];
     if (k === 'S') {
-      const kind = strengthKinds[s % strengthKinds.length];
-      const f = focus[s];
+      const kind = mine || pick(strengthKinds);
+      const f = focusOf(d);
       const yesterday = plan[d - 1] === 'S';
-      s++;
       const groupsText = f.map((m) => MUSCLES[m].name.toLowerCase()).join(', ');
-      const label = priority === 'weightloss' ? 'Styrka (bygger muskler som förbränner)' : 'Styrka';
-      return { date, kind, focus: f, reason: `${label} med fokus på ${groupsText}${yesterday ? '. Andra muskler än igår' : ''}` };
+      const label = mine ? 'Fokus' : priority === 'weightloss' ? 'Styrka (bygger muskler som förbränner) med fokus' : 'Styrka med fokus';
+      return { date, kind, pinned: !!mine, focus: f, reason: `${label} på ${groupsText}${yesterday ? '. Andra muskler än igår' : ''}` };
     }
+    if (mine) return { date, kind: mine, pinned: true, reason: k === 'rest' ? 'Vila. Det är då musklerna bygger upp sig' : '' };
     if (k === 'swim') {
-      const kind = order[c++ % order.length];
+      const kind = pick(cardioKinds);
       const never = { swim: 'Du har inte simmat på två veckor', run: 'Du har inte sprungit på två veckor', bike: 'Du har inte cyklat på två veckor' };
       const gentle = kind === 'run' ? 'Löpning bygger kondition och starka ben' : 'Kondition som är skonsam för lederna';
       const why = d === swimIndex && !hist[kind] ? never[kind]
@@ -120,7 +144,7 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], 
     if (k === 'walk') {
       return { date, kind: 'walk', reason: pain.back ? 'Promenader är bra för ryggen'
         : priority === 'weightloss' ? 'Varje promenad räknas. Rör dig mycket varje dag'
-        : priority === 'cardio' && train.includes(d) ? 'Rask promenad för konditionen' : 'Lätt rörelse som hjälper återhämtningen' };
+        : priority === 'cardio' && added.includes(d) ? 'Rask promenad för konditionen' : 'Lätt rörelse som hjälper återhämtningen' };
     }
     return { date, kind: 'rest', reason: 'Vila. Det är då musklerna bygger upp sig' };
   });

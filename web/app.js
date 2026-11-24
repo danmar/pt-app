@@ -174,20 +174,15 @@ function todayCard() {
   let v = data.week[weekIndex()];
   const saved = v.startsWith('saved:') ? savedById(v.slice(6)) : null;
   if (v.startsWith('saved:') && !saved) v = '';
-  if (!v) {
-    return `
-      <button class="card today-card k-none" data-action="tab" data-tab="plan">
-        <span class="today-icon">${ICON.calendar}</span>
-        <span class="today-text"><b>Ingen plan för idag</b><small>Planera din vecka så visas dagens pass här.</small></span>
-        <span class="chev">${ICON.chevronR}</span>
-      </button>`;
-  }
+  const head = v ? 'Idag enligt planen' : 'Förslag för idag';
+  if (!v) v = weekPlan().days[0].kind;
   if (v === 'rest') {
     return `
-      <section class="card today-card k-rest">
+      <button class="card today-card k-rest" data-action="tab" data-tab="plan">
         <span class="today-icon">😌</span>
-        <span class="today-text"><small>Idag enligt planen</small><b>Vilodag</b><small>Musklerna växer när du vilar. En promenad går bra.</small></span>
-      </section>`;
+        <span class="today-text"><small>${head}</small><b>Vilodag</b><small>Musklerna växer när du vilar. En promenad går bra.</small></span>
+        <span class="chev">${ICON.chevronR}</span>
+      </button>`;
   }
   const kind = saved ? saved.place : v;
   const done = doneToday(kind);
@@ -196,7 +191,7 @@ function todayCard() {
   return `
     <section class="card today-card k-${kind}">
       <span class="today-icon">${PLACE_ICON[kind]}</span>
-      <span class="today-text"><small>Idag enligt planen</small><b>${esc(saved ? saved.name : ACTIVITIES[v])}</b>
+      <span class="today-text"><small>${head}</small><b>${esc(saved ? saved.name : ACTIVITIES[v])}</b>
         ${done ? '<small class="done-text">✓ Klart för idag, bra jobbat!</small>'
           : otherDoneToday(kind).length && v !== 'walk' ? `<small class="done-text">✓ Du har redan ${otherDoneToday(kind).join(' och ')} idag. Det räcker gott, ${esc(saved ? saved.name : ACTIVITIES[v]).toLowerCase()} kan vänta.</small>` : ''}</span>
       <button class="btn primary small" ${action}>${done ? 'Igen' : v === 'walk' ? 'Logga' : 'Kör'}</button>
@@ -396,28 +391,11 @@ function cardioRow(c) {
 const kindOf = (v) => (v.startsWith('saved:') ? savedById(v.slice(6))?.place ?? '' : v);
 
 function planningView() {
-  const today = weekIndex();
-  const options = (v) => [
-    ['', 'Ingen plan'],
-    ...Object.entries(ACTIVITIES),
-    ...data.saved.map((s) => [`saved:${s.id}`, `${s.name} (${PLACE_NAME[s.place]})`]),
-  ].map(([val, label]) => `<option value="${esc(val)}" ${val === v ? 'selected' : ''}>${esc(label)}</option>`).join('');
-
   return `
-    <header class="page-head"><h1>Planera</h1><p class="sub">Din vecka och sparade pass</p></header>
+    <header class="page-head"><h1>Planera</h1><p class="sub">Din vecka, mål och sparade pass</p></header>
     ${priorityCard()}
-    ${weekSuggestCard()}
+    ${weekSection()}
     ${goalsSection()}
-
-    <h2 class="section-title">Veckoplan</h2>
-    <section class="card list">
-      ${WEEKDAYS.map((name, i) => `
-        <label class="list-row week-row ${i === today ? 'today' : ''}">
-          <span class="week-day"><i class="dot k-${kindOf(data.week[i]) || 'none'}"></i>${name}${i === today ? '<em class="pill">Idag</em>' : ''}</span>
-          <select data-change="weekday" data-day="${i}" aria-label="Plan för ${name.toLowerCase()}">${options(data.week[i])}</select>
-        </label>`).join('')}
-    </section>
-    <p class="hint">Dagens plan visas på startsidan. Du kan också lägga in ett av dina sparade pass.</p>
 
     <h2 class="section-title">Sparade pass</h2>
     ${data.saved.length
@@ -540,30 +518,46 @@ const weekDays = () => data.settings.weekDays ?? 4;
 const weekKinds = () => data.settings.weekKinds ?? ['gym', 'swim', 'walk'];
 const dayLabel = (d, i) => (i === 0 ? 'Idag' : i === 1 ? 'Imorgon' : WEEKDAYS[weekIndex(d)]);
 
-function weekSuggestCard() {
-  const p = ui.weekProposal;
-  const h = p?.hist;
+/** Veckan från idag: dagarna du själv har lagt in ligger fast, resten fylls i med förslag. */
+function weekPlan() {
+  const start = new Date();
+  const pinned = [...Array(7)].map((_, d) => kindOf(data.week[weekIndex(new Date(start.getTime() + d * 86_400_000))]) || null);
+  return suggestWeek({ days: weekDays(), kinds: weekKinds(), sessions: data.sessions, swims: data.swims, walks: data.walks,
+    cardio: data.cardio, pain: data.settings.pain, priority: priority(), pinned, start });
+}
+
+function weekSection() {
+  const { days, hist: h } = weekPlan();
+  const options = (v) => [
+    ['', 'Låt appen föreslå'],
+    ...Object.entries(ACTIVITIES),
+    ...data.saved.map((s) => [`saved:${s.id}`, `${s.name} (${PLACE_NAME[s.place]})`]),
+  ].map(([val, label]) => `<option value="${esc(val)}" ${val === v ? 'selected' : ''}>${esc(label)}</option>`).join('');
+  const anyPinned = data.week.some((v) => kindOf(v));
   return `
-    <h2 class="section-title">Förslag för kommande vecka</h2>
+    <h2 class="section-title">Veckan</h2>
     <section class="card controls">
       <div class="field"><span class="field-label">Träningsdagar</span>
         <div class="segmented five" role="radiogroup" aria-label="Träningsdagar per vecka">
           ${[2, 3, 4, 5, 6].map((n) => `<button role="radio" aria-checked="${weekDays() === n}" data-action="wdays" data-value="${n}">${n}</button>`).join('')}
         </div></div>
       <div class="field"><span class="field-label">Aktiviteter</span>${chipToggles('wkind', Object.entries(WEEK_KINDS), weekKinds())}</div>
-      ${p ? '' : `<button class="btn primary" data-action="week-suggest" ${weekKinds().length ? '' : 'disabled'}>Föreslå veckan</button>`}
     </section>
-    ${p ? `
-      <p class="hint">Senaste två veckorna: ${[`${h.gym} gympass`, `${h.home} hemmapass`, `${h.swim} simpass`, h.run ? `${h.run} löppass` : '', h.bike ? `${h.bike} cykelpass` : '', `${h.walk} promenader`].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' och $1')}${painSummary() ? `. Hänsyn till: ${esc(painSummary().toLowerCase())}` : ''}.</p>
-      <ul class="ex-list week-proposal">${p.days.map((x, i) => `
-        <li class="week-day-item k-${x.kind}">
+    <ul class="ex-list week-proposal">${days.map((x, i) => {
+      const wi = weekIndex(x.date);
+      const v = data.week[wi];
+      const saved = x.pinned && v.startsWith('saved:') ? savedById(v.slice(6)) : null;
+      const tag = x.done ? 'Klart' : x.pinned ? 'Din plan' : 'Förslag';
+      return `
+        <li class="week-day-item k-${x.kind} ${x.pinned ? 'pinned' : ''} ${x.done ? 'done' : ''}">
           <span class="wd">${dayLabel(x.date, i)}</span>
-          <span class="wk"><b>${ACTIVITIES[x.kind]}</b><small>${esc(x.reason)}</small></span>
-        </li>`).join('')}</ul>
-      <div class="row">
-        <button class="btn secondary" data-action="week-cancel">Avbryt</button>
-        <button class="btn primary" data-action="week-apply">Använd</button>
-      </div>` : ''}`;
+          <span class="wk"><b>${esc(saved ? saved.name : ACTIVITIES[x.kind])}</b>${x.reason ? `<small>${esc(x.reason)}</small>` : ''}</span>
+          <span class="wtag">${tag}</span>
+          <select class="week-pick" data-change="weekday" data-day="${wi}" aria-label="Plan för ${WEEKDAYS[wi].toLowerCase()}">${options(v)}</select>
+        </li>`;
+    }).join('')}</ul>
+    <p class="hint">Tryck på en dag för att bestämma den själv, t.ex. simning på torsdagar. Det gäller varje vecka, och resten av veckan anpassas efter det. Senaste två veckorna: ${[`${h.gym} gympass`, `${h.home} hemmapass`, `${h.swim} simpass`, h.run ? `${h.run} löppass` : '', h.bike ? `${h.bike} cykelpass` : '', `${h.walk} promenader`].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' och $1')}${painSummary() ? `. Hänsyn till: ${esc(painSummary().toLowerCase())}` : ''}.</p>
+    ${anyPinned ? '<button class="btn secondary" data-action="week-clear">Låt appen föreslå alla dagar</button>' : ''}`;
 }
 
 function savedRow(s) {
@@ -667,8 +661,7 @@ function placeHeader(place) {
         ${LENGTH_OPTIONS[place].map((m) => `<button role="radio" aria-checked="${ui.minutes[place] === m}" data-action="minutes" data-value="${m}">${m} min</button>`).join('')}
       </div>`}
     </section>
-    <p class="hint">${ui.type[place] === 'strength' ? 'Du väljer övning för övning. Appen föreslår vad som passar efter det du redan kört idag.' : TYPES[ui.type[place]].desc}</p>
-    ${ui.type[place] === 'strength' ? `<p class="note">${ICON.shield} <b>Värm upp först:</b> 5 minuter på ${place === 'gym' ? 'cykel' : 'marsch på stället'}, och kör första setet av varje övning med lätt vikt. <button class="inline-link" data-action="guide">Träna säkert</button></p>` : ''}`;
+    <p class="hint">${ui.type[place] === 'strength' ? 'När du trycker på Börja träna föreslår appen uppvärmning och sedan övning för övning, efter det du redan kört idag.' : TYPES[ui.type[place]].desc}</p>`;
 }
 
 const physioNote = (place) => `<p class="note">Dina fysioövningar ingår alltid och ligger först. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`;
@@ -700,15 +693,13 @@ function intervalView(place) {
       <span>${t.work} s jobb · ${t.rest} s ${plan.type === 'circuit' ? 'byte' : 'vila'} · ${t.roundRest} s vila mellan varven</span>
       <span class="est">Ungefär ${estimateMinutes(steps)} minuter totalt</span>
     </section>
-    ${hasPhysio ? physioNote(place) : ''}
-    ${plan.physio.length ? `
-      <h2 class="section-title">Fysio först</h2>
+    ${hasPhysio ? `<p class="note">${ICON.shield} Dina fysioövningar ingår i passet. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>` : ''}
+    <p class="hint">${plan.warmup ? `Passet börjar med ${Math.round(plan.warmup.sec / 60) || 1} min uppvärmning ${plan.warmup.exId === 'bike' ? 'på cykel' : 'på stället'}.` : 'Konditionspass behöver ingen separat uppvärmning. Börja lugnt och öka tempot.'}</p>
+    <details class="card station-details"><summary>Visa övningarna i passet</summary>
+    ${plan.physio.length ? `<h3 class="group-title">Fysio först</h3>
       <ul class="ex-list">${plan.physio.map((p) => item(p.exId, `${p.sets} set × ${BY_ID[p.exId].reps}`)).join('')}</ul>` : ''}
-    ${plan.bikeSec || plan.warmup ? `
-      <h2 class="section-title">Uppvärmning</h2>
-      <ul class="ex-list">${plan.bikeSec ? item('bike', `${Math.round(plan.bikeSec / 60)} min i jämnt tempo`)
-        : item(plan.warmup.exId, `${fmtClock(plan.warmup.sec)} min i lugnt tempo`)}</ul>` : ''}
-    <h2 class="section-title">${plan.type === 'circuit' ? 'Stationer' : 'Intervaller'} <span class="title-note">varje varv</span></h2>
+    ${plan.bikeSec ? `<h3 class="group-title">Först</h3><ul class="ex-list">${item('bike', `${Math.round(plan.bikeSec / 60)} min i jämnt tempo`)}</ul>` : ''}
+    <h3 class="group-title">${plan.type === 'circuit' ? 'Stationer' : 'Intervaller'} <span class="title-note">varje varv</span></h3>
     <ol class="ex-list stations">
       ${plan.stations.map((st, i) => {
         const ex = BY_ID[st.exId];
@@ -717,7 +708,7 @@ function intervalView(place) {
           ${st.physio ? '' : `<button class="icon-btn" data-action="iswap" data-index="${i}" aria-label="Byt ${esc(ex.name)}">${ICON.swap}</button>`}
           <button class="icon-btn" data-action="iremove" data-index="${i}" aria-label="Ta bort ${esc(ex.name)}">${ICON.remove}</button></div>`);
       }).join('')}
-    </ol>
+    </ol></details>
     <div class="stack">
       <button class="btn primary big" data-action="start" ${plan.stations.length ? '' : 'disabled'}>${ICON.play} ${startLabel}</button>
       <div class="row">
@@ -761,9 +752,9 @@ function painSelector(areas = AREA_IDS) {
 }
 
 function focusNote(place) {
-  const i = weekIndex();
-  const focus = (data.weekFocus[i] || []).filter((m) => MUSCLES[m]);
-  if (data.week[i] !== place || !focus.length) return '';
+  const today = weekPlan().days[0];
+  const focus = (today.focus || []).filter((m) => MUSCLES[m]);
+  if (today.kind !== place || today.done || !focus.length) return '';
   const same = focus.length === groupsFor(place).length && focus.every((m) => groupsFor(place).includes(m));
   return same ? '' : `<p class="note">${ICON.calendar} Veckoplanen föreslår fokus på ${esc(focus.map((m) => MUSCLES[m].name.toLowerCase()).join(', '))} idag. <button class="inline-link" data-action="use-focus">Använd</button></p>`;
 }
@@ -875,23 +866,20 @@ function planView(place) {
   const queue = ui.plans[place];
   const done = exercisesToday();
   const gear = gearFor(place);
-  const preview = gear.length ? suggestNext({ done, groups: groupsFor(place), gear, pain: data.settings.pain, goals: goalHints(), priority: priority(),
-    exclude: queue.map((p) => p.exId), sessions: data.sessions, limit: 3 }).filter((x) => !x.busy) : [];
+  // Bara fysio i kön: visa det som en rad i stället för en lista med övningar.
+  const onlyPhysio = queue.length && ui.fixed[place] && queue.every((p) => BY_ID[p.exId]?.physio);
 
   return `
     ${placeHeader(place)}
     ${focusNote(place)}
     ${painNote()}
     ${done.length ? `<h2 class="section-title">Kört idag</h2>${todaySummary(done)}` : ''}
-    ${queue.length ? `
+    ${onlyPhysio ? `<p class="note">${ICON.shield} Dina ${queue.length} fysioövningar ingår i passet. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`
+    : queue.length ? `
       ${ui.fixed[place] ? physioNote(place) : ''}
       <h2 class="section-title">Först i passet</h2>
       <ul class="ex-list">${queue.map((p, i) => planItem(p, i)).join('')}</ul>` : ''}
-    ${!gear.length ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : `
-      <h2 class="section-title">${queue.length ? 'Sedan till exempel' : 'Förslag att börja med'}</h2>
-      <ul class="ex-list">${preview.map((x) => suggestionItem(x, '')).join('')}</ul>
-      ${preview.length ? '' : '<p class="empty">Inga övningar passar. Välj fler muskelgrupper eller mer utrustning.</p>'}
-      <p class="hint">Förslagen ändras under passet efter det du har kört.</p>`}
+    ${gear.length ? '' : '<p class="note warn">Välj minst en typ av utrustning.</p>'}
     <div class="stack">
       <button class="btn primary big" data-action="start" ${gear.length ? '' : 'disabled'}>${ICON.play} Börja träna</button>
       <button class="btn secondary" data-action="setup-any">+ Välj övningar från listan</button>
@@ -1734,7 +1722,7 @@ function renderRunner() {
   const working = step.kind === 'work';
   $('#workout').innerHTML = `
     <div class="wk-top">
-      <button class="btn-text" data-action="end">Avsluta</button>
+      <span class="wk-spacer"></span>
       <div class="wk-title"><b>${TYPES[a.type].name}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
@@ -1758,6 +1746,7 @@ function renderRunner() {
         ? '<button class="btn success grow" data-action="run-done">Klar</button>'
         : `<button class="btn primary grow" data-action="run-pause">${a.paused != null ? `${ICON.play} Fortsätt` : 'Paus'}</button>`}
       <button class="btn secondary square" data-action="run-skip" aria-label="Hoppa över">${ICON.chevronR}</button>
+      <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
     </div>`;
   mountFigures($('#workout'));
 }
@@ -1901,7 +1890,7 @@ function renderWorkout() {
 
   root.innerHTML = `
     <div class="wk-top">
-      <button class="btn-text" data-action="end">Avsluta</button>
+      <span class="wk-spacer"></span>
       <div class="wk-title"><b>${item.warmup ? 'Uppvärmning' : `Övning ${w.items.slice(0, w.index).filter((it) => !it.warmup).length + 1}`}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
@@ -1927,6 +1916,7 @@ function renderWorkout() {
     <div class="wk-bottom">
       <button class="btn secondary square" data-action="prev" ${w.index === 0 ? 'disabled' : ''} aria-label="Föregående övning">${ICON.chevronL}</button>
       <button class="btn primary grow" data-action="pick">Nästa övning</button>
+      <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
     </div>`;
   mountFigures(root);
   updateTimers();
@@ -1966,7 +1956,7 @@ function renderPicker() {
 
   root.innerHTML = `
     <div class="wk-top">
-      <button class="btn-text" data-action="end">Avsluta</button>
+      <span class="wk-spacer"></span>
       <div class="wk-title"><b>${started ? 'Nästa övning' : needWarm ? 'Uppvärmning' : 'Första övningen'}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
@@ -2024,6 +2014,7 @@ function renderPicker() {
     <div class="wk-bottom">
       ${w.items[w.index] ? `<button class="btn secondary square" data-action="pk-back" aria-label="Tillbaka till övningen">${ICON.chevronL}</button>` : ''}
       <button class="btn success grow" data-action="finish" ${started ? '' : 'disabled'}>Klar – spara passet</button>
+      <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
     </div>`;
   mountFigures(root);
   updateTimers();
@@ -2347,24 +2338,21 @@ document.addEventListener('click', (e) => {
         gear: ['body'], groups: [], busy: {}, picking: false, items };
       save(); openWorkout(); break;
     }
-    case 'priority': data.settings.priority = t.dataset.value; save(); if (ui.weekProposal) makeWeek(); render(); break;
+    case 'priority': data.settings.priority = t.dataset.value; save(); render(); break;
     case 'goal-new': openSheet(goalSheet(t.dataset.id)); break;
     case 'goal-delete':
       confirmDialog({ title: 'Ta bort målet?', buttons: [
         { label: 'Ta bort', style: 'danger', onClick: () => { data.goals = data.goals.filter((g) => g.id !== t.dataset.id); save(); render(); } },
         { label: 'Avbryt' }] });
       break;
-    case 'wdays': data.settings.weekDays = Number(t.dataset.value); save(); if (ui.weekProposal) makeWeek(); render(); break;
-    case 'wkind': data.settings.weekKinds = toggle(weekKinds(), t.dataset.value); save(); if (ui.weekProposal) makeWeek(); render(); break;
-    case 'week-suggest': makeWeek(); render(); break;
-    case 'week-cancel': ui.weekProposal = null; render(); break;
-    case 'week-apply':
-      for (const x of ui.weekProposal.days) {
-        data.week[weekIndex(x.date)] = x.kind;
-        data.weekFocus[weekIndex(x.date)] = x.focus ?? [];
-      }
-      ui.weekProposal = null; save(); render(); toast('Veckoplanen är uppdaterad'); break;
-    case 'use-focus': setPref('groups', place, [...data.weekFocus[weekIndex()]]); render(); break;
+    case 'wdays': data.settings.weekDays = Number(t.dataset.value); save(); render(); break;
+    case 'wkind': data.settings.weekKinds = toggle(weekKinds(), t.dataset.value); save(); render(); break;
+    case 'week-clear':
+      confirmDialog({ title: 'Låta appen föreslå alla dagar?', message: 'Dagarna du har lagt in själv tas bort ur veckan.', buttons: [
+        { label: 'Ja', style: 'primary', onClick: () => { data.week = data.week.map(() => ''); save(); render(); } },
+        { label: 'Avbryt' }] });
+      break;
+    case 'use-focus': setPref('groups', place, [...weekPlan().days[0].focus]); render(); break;
     case 'detail':
       openSheet(detailSheet(BY_ID[t.dataset.id])); break;
     case 'library':
@@ -2592,8 +2580,7 @@ document.addEventListener('change', (e) => {
       $('#goal-metric').innerHTML = goalMetricFields(BY_ID[t.value]); break;
     case 'stats-ex': ui.statsEx = t.value; render(); break;
     case 'weekday':
-      data.week[Number(t.dataset.day)] = t.value;
-      data.weekFocus[Number(t.dataset.day)] = []; save(); render(); break;
+      data.week[Number(t.dataset.day)] = t.value; save(); render(); break;
     case 'steps-date':
       if (t.value) openSheet(stepsSheet(t.value));
       break;
@@ -2661,11 +2648,6 @@ document.addEventListener('input', (e) => {
     mountFigures($('#lib-list'));
   }
 });
-
-function makeWeek() {
-  ui.weekProposal = weekKinds().length ? suggestWeek({ days: weekDays(), kinds: weekKinds(), sessions: data.sessions,
-    swims: data.swims, walks: data.walks, cardio: data.cardio, pain: data.settings.pain, priority: priority() }) : null;
-}
 
 function setPref(key, place, value) {
   data.settings[key] = { ...(data.settings[key] || {}), [place]: value };
