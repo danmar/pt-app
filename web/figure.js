@@ -74,6 +74,14 @@ function build(exercise) {
   };
   const dumbbell = (cls) => el('rect', { width: 0.075, height: 0.045, rx: 0.013, class: cls }, svg);
   if (props.includes('dumbbells')) parts.farDb = dumbbell(anim.front ? 'prop' : 'prop far');
+  // Kettlebell: handtag i handen och kulan under. 'kettlebells' = en i varje hand.
+  const kettlebell = (far) => {
+    const g = el('g', far ? { class: 'kb', opacity: 0.5 } : { class: 'kb' }, svg);
+    el('circle', { cx: 0, cy: 0, r: 0.022, class: 'prop-ring kb-handle' }, g);
+    el('circle', { cx: 0, cy: 0.05, r: 0.042, class: 'prop' }, g);
+    return g;
+  };
+  if (props.includes('kettlebells')) parts.farKb = kettlebell(!anim.front);
   if (props.includes('barbell')) {
     parts.plate = el('circle', { r: 0.075, class: 'prop plate' }, svg);
     parts.hub = el('circle', { r: 0.019, class: 'hub' }, svg);
@@ -87,6 +95,7 @@ function build(exercise) {
   parts.head = el('circle', { r: 0.058, class: 'head' }, svg);
   parts.nearArm = el('polyline', { class: 'limb' }, svg);
   if (props.includes('dumbbells')) parts.nearDb = dumbbell('prop');
+  if (props.includes('kettlebell') || props.includes('kettlebells')) parts.nearKb = kettlebell(false);
 
   return { svg, parts, anim };
 }
@@ -103,6 +112,9 @@ function draw({ parts }, p) {
     if (!parts[key]) continue;
     parts[key].setAttribute('x', hand[0] - 0.0375);
     parts[key].setAttribute('y', hand[1] - 0.0225);
+  }
+  for (const [key, hand] of [['farKb', p.handF], ['nearKb', p.handN]]) {
+    if (parts[key]) parts[key].setAttribute('transform', `translate(${hand[0].toFixed(4)},${hand[1].toFixed(4)})`);
   }
   for (const [key, hand] of [['ropeN', p.handN], ['ropeF', p.handF]]) {
     if (!parts[key]) continue;

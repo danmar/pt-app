@@ -120,6 +120,31 @@ export const SAFETY = {
     'Ha stången nära kroppen hela vägen.',
     'Lär dig tekniken med lätt vikt, gärna med hjälp av en tränare.',
   ],
+  'kb-goblet-squat': [
+    'Låt inte knäna falla inåt, och håll hälarna i golvet.',
+    'Håll kettlebellen nära bröstet så att ryggen inte dras framåt.',
+    'Välj en vikt du klarar med bra teknik på alla reps.',
+  ],
+  'kb-clean': [
+    'Lär dig tekniken med en lätt kettlebell först. Det är en snabb övning.',
+    'Håll ryggen rak i botten. Rörelsen är ett höftfäll, inte en knäböj eller ett lyft med ryggen.',
+    'Låt inte kettlebellen slå i underarmen. Håll den nära kroppen och ta emot mjukt.',
+    'Stoppa om det gör ont i ländryggen eller handleden.',
+  ],
+  'kb-row': [
+    'Håll ryggen rak. Stöd gärna fria handen mot en bänk eller knät.',
+    'Dra med ryggen, inte genom att vrida överkroppen.',
+  ],
+  'kb-halo': [
+    'Börja lätt. Det är axlarnas rörlighet som tränas, inte styrka.',
+    'Håll kettlebellen nära huvudet och rör dig långsamt.',
+    'Hoppa över övningen om det nyper i axeln.',
+  ],
+  'kb-pullover': [
+    'Börja lätt. Axlarna är utsatta längst bak i rörelsen.',
+    'Svanka inte. Håll magen spänd och ländryggen mot underlaget.',
+    'Håll ett stadigt grepp i hornen så att kettlebellen inte glider.',
+  ],
   'db-row': [
     'Håll ryggen rak och stöd gärna ena handen mot en bänk.',
     'Dra med ryggen, inte genom att rycka med överkroppen.',
@@ -201,6 +226,15 @@ export const SAFETY = {
     'Gunga inte med ryggen för att få upp vikten.',
     'Håll handlederna raka.',
     'Sänk hela vägen men kontrollerat.',
+  ],
+  'kb-curl': [
+    'Håll armbågarna stilla och gunga inte med ryggen.',
+    'Kulan som hänger ger en annan balans än en hantel. Börja lite lättare.',
+  ],
+  'kb-triceps-ext': [
+    'Håll ett stadigt grepp i hornen. Kettlebellen är ovanför och bakom huvudet.',
+    'Spänn magen så att du inte svankar.',
+    'Hoppa över övningen om det gör ont i axlarna.',
   ],
   'triceps-ext': [
     'Håll hanteln stadigt med båda händerna. Den ska aldrig kunna glida ur greppet.',

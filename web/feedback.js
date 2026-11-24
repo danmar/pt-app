@@ -109,7 +109,9 @@ function nextTip(session, before, pain) {
     const w = Math.max(0, ...e.sets.map((s) => s.weight || 0));
     const allReps = e.sets.length >= 2 && e.sets.every((s) => s.reps >= ex.defaultReps);
     if (w > 0 && allReps && !Object.keys(ex.load || {}).some((a) => (pain[a] || 0) > 0)) {
-      const step = ex.gear === 'dumbbells' || ex.muscles[0] === 'arms' || ex.muscles[0] === 'shoulders' ? 1 : 2.5;
+      const small = ex.muscles[0] === 'arms' || ex.muscles[0] === 'shoulders';
+      // Kettlebells finns oftast i steg om 2–4 kg.
+      const step = ex.gear === 'kettlebell' ? (small ? 2 : 4) : ex.gear === 'dumbbells' || small ? 1 : 2.5;
       return `Du klarade alla set i ${lc(ex.name)} med ${fmt(w)} kg. Prova ${fmt(w + step)} kg nästa gång.`;
     }
     if (!w && ex.equipment === 'none' && allReps) return `Alla set i ${lc(ex.name)} satt. Sikta på 1–2 reps till per set nästa gång.`;

@@ -604,7 +604,7 @@ function loadSaved(id) {
 }
 
 // ---- Gym / Hemma ----------------------------------------------------------
-const exOpts = (place) => ({ hasDumbbells: data.settings.hasDumbbells, pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
+const exOpts = (place) => ({ hasDumbbells: data.settings.hasDumbbells, hasKettlebell: data.settings.hasKettlebell, pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
 const painNames = (areas) => areas.map((a) => AREAS[a].the).join(' och ');
 const painWarn = (ex) => {
   const areas = painAreasFor(ex, data.settings.pain);
@@ -827,7 +827,7 @@ function painSheet(ex) {
 }
 
 // ---- Fri styrketräning ------------------------------------------------------
-const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body', ...(data.settings.hasDumbbells ? ['dumbbells'] : [])]);
+const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body', ...(data.settings.hasDumbbells ? ['dumbbells'] : []), ...(data.settings.hasKettlebell ? ['kettlebell'] : [])]);
 const gearFor = (place) => data.settings.gear?.[place] ?? defaultGear(place);
 const groupsFor = (place) => data.settings.groups?.[place] ?? [];
 const toggle = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -1190,6 +1190,10 @@ function settingsView() {
       <label class="list-row">
         <span>Jag har hantlar hemma</span>
         <input type="checkbox" class="switch" data-change="dumbbells" ${s.hasDumbbells ? 'checked' : ''}>
+      </label>
+      <label class="list-row">
+        <span>Jag har kettlebell hemma</span>
+        <input type="checkbox" class="switch" data-change="kettlebell" ${s.hasKettlebell ? 'checked' : ''}>
       </label>
       <div class="list-row">
         <span>Vila mellan set</span>
@@ -2587,6 +2591,13 @@ document.addEventListener('change', (e) => {
       break;
     case 'dumbbells':
       data.settings.hasDumbbells = t.checked; save(); ui.plans.home = null; ui.iplans.home = null; break;
+    case 'kettlebell': {
+      data.settings.hasKettlebell = t.checked;
+      // Följ med i hemmavalet av utrustning om man redan valt där.
+      const home = data.settings.gear?.home;
+      if (home && t.checked !== home.includes('kettlebell')) setPref('gear', 'home', toggle(home, 'kettlebell'));
+      save(); ui.plans.home = null; ui.iplans.home = null; break;
+    }
     case 'physio':
       data.settings.physioAlways = t.checked; save();
       for (const pl of ['gym', 'home']) { ui.fixed[pl] = null; ui.skipPhysio[pl] = false; ui.loaded[pl] = null; ui.plans[pl] = null; ui.iplans[pl] = null; }

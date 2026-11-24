@@ -15,6 +15,7 @@ export const MUSCLE_IDS = Object.keys(MUSCLES);
 export const EQUIPMENT = {
   none: 'Ingen utrustning',
   dumbbells: 'Hantlar',
+  kettlebell: 'Kettlebell',
   gym: 'Gymutrustning',
 };
 
@@ -22,6 +23,7 @@ export const EQUIPMENT = {
 export const GEAR = {
   body: 'Kroppsvikt',
   dumbbells: 'Hantlar',
+  kettlebell: 'Kettlebell',
   barbell: 'Skivstång',
   machine: 'Maskiner & kabel',
 };
@@ -404,6 +406,26 @@ const rotOut = mod(rotIn, { handN: P(0.71, 0.37), handF: P(0.29, 0.37) });
 const angelW = mod(rotIn, { elbowN: P(0.64, 0.27), handN: P(0.65, 0.13), elbowF: P(0.36, 0.27), handF: P(0.35, 0.13) });
 const angelY = mod(rotIn, { elbowN: P(0.61, 0.08), handN: P(0.68, -0.04), elbowF: P(0.39, 0.08), handF: P(0.32, -0.04) });
 // Fågelhunden: på alla fyra, sträck ut motsatt arm och ben.
+// Kettlebell
+const kbRack = mod(standing, {
+  elbowN: P(0.54, 0.36), handN: P(0.59, 0.25), elbowF: P(0.53, 0.36), handF: P(0.58, 0.25),
+});
+const haloFront = mod(standing, {
+  elbowN: P(0.56, 0.34), handN: P(0.62, 0.22), elbowF: P(0.55, 0.34), handF: P(0.61, 0.22),
+});
+const haloAbove = mod(standing, {
+  elbowN: P(0.62, 0.11), handN: P(0.53, 0.00), elbowF: P(0.61, 0.11), handF: P(0.52, 0.00),
+});
+const haloBehind = mod(standing, {
+  elbowN: P(0.59, 0.13), handN: P(0.43, 0.10), elbowF: P(0.58, 0.13), handF: P(0.42, 0.10),
+});
+const pulloverUp = mod(benchUp, {
+  elbowN: P(0.69, 0.56), handN: P(0.70, 0.43), elbowF: P(0.68, 0.56), handF: P(0.69, 0.43),
+});
+const pulloverBack = mod(benchUp, {
+  elbowN: P(0.81, 0.64), handN: P(0.94, 0.60), elbowF: P(0.80, 0.645), handF: P(0.93, 0.605),
+});
+
 const fourPoint = {
   head: P(0.76, 0.64), neck: P(0.66, 0.68), hip: P(0.38, 0.70),
   elbowN: P(0.67, 0.82), handN: P(0.67, 0.95),
@@ -456,6 +478,9 @@ export const ANIMATIONS = {
   externalRotation: { period: 2.6, frames: [rotIn, rotOut], front: true },
   wallAngel:        { period: 3.0, frames: [angelW, angelY], front: true },
   birdDog:          { period: 3.2, frames: [fourPoint, birdDogOut] },
+  kbClean:          { period: 2.4, frames: [deadliftBottom, kbRack] },
+  halo:             { period: 3.2, frames: [haloFront, haloAbove, haloBehind, haloAbove] },
+  pullover:         { period: 3.0, frames: [pulloverUp, pulloverBack] },
 };
 
 // ---------------------------------------------------------------------------
@@ -695,6 +720,50 @@ export const EXERCISES = [
            'Överarmarna ska peka rakt upp och vara stilla.',
            'Sträck upp igen.'] },
 
+  // Kettlebell
+  { kneeHeavy: true, id: 'kb-goblet-squat', name: 'Gobletknäböj med kettlebell', muscles: ['legs', 'core'], equipment: 'kettlebell',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'gobletSquat', props: ['kettlebell'],
+    tips: ['Håll kettlebellen i handtaget, med kulan nedåt mot bröstet.',
+           'Stå med fötterna lite bredare än axelbrett och tårna lätt utåt.',
+           'Sitt ner mellan hälarna med rak rygg och bröstet uppe.',
+           'Pressa upp genom hälarna.'] },
+  { id: 'kb-clean', name: 'Kettlebell clean', muscles: ['legs', 'back', 'shoulders'], equipment: 'kettlebell',
+    sets: 3, reps: '8 per arm', defaultReps: 8, anim: 'kbClean', props: ['kettlebell'],
+    tips: ['Stå med kettlebellen mellan fötterna. Fäll fram från höften med rak rygg och greppa handtaget.',
+           'Res dig explosivt genom att skjuta fram höften. Kraften ska komma från benen och höften, inte från armen.',
+           'Håll armbågen nära kroppen så att kettlebellen åker upp nära kroppen.',
+           'Ta emot den mjukt i rackläget vid axeln, med kulan mot underarmens utsida. Sänk den kontrollerat och byt arm.'] },
+  { id: 'kb-row', name: 'Kettlebellrodd', muscles: ['back', 'arms'], equipment: 'kettlebell',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'row', props: ['kettlebells'],
+    tips: ['Fäll fram överkroppen med rak rygg och lätt böjda knän.',
+           'Dra kettlebellen mot höften med armbågen nära kroppen.',
+           'Kläm ihop skulderbladen i toppläget.',
+           'Sänk långsamt. Kör en arm i taget om du bara har en kettlebell.'] },
+  { id: 'kb-curl', name: 'Bicepscurl med kettlebell', muscles: ['arms'], equipment: 'kettlebell',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'bicepCurl', props: ['kettlebells'],
+    tips: ['Håll kettlebellen i handtaget med kulan hängande nedåt, eller i hornen med båda händerna.',
+           'Armbågarna stilla intill kroppen.',
+           'Böj armen och lyft mot axeln utan att gunga.',
+           'Sänk långsamt hela vägen.'] },
+  { id: 'kb-triceps-ext', name: 'Tricepspress med kettlebell', muscles: ['arms'], equipment: 'kettlebell',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'tricepsExtension', props: ['kettlebell'],
+    tips: ['Håll kettlebellen i hornen med båda händerna ovanför huvudet.',
+           'Sänk den bakom huvudet genom att böja armbågarna.',
+           'Överarmarna pekar rakt upp och är stilla.',
+           'Sträck upp igen.'] },
+  { id: 'kb-halo', name: 'Kettlebell halo', muscles: ['shoulders', 'core'], equipment: 'kettlebell',
+    sets: 3, reps: '6 per håll', defaultReps: 6, anim: 'halo', props: ['kettlebell'],
+    tips: ['Håll kettlebellen i hornen framför bröstet, med kulan uppåt.',
+           'För den runt huvudet i en tät cirkel, nära huvudet och nacken.',
+           'Spänn magen och rumpan så att du inte svankar.',
+           'Byt håll efter halva setet. Börja med en lätt kettlebell.'] },
+  { id: 'kb-pullover', name: 'Pullover med kettlebell', muscles: ['back', 'chest', 'core'], equipment: 'kettlebell',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'pullover', props: ['bench', 'kettlebell'],
+    tips: ['Ligg på rygg på en bänk eller på golvet. Håll kettlebellen i hornen med raka armar ovanför bröstet.',
+           'Sänk den i en båge bakåt bakom huvudet, med lätt böjda armbågar.',
+           'Gå bara så långt som axlarna tillåter, utan att svanka.',
+           'Dra tillbaka den över bröstet med ryggmusklerna.'] },
+
   // Mage & bål
   { id: 'plank', name: 'Plankan', muscles: ['core'], equipment: 'none',
     sets: 3, reps: '30–45 s', defaultReps: 30, anim: 'plank', timed: true,
@@ -795,6 +864,8 @@ const GEAR_OF = {
   'single-leg-curl': 'machine', 'single-leg-press': 'machine', 'lat-pulldown': 'machine', 'seated-row': 'machine',
   'chest-press-machine': 'machine', 'triceps-pushdown': 'machine', 'machine-shoulder-press': 'machine',
   'battle-ropes': 'machine', bike: 'machine', 'rowing-machine': 'machine', 'captains-chair': 'machine',
+  'kb-goblet-squat': 'kettlebell', 'kb-clean': 'kettlebell', 'kb-row': 'kettlebell', 'kb-curl': 'kettlebell',
+  'kb-triceps-ext': 'kettlebell', 'kb-halo': 'kettlebell', 'kb-pullover': 'kettlebell',
 };
 
 // Belastning på kroppsdelar som kan göra ont: 1 = viss, 2 = hög.
@@ -808,6 +879,8 @@ const LOAD = {
   'shoulder-press': { shoulders: 2, back: 1 }, 'barbell-press': { shoulders: 2, back: 1 }, 'machine-shoulder-press': { shoulders: 2 },
   'triceps-ext': { shoulders: 2, back: 1 }, crunch: { back: 1 }, 'lying-leg-raise': { back: 1 }, 'captains-chair': { back: 1, shoulders: 1 }, plank: { back: 1, shoulders: 1 },
   'jumping-jack': { knees: 2, shoulders: 1 }, 'mountain-climber': { knees: 1, shoulders: 1, back: 1 },
+  'kb-goblet-squat': { knees: 2, back: 1 }, 'kb-clean': { back: 2, shoulders: 1, knees: 1 }, 'kb-row': { back: 1 },
+  'kb-triceps-ext': { shoulders: 2, back: 1 }, 'kb-halo': { shoulders: 2 }, 'kb-pullover': { shoulders: 2, back: 1 },
   'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
 };
 
@@ -828,6 +901,13 @@ const ALIASES = {
   'push-up': ['armhävning'],
   'pull-up': ['pull-ups', 'chins'],
   'plank': ['planka'],
+  'kb-goblet-squat': ['kettlebell', 'knäböj', 'kb squat'],
+  'kb-clean': ['kettlebell', 'kb clean', 'frivändning', 'vändning'],
+  'kb-row': ['kettlebell', 'rodd', 'kb row'],
+  'kb-curl': ['kettlebell', 'curl', 'kb curl'],
+  'kb-triceps-ext': ['kettlebell', 'triceps', 'extension', 'kb extension'],
+  'kb-halo': ['kettlebell', 'halo'],
+  'kb-pullover': ['kettlebell', 'pullover', 'pullovers'],
   'lying-leg-raise': ['benlyft', 'leg raise', 'bensänkning'],
   'captains-chair': ['captains chair', 'benlyft', 'knälyft', 'hängande knälyft', 'vertical knee raise', 'dipsställning'],
 };
@@ -855,7 +935,7 @@ export function addCustomExercise(def) {
   const ex = {
     sets: 3, reps: def.timed ? '30 s' : '10', defaultReps: def.timed ? 30 : 10, anim: 'idle', tips: [], noAuto: true,
     ...def, custom: true, safety: [], load: {}, aliases: [],
-    equipment: def.gear === 'body' ? 'none' : def.gear === 'dumbbells' ? 'dumbbells' : 'gym',
+    equipment: def.gear === 'body' ? 'none' : def.gear === 'dumbbells' || def.gear === 'kettlebell' ? def.gear : 'gym',
   };
   EXERCISES.push(ex);
   BY_ID[ex.id] = ex;
@@ -877,10 +957,11 @@ export function painOk(exercise, pain = {}) {
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
-/** opts: { hasDumbbells, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
-export function isAvailable(exercise, place, { hasDumbbells = false, kneeFriendly = false, pain, gear } = {}) {
+/** opts: { hasDumbbells, hasKettlebell, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
+export function isAvailable(exercise, place, { hasDumbbells = false, hasKettlebell = false, kneeFriendly = false, pain, gear } = {}) {
   if (pain ? !painOk(exercise, pain) : kneeFriendly && exercise.kneeHeavy) return false;
   if (gear && !gear.includes(exercise.gear)) return false;
   if (place === 'gym') return true;
-  return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells);
+  return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells)
+    || (exercise.equipment === 'kettlebell' && (hasKettlebell || !!gear?.includes('kettlebell')));
 }
