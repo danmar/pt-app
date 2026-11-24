@@ -203,6 +203,33 @@ const crunchUp = mod(crunchDown, {
   elbowF: P(0.41, 0.67), handF: P(0.29, 0.67),
 });
 
+// Liggande benlyft: på rygg, raka ben lyfts upp mot taket.
+const legRaiseDown = {
+  head: P(0.16, 0.89), neck: P(0.26, 0.91), hip: P(0.54, 0.91),
+  elbowN: P(0.38, 0.93), handN: P(0.50, 0.93),
+  elbowF: P(0.37, 0.93), handF: P(0.49, 0.93),
+  kneeN: P(0.70, 0.91), footN: P(0.86, 0.90),
+  kneeF: P(0.69, 0.91), footF: P(0.85, 0.90),
+};
+const legRaiseUp = mod(legRaiseDown, {
+  kneeN: P(0.57, 0.75), footN: P(0.59, 0.59),
+  kneeF: P(0.56, 0.75), footF: P(0.58, 0.59),
+});
+
+// Captain's chair: ryggen mot dynan, underarmarna på armstöden, knäna dras upp.
+const captainDown = {
+  head: P(0.50, 0.12), neck: P(0.50, 0.22), hip: P(0.50, 0.50),
+  elbowN: P(0.51, 0.37), handN: P(0.66, 0.36),
+  elbowF: P(0.49, 0.37), handF: P(0.64, 0.36),
+  kneeN: P(0.52, 0.71), footN: P(0.53, 0.91),
+  kneeF: P(0.50, 0.71), footF: P(0.51, 0.91),
+};
+const captainUp = mod(captainDown, {
+  hip: P(0.51, 0.49),
+  kneeN: P(0.71, 0.45), footN: P(0.70, 0.66),
+  kneeF: P(0.69, 0.46), footF: P(0.68, 0.67),
+});
+
 const jackIn = {
   head: P(0.50, 0.11), neck: P(0.50, 0.21), hip: P(0.50, 0.50),
   elbowN: P(0.58, 0.35), handN: P(0.60, 0.48),
@@ -404,6 +431,8 @@ export const ANIMATIONS = {
   superman:         { period: 2.6, frames: [supermanDown, supermanUp] },
   plank:            { period: 3.0, frames: [plankA, plankB] },
   crunch:           { period: 2.0, frames: [crunchDown, crunchUp] },
+  lyingLegRaise:    { period: 3.0, frames: [legRaiseDown, legRaiseUp] },
+  captainsChair:    { period: 2.6, frames: [captainDown, captainUp] },
   jumpingJack:      { period: 1.0, frames: [jackIn, jackOut], front: true },
   mountainClimber:  { period: 0.8, frames: [climberA, climberB] },
   sideLegRaise:     { period: 2.6, frames: [sideLyingDown, sideLyingUp] },
@@ -679,6 +708,18 @@ export const EXERCISES = [
            'Händerna lätt vid huvudet – dra inte i nacken.',
            'Rulla upp axlarna från golvet med magmusklerna.',
            'Sänk långsamt.'] },
+  { id: 'lying-leg-raise', name: 'Liggande benlyft', muscles: ['core'], equipment: 'none',
+    sets: 3, reps: '10–15', defaultReps: 12, anim: 'lyingLegRaise',
+    tips: ['Ligg på rygg med armarna längs sidorna, handflatorna mot golvet.',
+           'Pressa ländryggen mot golvet och håll den där.',
+           'Lyft raka ben tills de pekar mot taket.',
+           'Sänk långsamt. Stanna strax innan hälarna når golvet.'] },
+  { id: 'captains-chair', name: "Benlyft i captain's chair", muscles: ['core'], equipment: 'gym',
+    sets: 3, reps: '8–12', defaultReps: 10, anim: 'captainsChair', props: ['captain'],
+    tips: ['Ryggen mot dynan och underarmarna på armstöden. Ta tag i handtagen.',
+           'Låt benen hänga rakt ner och spänn magen.',
+           'Dra upp knäna mot bröstet och rulla upp bäckenet lite.',
+           'Sänk långsamt utan att svinga. Starkare? Lyft raka ben.'] },
 
   // Rehab (föreslås av den inbyggda fysioterapeuten)
   { noAuto: true, id: 'external-rotation', name: 'Utåtrotation med gummiband', muscles: ['shoulders'], equipment: 'none',
@@ -753,7 +794,7 @@ const GEAR_OF = {
   'leg-press': 'machine', 'leg-extension': 'machine', 'leg-curl': 'machine', 'single-leg-extension': 'machine',
   'single-leg-curl': 'machine', 'single-leg-press': 'machine', 'lat-pulldown': 'machine', 'seated-row': 'machine',
   'chest-press-machine': 'machine', 'triceps-pushdown': 'machine', 'machine-shoulder-press': 'machine',
-  'battle-ropes': 'machine', bike: 'machine', 'rowing-machine': 'machine',
+  'battle-ropes': 'machine', bike: 'machine', 'rowing-machine': 'machine', 'captains-chair': 'machine',
 };
 
 // Belastning på kroppsdelar som kan göra ont: 1 = viss, 2 = hög.
@@ -765,7 +806,7 @@ const LOAD = {
   'seated-row': { back: 1 }, 'lat-pulldown': { shoulders: 1 }, 'pull-up': { shoulders: 2 }, superman: { back: 1, shoulders: 1 },
   'bench-press': { shoulders: 2 }, 'db-bench': { shoulders: 1 }, 'chest-press-machine': { shoulders: 1 }, 'push-up': { shoulders: 1 },
   'shoulder-press': { shoulders: 2, back: 1 }, 'barbell-press': { shoulders: 2, back: 1 }, 'machine-shoulder-press': { shoulders: 2 },
-  'triceps-ext': { shoulders: 2, back: 1 }, crunch: { back: 1 }, plank: { back: 1, shoulders: 1 },
+  'triceps-ext': { shoulders: 2, back: 1 }, crunch: { back: 1 }, 'lying-leg-raise': { back: 1 }, 'captains-chair': { back: 1, shoulders: 1 }, plank: { back: 1, shoulders: 1 },
   'jumping-jack': { knees: 2, shoulders: 1 }, 'mountain-climber': { knees: 1, shoulders: 1, back: 1 },
   'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
 };
@@ -787,6 +828,8 @@ const ALIASES = {
   'push-up': ['armhävning'],
   'pull-up': ['pull-ups', 'chins'],
   'plank': ['planka'],
+  'lying-leg-raise': ['benlyft', 'leg raise', 'bensänkning'],
+  'captains-chair': ['captains chair', 'benlyft', 'knälyft', 'hängande knälyft', 'vertical knee raise', 'dipsställning'],
 };
 // Övningar som görs ett ben i taget: varje set får H eller V.
 const UNILATERAL = new Set(['single-leg-extension', 'single-leg-curl', 'single-leg-press', 'single-leg-mini-squat']);

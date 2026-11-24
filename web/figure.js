@@ -33,6 +33,11 @@ function build(exercise) {
     el('rect', { x: 0.26, y: 0.72, width: 0.58, height: 0.045, rx: 0.01, class: 'prop soft' }, svg);
     for (const x of [0.32, 0.78]) el('line', { x1: x, y1: 0.765, x2: x, y2: 0.96, class: 'prop-line soft' }, svg);
   }
+  if (props.includes('captain')) {
+    el('line', { x1: 0.43, y1: 0.08, x2: 0.43, y2: 0.96, class: 'prop-line soft' }, svg);
+    el('rect', { x: 0.41, y: 0.10, width: 0.04, height: 0.44, rx: 0.015, class: 'prop soft' }, svg);
+    el('rect', { x: 0.44, y: 0.385, width: 0.26, height: 0.03, rx: 0.01, class: 'prop' }, svg);
+  }
   if (props.includes('pullUpBar')) el('line', { x1: 0.22, y1: -0.06, x2: 0.84, y2: -0.06, class: 'prop-line' }, svg);
   if (props.includes('bike')) {
     el('circle', { cx: 0.68, cy: 0.80, r: 0.11, class: 'prop-ring soft' }, svg);

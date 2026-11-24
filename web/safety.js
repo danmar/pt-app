@@ -213,6 +213,16 @@ export const SAFETY = {
     'Håll inte andan.',
     'För tungt? Gör den på knäna.',
   ],
+  'lying-leg-raise': [
+    'Släpper ländryggen från golvet? Böj knäna eller lyft inte lika långt ner.',
+    'Ont i ländryggen? Sluta och kör plankan i stället.',
+    'Sänk benen långsamt. Låt dem inte falla.',
+  ],
+  'captains-chair': [
+    'Svinga inte. Stanna rörelsen innan du lyfter nästa gång.',
+    'Håll axlarna nere, bort från öronen.',
+    'Ont i axlarna eller ländryggen? Kör liggande benlyft eller plankan i stället.',
+  ],
   crunch: [
     'Dra inte i nacken med händerna. Händerna ska bara vila lätt.',
     'Lyft bara axlarna, inte hela ryggen.',
