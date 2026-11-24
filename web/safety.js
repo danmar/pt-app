@@ -125,6 +125,12 @@ export const SAFETY = {
     'Håll kettlebellen nära bröstet så att ryggen inte dras framåt.',
     'Välj en vikt du klarar med bra teknik på alla reps.',
   ],
+  'kb-swing': [
+    'Det är ett höftfäll, inte en knäböj. Knäna böjs lite, men det är höften som går bakåt.',
+    'Håll ryggen rak hela tiden, även när kettlebellen är mellan benen.',
+    'Lyft inte med armarna och luta dig inte bakåt i toppen. Stå rak med spänd rumpa och mage.',
+    'Lär dig tekniken med en lätt kettlebell. Stoppa om det gör ont i ländryggen.',
+  ],
   'kb-clean': [
     'Lär dig tekniken med en lätt kettlebell först. Det är en snabb övning.',
     'Håll ryggen rak i botten. Rörelsen är ett höftfäll, inte en knäböj eller ett lyft med ryggen.',

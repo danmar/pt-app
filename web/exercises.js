@@ -410,6 +410,12 @@ const angelY = mod(rotIn, { elbowN: P(0.61, 0.08), handN: P(0.68, -0.04), elbowF
 const kbRack = mod(standing, {
   elbowN: P(0.54, 0.36), handN: P(0.59, 0.25), elbowF: P(0.53, 0.36), handF: P(0.58, 0.25),
 });
+const swingBottom = mod(deadliftBottom, {
+  elbowN: P(0.52, 0.58), handN: P(0.45, 0.68), elbowF: P(0.51, 0.585), handF: P(0.44, 0.685),
+});
+const swingTop = mod(standing, {
+  elbowN: P(0.63, 0.25), handN: P(0.76, 0.27), elbowF: P(0.62, 0.255), handF: P(0.75, 0.275),
+});
 const haloFront = mod(standing, {
   elbowN: P(0.56, 0.34), handN: P(0.62, 0.22), elbowF: P(0.55, 0.34), handF: P(0.61, 0.22),
 });
@@ -479,6 +485,7 @@ export const ANIMATIONS = {
   wallAngel:        { period: 3.0, frames: [angelW, angelY], front: true },
   birdDog:          { period: 3.2, frames: [fourPoint, birdDogOut] },
   kbClean:          { period: 2.4, frames: [deadliftBottom, kbRack] },
+  kbSwing:          { period: 1.6, frames: [swingBottom, swingTop] },
   halo:             { period: 3.2, frames: [haloFront, haloAbove, haloBehind, haloAbove] },
   pullover:         { period: 3.0, frames: [pulloverUp, pulloverBack] },
 };
@@ -727,6 +734,12 @@ export const EXERCISES = [
            'Stå med fötterna lite bredare än axelbrett och tårna lätt utåt.',
            'Sitt ner mellan hälarna med rak rygg och bröstet uppe.',
            'Pressa upp genom hälarna.'] },
+  { id: 'kb-swing', name: 'Kettlebell swing', muscles: ['legs', 'back', 'core'], equipment: 'kettlebell',
+    sets: 3, reps: '15', defaultReps: 15, anim: 'kbSwing', props: ['kettlebell'],
+    tips: ['Stå lite bredare än axelbrett med kettlebellen en bit framför fötterna. Fäll fram från höften och greppa handtaget med båda händerna.',
+           'Dra kettlebellen bakåt mellan benen, som en passning i amerikansk fotboll.',
+           'Skjut fram höften explosivt och spänn rumpan. Armarna är raka och avslappnade, det är höften som lyfter.',
+           'Kettlebellen ska nå ungefär bröst- eller axelhöjd. Låt den falla tillbaka och fäll från höften igen.'] },
   { id: 'kb-clean', name: 'Kettlebell clean', muscles: ['legs', 'back', 'shoulders'], equipment: 'kettlebell',
     sets: 3, reps: '8 per arm', defaultReps: 8, anim: 'kbClean', props: ['kettlebell'],
     tips: ['Stå med kettlebellen mellan fötterna. Fäll fram från höften med rak rygg och greppa handtaget.',
@@ -864,7 +877,7 @@ const GEAR_OF = {
   'single-leg-curl': 'machine', 'single-leg-press': 'machine', 'lat-pulldown': 'machine', 'seated-row': 'machine',
   'chest-press-machine': 'machine', 'triceps-pushdown': 'machine', 'machine-shoulder-press': 'machine',
   'battle-ropes': 'machine', bike: 'machine', 'rowing-machine': 'machine', 'captains-chair': 'machine',
-  'kb-goblet-squat': 'kettlebell', 'kb-clean': 'kettlebell', 'kb-row': 'kettlebell', 'kb-curl': 'kettlebell',
+  'kb-goblet-squat': 'kettlebell', 'kb-swing': 'kettlebell', 'kb-clean': 'kettlebell', 'kb-row': 'kettlebell', 'kb-curl': 'kettlebell',
   'kb-triceps-ext': 'kettlebell', 'kb-halo': 'kettlebell', 'kb-pullover': 'kettlebell',
 };
 
@@ -879,7 +892,7 @@ const LOAD = {
   'shoulder-press': { shoulders: 2, back: 1 }, 'barbell-press': { shoulders: 2, back: 1 }, 'machine-shoulder-press': { shoulders: 2 },
   'triceps-ext': { shoulders: 2, back: 1 }, crunch: { back: 1 }, 'lying-leg-raise': { back: 1 }, 'captains-chair': { back: 1, shoulders: 1 }, plank: { back: 1, shoulders: 1 },
   'jumping-jack': { knees: 2, shoulders: 1 }, 'mountain-climber': { knees: 1, shoulders: 1, back: 1 },
-  'kb-goblet-squat': { knees: 2, back: 1 }, 'kb-clean': { back: 2, shoulders: 1, knees: 1 }, 'kb-row': { back: 1 },
+  'kb-goblet-squat': { knees: 2, back: 1 }, 'kb-clean': { back: 2, shoulders: 1, knees: 1 }, 'kb-swing': { back: 2 }, 'kb-row': { back: 1 },
   'kb-triceps-ext': { shoulders: 2, back: 1 }, 'kb-halo': { shoulders: 2 }, 'kb-pullover': { shoulders: 2, back: 1 },
   'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
 };
@@ -902,6 +915,7 @@ const ALIASES = {
   'pull-up': ['pull-ups', 'chins'],
   'plank': ['planka'],
   'kb-goblet-squat': ['kettlebell', 'knäböj', 'kb squat'],
+  'kb-swing': ['kettlebell', 'swing', 'swings', 'kb swing', 'sving'],
   'kb-clean': ['kettlebell', 'kb clean', 'frivändning', 'vändning'],
   'kb-row': ['kettlebell', 'rodd', 'kb row'],
   'kb-curl': ['kettlebell', 'curl', 'kb curl'],
