@@ -18,6 +18,22 @@ const CARDIO_KINDS = ['swim', 'run', 'bike'];
 const PATTERNS = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 5], 5: [0, 1, 3, 4, 6], 6: [0, 1, 2, 4, 5, 6] };
 const DAY = 86_400_000;
 
+/** m träningsdagar utspridda över dag 1–6 (när idag redan är avklarad). */
+const spread = (m) => [...Array(m)].map((_, i) => 1 + Math.round((i * 6) / m));
+
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/** Det du redan har gjort idag: styrka går före kondition, som går före promenad. */
+function doneToday({ sessions, swims, walks, cardio, start }) {
+  const today = (x) => sameDay(new Date(x.date), start);
+  const s = sessions.find(today);
+  if (s) return { slot: 'S', kind: s.place === 'home' ? 'home' : 'gym' };
+  const c = [...swims.map((x) => ({ kind: 'swim', ...x })), ...cardio.filter((x) => x.kind === 'run' || x.kind === 'bike')].find(today);
+  if (c) return { slot: 'swim', kind: c.kind === 'swim' || !c.kind ? 'swim' : c.kind };
+  if (walks.some(today)) return { slot: 'walk', kind: 'walk' };
+  return null;
+}
+
 export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], pain = {}, priority = 'balanced', start = new Date() }) {
   const n = Math.max(1, Math.min(6, days));
   const recent = (list, test = () => true) => list.filter((x) => (start - new Date(x.date)) / DAY < 14 && test(x)).length;
@@ -44,9 +60,14 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], 
   if (sore.length && (canSwim || canWalk) && nStrength > 1) nStrength--;
   if (canSwim && !cardioKinds.some((k) => hist[k]) && nStrength === n && n > 1) nStrength--;
 
-  // Lägg styrkedagarna så att de inte ligger dag efter dag, om det går.
-  const train = PATTERNS[n];
+  // Har du redan tränat idag räknas idag som klar och resten planeras från imorgon.
+  const done = doneToday({ sessions, swims, walks, cardio, start });
+  const trained = done && done.slot !== 'walk';
+  const train = !done ? PATTERNS[n] : trained ? [0, ...spread(n - 1)] : spread(n);
   const plan = Array(7).fill(null);
+  if (done) plan[0] = done.slot;
+
+  // Lägg styrkedagarna så att de inte ligger dag efter dag, om det går.
   for (const pass of [true, false]) {
     for (const d of train) {
       if (plan.filter((k) => k === 'S').length >= nStrength) break;
@@ -65,16 +86,17 @@ export function suggestWeek({ days, kinds, sessions, swims, walks, cardio = [], 
   // Muskelfokus för styrkedagarna: de grupper du vilat längst först.
   const rest = daysSinceTrained(sessions, start);
   const groups = MUSCLE_IDS.filter((m) => m !== 'cardio').sort((a, b) => (rest[b] ?? 99) - (rest[a] ?? 99));
-  const strengthDays = plan.map((k, d) => (k === 'S' ? d : null)).filter((d) => d !== null);
+  const strengthDays = plan.map((k, d) => (k === 'S' && !(done && d === 0) ? d : null)).filter((d) => d !== null);
   const focus = strengthDays.map((_, i) => groups.filter((__, j) => j % strengthDays.length === i));
 
   // Konditionsdagarna turas om, det du gjort minst av på sistone först.
   const order = [...cardioKinds].sort((a, b) => hist[a] - hist[b]);
   let c = 0;
   let s = 0;
-  const swimIndex = plan.indexOf('swim');
+  const swimIndex = plan.findIndex((k, d) => k === 'swim' && !(done && d === 0));
   const list = plan.map((k, d) => {
     const date = new Date(start.getTime() + d * DAY);
+    if (done && d === 0) return { date, kind: done.kind, done: true, reason: `Redan gjort idag. ${done.slot === 'walk' ? 'Bra rörelse' : 'Bra jobbat'}!` };
     if (k === 'S') {
       const kind = strengthKinds[s % strengthKinds.length];
       const f = focus[s];

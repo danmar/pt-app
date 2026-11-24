@@ -830,3 +830,32 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .warm-box { display: flex; flex-direction: column; gap: 4px; padding: 12px 10px 4px; border-radius: var(--radius); background: var(--yellow-bg); }
 .warm-box .pk-title { margin-top: 2px; }
 .then-title { margin-top: 6px; }
+
+/* Kroppskarta */
+.body-card { display: grid; gap: 8px; }
+.body-card .segmented { margin: 0; }
+.body-map { width: 100%; max-width: 320px; margin: 0 auto; display: block; }
+.wk-body .body-map { max-width: 260px; }
+.sheet-body > .body-map { max-width: 200px; margin-bottom: 8px; }
+.bm-base { fill: var(--card-2); stroke: var(--line); stroke-width: 0.6; }
+.bm-m { stroke: var(--line); stroke-width: 0.4; transition: fill 0.2s; }
+.bm-l0 { fill: var(--bm-0); }
+.bm-l1 { fill: var(--bm-1); }
+.bm-l2 { fill: var(--bm-2); }
+.bm-l3 { fill: var(--bm-3); }
+.body-map.interactive .bm-m { cursor: pointer; }
+.body-map.interactive .bm-m:active { fill: var(--accent); }
+.bm-label { font-size: 8px; fill: var(--muted); text-anchor: middle; }
+.bm-names { margin: 0; text-align: center; font-size: 14px; color: var(--muted); }
+.bm-names b { color: var(--text); }
+.legend.center { justify-content: center; }
+.legend .sw.bm-l1 { background: var(--bm-1); }
+.legend .sw.bm-l2 { background: var(--bm-2); }
+.legend .sw.bm-l3 { background: var(--bm-3); }
+:root { --bm-0: #e9e1fb; --bm-1: #f7a8bb; --bm-2: #e5446d; --bm-3: #a8183f; }
+@media (prefers-color-scheme: dark) {
+  :root { --bm-0: #3a3352; --bm-1: #8a4560; --bm-2: #ff6f93; --bm-3: #ffb3c6; }
+}
+.body-card .legend { gap: 12px; flex-wrap: wrap; }
+.body-card .legend span { display: inline-flex; align-items: center; gap: 5px; }
+.body-card .legend .sw { margin-left: 0; }

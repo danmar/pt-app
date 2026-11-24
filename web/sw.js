@@ -1,5 +1,5 @@
 // Gör att appen fungerar utan internet. Höj VERSION när du ändrar filerna.
-const VERSION = 'minpt-v18';
+const VERSION = 'minpt-v21';
 const FILES = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const FILES = [
   './charts.js',
   './feedback.js',
   './cardio.js',
+  './body.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -24,7 +25,12 @@ const FILES = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' går förbi webbläsarens HTTP-cache så att vi inte sparar gamla filer.
+  event.waitUntil(
+    caches.open(VERSION)
+      .then((cache) => cache.addAll(FILES.map((f) => new Request(f, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -35,19 +41,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Visa cachad version direkt, hämta en ny i bakgrunden till nästa gång.
+// Nätverket först så att senaste versionen alltid visas; cachen används utan internet.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;
   event.respondWith(
     caches.open(VERSION).then(async (cache) => {
-      const cached = await cache.match(event.request, { ignoreSearch: true });
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response.ok) cache.put(event.request, response.clone());
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
+      try {
+        const response = await fetch(event.request, { cache: 'no-cache' });
+        if (response.ok) cache.put(event.request, response.clone());
+        return response;
+      } catch {
+        const cached = await cache.match(event.request, { ignoreSearch: true });
+        return cached || Response.error();
+      }
     }),
   );
 });

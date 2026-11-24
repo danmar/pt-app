@@ -24,6 +24,7 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Höger och vänster:** övningar på ett ben, och egna övningar som du markerar så, får H eller V på varje set. Tryck på bokstaven för att byta sida.
 - **Logga i efterhand:** under Logg trycker du på *Logga övningar*. Välj datum, plats och tid, och lägg till valfria övningar med set, reps och kg. Finns övningen inte i listan skapar du en egen. Egna övningar går också att välja under ett pass via *Valfri övning…*. Ett sparat pass kan ändras i efterhand via *Ändra passet*.
 - **Uppvärmning och pass:** varje övning kan markeras som uppvärmning. Roddmaskin och motionscykel blir uppvärmning automatiskt om de körs först. Uppvärmningen visas för sig, räknas inte som set för muskelgrupperna och ger ingen vilotimer. Roddmaskinen loggas med tid och meter, utan vikt. Varje styrkepass börjar med förslag på uppvärmning (roddmaskin, cykel eller marsch på gym; marsch, skuggboxning eller jumping jacks hemma, skonsamma först om knäna gör ont). Styrkeövningarna kommer under *Sedan*, och *Jag har redan värmt upp* hoppar över den.
+- **Kroppskarta:** varje styrkeövning visar en kropp framifrån och bakifrån där huvudmusklerna och musklerna som hjälper till är markerade. Under passet ser du vilka muskler du har tränat i det här passet eller förra passet. Tryck på en muskel för att få förslag på övningar som tränar den, och kör dem direkt eller lägg dem i kön. Passen i loggen visar också kroppskartan.
 - **Logg:** historik över pass och promenader, med ett diagram över aktiva minuter de senaste 7 dagarna. Promenader loggar du för hand.
 - **Fungerar offline**, och all data sparas bara på telefonen. Du kan exportera och importera en säkerhetskopia under Inställningar.
 
@@ -43,6 +44,7 @@ web/
   week.js               Förslag på aktiviteter för kommande vecka
   feedback.js           Omdöme och tips efter passet
   cardio.js             Konditionsaktiviteter: löpning, cykling, skidor m.m.
+  body.js               Kroppskarta: vilka muskler varje övning tränar, framifrån och bakifrån
   charts.js             Diagram (SVG) till Grafer
   workouts.js           Cirkel, HIIT och kondition (stationer och timersteg)
   storage.js            Sparar data i telefonen

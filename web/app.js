@@ -10,6 +10,7 @@ import { workoutFeedback, cardioFeedback } from './feedback.js';
 import { columns, hbars, line, table } from './charts.js';
 import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
 import { ACTS, CARDIO_IDS, CARDIO_FOCUS, suggestCardio, cardioAdvice } from './cardio.js';
+import { BODY, bodyMap, exerciseLevels, sessionLoad, loadLevels, exercisesFor, musclesOf } from './body.js';
 
 // ---------------------------------------------------------------------------
 // Tillstånd för gränssnittet (sparas inte)
@@ -163,6 +164,12 @@ function doneToday(kind) {
   return data.sessions.some((s) => today(s) && s.place === kind);
 }
 
+/** Annan träning du redan har gjort idag än den planerade, t.ex. "simmat". */
+function otherDoneToday(kind) {
+  const did = [['gym', 'tränat på gym'], ['home', 'tränat hemma'], ['swim', 'simmat'], ['run', 'sprungit'], ['bike', 'cyklat'], ['ski', 'åkt skidor']];
+  return did.filter(([k]) => k !== kind && doneToday(k)).map(([, t]) => t);
+}
+
 function todayCard() {
   let v = data.week[weekIndex()];
   const saved = v.startsWith('saved:') ? savedById(v.slice(6)) : null;
@@ -190,7 +197,8 @@ function todayCard() {
     <section class="card today-card k-${kind}">
       <span class="today-icon">${PLACE_ICON[kind]}</span>
       <span class="today-text"><small>Idag enligt planen</small><b>${esc(saved ? saved.name : ACTIVITIES[v])}</b>
-        ${done ? '<small class="done-text">✓ Klart för idag, bra jobbat!</small>' : ''}</span>
+        ${done ? '<small class="done-text">✓ Klart för idag, bra jobbat!</small>'
+          : otherDoneToday(kind).length && v !== 'walk' ? `<small class="done-text">✓ Du har redan ${otherDoneToday(kind).join(' och ')} idag. Det räcker gott, ${esc(saved ? saved.name : ACTIVITIES[v]).toLowerCase()} kan vänta.</small>` : ''}</span>
       <button class="btn primary small" ${action}>${done ? 'Igen' : v === 'walk' ? 'Logga' : 'Kör'}</button>
     </section>`;
 }
@@ -1273,6 +1281,7 @@ function detailSheet(ex) {
     <div class="sheet-head"><h2>${esc(ex.name)}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
     <div class="fig big" data-ex="${ex.id}" data-play="1"></div>
     <div class="chips">${ex.physio ? '<span class="chip physio">Fysio</span>' : ''}${ex.muscles.map((m) => `<span class="chip">${MUSCLES[m].name}</span>`).join('')}</div>
+    ${exerciseBody(ex)}
     ${painAreasFor(ex, data.settings.pain).length ? `<p class="note warn">Den här övningen belastar ${painNames(painAreasFor(ex, data.settings.pain))}, där du har ont. Kör den bara om det känns bra, högst 3 av 10.</p>` : ''}
     ${ex.physio ? '<p class="note">Övningen kommer från ditt fysioprogram. Följ fysioterapeutens instruktioner om de skiljer sig från tipsen här.</p>' : ''}
     <div class="card list">
@@ -1551,6 +1560,7 @@ function sessionSheet(s) {
     <div class="sheet-head"><h2>${s.place === 'gym' ? 'Gympass' : 'Hemmapass'}${s.type && s.type !== 'strength' ? ` · ${TYPES[s.type].name.toLowerCase()}` : ''}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
     <p class="muted">${fmtDate(s.date)} · ${minutesOf(s)} min</p>
     ${sessionPraise(s)}
+    ${bodyCard(loadLevels(sessionLoad(s.entries.map((e) => ({ ...e, sets: e.sets.length })))), 'Musklerna i passet')}
     ${[['Uppvärmning', s.entries.filter((e) => e.warmup)], ['Pass', s.entries.filter((e) => !e.warmup)]].map(([title, list]) => (list.length ? `
       ${s.entries.some((e) => e.warmup) ? `<h3 class="part-title">${title}</h3>` : ''}
       ${list.map((e) => {
@@ -1814,6 +1824,71 @@ function closeWorkout() {
   keepAwake(false);
 }
 
+// ---- Kroppskarta ------------------------------------------------------------
+const BODY_LEGEND = {
+  ex: '<span><i class="sw bm-l2"></i>Huvudmuskel</span><span><i class="sw bm-l1"></i>Hjälper till</span>',
+  load: '<span><i class="sw bm-l1"></i>Lite</span><span><i class="sw bm-l2"></i>Mer</span><span><i class="sw bm-l3"></i>Mest</span>',
+};
+const TAP_HINT = '<p class="hint center">Tryck på en muskel för att få förslag på övningar.</p>';
+
+/** Vilka muskler övningen tränar. interactive: under passet går det att trycka på musklerna. */
+function exerciseBody(ex, interactive = false) {
+  const { p, s } = musclesOf(ex);
+  if (!p.length && !s.length) return '';
+  return `<div class="card body-card">
+    ${bodyMap(exerciseLevels(ex), { interactive, label: `Muskler som ${ex.name} tränar` })}
+    <div class="legend center">${BODY_LEGEND.ex}</div>
+    <p class="bm-names"><b>${p.map((m) => BODY[m].name).join(', ')}</b>${s.length ? `${p.length ? ' · ' : ''}${s.map((m) => BODY[m].name).join(', ')}` : ''}</p>
+    ${interactive ? TAP_HINT : ''}
+  </div>`;
+}
+
+function bodyCard(levels, title, { interactive = false, extra = '' } = {}) {
+  const used = Object.keys(levels).filter((m) => levels[m] > 0);
+  return `<div class="card body-card">
+    <h3 class="pk-title">${title}</h3>${extra}
+    ${used.length ? `${bodyMap(levels, { interactive, label: title })}<div class="legend center">${BODY_LEGEND.load}</div>`
+      : `${interactive ? bodyMap({}, { interactive, label: title }) : ''}<p class="muted center">Inga styrkeövningar loggade.</p>`}
+    ${interactive ? TAP_HINT : ''}
+  </div>`;
+}
+
+const isStrength = (s) => !s.type || s.type === 'strength';
+const lastStrengthSession = () => [...data.sessions].reverse().find(isStrength);
+
+/** Musklerna i det här passet eller förra passet, under passet. */
+function sessionBodyCard(w) {
+  const prev = lastStrengthSession();
+  const view = w.bodyView === 'prev' && prev ? 'prev' : 'now';
+  const entries = view === 'prev'
+    ? prev.entries.map((e) => ({ ...e, sets: e.sets.length }))
+    : w.items.map((it) => ({ exId: it.exId, warmup: it.warmup, sets: doneSets(it) }));
+  const toggle = prev ? `<div class="segmented two" role="radiogroup" aria-label="Vilket pass">
+      ${[['now', 'Det här passet'], ['prev', 'Förra passet']].map(([v, l]) => `<button type="button" role="radio" aria-checked="${view === v}" data-action="body-view" data-value="${v}">${l}</button>`).join('')}
+    </div>${view === 'prev' ? `<p class="hint center">${fmtDate(prev.date)}</p>` : ''}` : '';
+  return bodyCard(loadLevels(sessionLoad(entries)), 'Musklerna i passet', { interactive: true, extra: toggle });
+}
+
+/** Övningar som tränar en muskel. Under passet kan man köra eller köa dem direkt. */
+function muscleSheet(m) {
+  const w = data.active;
+  const pain = data.settings.pain ?? {};
+  const gear = w?.gear ?? GEAR_IDS;
+  const list = exercisesFor(m, (ex) => ex.muscles[0] !== 'cardio' && gear.includes(ex.gear) && painOk(ex, pain));
+  const done = new Set(exercisesToday().map((d) => d.exId));
+  const queued = new Set(w ? queueIndexes(w).map((i) => w.items[i].exId) : []);
+  const icon = (action, id, label, svg) => `<button class="icon-btn" data-action="${action}" data-id="${id}" aria-label="${label}">${svg}</button>`;
+  return `
+    <div class="sheet-head"><h2>${BODY[m].name}</h2><button class="btn-text" data-action="close-sheet">Stäng</button></div>
+    ${bodyMap({ [m]: 2 }, { label: BODY[m].name })}
+    ${w ? '<p class="hint center">Tryck på en övning för att köra den nu, eller på plus för att lägga den i kön.</p>' : ''}
+    ${list.length ? `<ul class="ex-list">${list.map(({ ex, primary }) => suggestionItem(
+      { ex, reason: `${primary ? 'Tränar främst ' : 'Hjälper till med '}${BODY[m].name.toLowerCase()}${done.has(ex.id) ? ' · kört idag' : queued.has(ex.id) ? ' · i kön' : ''}` },
+      `<div class="ex-actions"><div class="pk-more">${icon('detail', ex.id, `Om ${esc(ex.name)}`, ICON.info)}${w && !queued.has(ex.id) ? icon('bm-queue', ex.id, `Lägg ${esc(ex.name)} i kön`, ICON.plus) : ''}</div></div>`,
+      w ? `data-action="bm-go" data-id="${ex.id}"` : undefined)).join('')}</ul>`
+      : '<p class="empty">Inga övningar för den här muskeln passar med vald utrustning.</p>'}`;
+}
+
 function renderWorkout() {
   const w = data.active;
   w.busy ??= {};
@@ -1834,6 +1909,7 @@ function renderWorkout() {
       <div class="fig big" data-ex="${ex.id}" data-play="1"></div>
       <h2 class="wk-name">${esc(ex.name)}</h2>
       <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>
+      ${exerciseBody(ex, true)}
       <div class="wk-links">
         <button class="toggle small" data-action="wk-warmup" aria-pressed="${!!item.warmup}">Uppvärmning</button>
         ${doneSets(item) || ex.physio ? '' : '<button class="btn-text busy-link" data-action="busy-now">Upptagen?</button>'}
@@ -1905,6 +1981,7 @@ function renderPicker() {
         <button class="btn-text" data-action="skip-warm">Jag har redan värmt upp</button></div>
         <h3 class="pk-title then-title">Sedan</h3>` : ''}
       ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
+      ${sessionBodyCard(w)}
       ${qi.some((i) => !(needWarm && w.items[i].warmup)) ? `
         <div><h3 class="pk-title">Din kö <small>flytta om något är upptaget</small></h3>
         <ul class="ex-list">${qi.filter((i) => !(needWarm && w.items[i].warmup)).map((i, n) => {
@@ -2420,6 +2497,14 @@ document.addEventListener('click', (e) => {
       openPicker(); break;
     case 'q-go': delete w.busy[w.items[k].exId]; runItem(w, w.items[k]); break;
     case 's-go': runItem(w, newItem(t.dataset.id)); break;
+    case 'body-muscle': openSheet(muscleSheet(t.dataset.muscle)); break;
+    case 'body-view': w.bodyView = t.dataset.value; save(); renderWorkout(); break;
+    case 'bm-go': {
+      closeSheet();
+      const i = queueIndexes(w).find((j) => w.items[j].exId === t.dataset.id);
+      runItem(w, i != null ? w.items[i] : newItem(t.dataset.id)); break;
+    }
+    case 'bm-queue': closeSheet(); w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
     case 's-queue': w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
     case 's-busy': markBusy(w, t.dataset.id); save(); renderWorkout(); break;
     case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
@@ -2697,5 +2782,10 @@ render();
 if (data.active) openWorkout(); // återuppta pågående pass
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+    // iOS startar sällan om appen från hemskärmen, så leta efter ny version när den visas igen.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 }
