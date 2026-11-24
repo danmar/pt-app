@@ -93,7 +93,8 @@ export function buildInterval({ type, place, minutes, sessions, opts, physio = [
     const useBike = place === 'gym' && isAvailable(BY_ID.bike, place, opts);
     warmup = { exId: useBike ? 'bike' : 'march', sec: place === 'gym' ? 180 : minutes <= 10 ? 90 : 120 };
   }
-  const plan = { type, stations, physio: type === 'circuit' ? [] : physio, rounds: 1, bikeSec, warmup };
+  // Fysio först bara i HIIT. Cirkeln har fysio som stationer och konditionspass hoppar över fysio.
+  const plan = { type, stations, physio: type === 'hiit' ? physio : [], rounds: 1, bikeSec, warmup };
   const fit = () => {
     // Flest varv som ryms i passlängden (lite marginal).
     plan.rounds = plan.stations.length ? 1 : 0;
