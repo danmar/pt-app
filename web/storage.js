@@ -2,7 +2,7 @@
 const KEY = 'minpt-data-v1';
 
 const defaults = () => ({
-  sessions: [],  // { id, place, date, endDate, entries: [{ exId, sets: [{ reps, weight }] }] }
+  sessions: [],  // { id, place, type?, date, endDate (bara intervallpass), entries: [{ exId, sets: [{ reps, weight }] }] }
   walks: [],     // { id, date, minutes, km }
   swims: [],     // { id, date, minutes, meters, style }
   cardio: [],    // löpning, cykling m.m.: { id, date, kind: 'run' | 'bike' | 'ski' | 'other', minutes, km, name }

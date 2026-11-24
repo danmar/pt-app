@@ -1144,7 +1144,10 @@ function swimRow(w) {
     </button></li>`;
 }
 
-const minutesOf = (s) => Math.max(1, Math.round((new Date(s.endDate) - new Date(s.date)) / 60000));
+// Styrkepass loggas utan tid. Bara intervallpass (cirkel, HIIT, kondition) har minuter.
+const isStrength = (s) => !s.type || s.type === 'strength';
+const minutesOf = (s) => (isStrength(s) || !s.endDate ? 0 : Math.max(1, Math.round((new Date(s.endDate) - new Date(s.date)) / 60000)));
+const minLabel = (s) => (isStrength(s) ? '' : ` · ${minutesOf(s)} min`);
 const fmtDate = (d) => new Date(d).toLocaleDateString('sv-SE', { weekday: 'long', day: 'numeric', month: 'long' });
 
 function sessionRow(s) {
@@ -1153,7 +1156,7 @@ function sessionRow(s) {
     <li><button class="log-item" data-action="session" data-id="${esc(s.id)}">
       <span class="log-icon">${s.place === 'gym' ? ICON.gym : ICON.home}</span>
       <span class="log-text"><strong>${fmtDate(s.date)}</strong>
-        <small>${s.place === 'gym' ? 'Gym' : 'Hemma'}${s.type && s.type !== 'strength' ? ` · ${TYPES[s.type].name}` : ''} · ${s.entries.length} övningar · ${minutesOf(s)} min</small></span>
+        <small>${s.place === 'gym' ? 'Gym' : 'Hemma'}${s.type && s.type !== 'strength' ? ` · ${TYPES[s.type].name}` : ''} · ${s.entries.length} övningar${minLabel(s)}</small></span>
       <span class="chev">${ICON.chevronR}</span>
     </button></li>`;
 }
@@ -1366,7 +1369,7 @@ function savePlanSheet(place) {
 }
 
 // ---- Logga övningar i efterhand och välja valfri övning -------------------------
-// ui.manual = { date, place, minutes, items: [{ exId, sets: [{ reps, weight }] }], picking, creating, query }
+// ui.manual = { date, place, items: [{ exId, sets: [{ reps, weight }] }], picking, creating, query }
 function sheetBody(html) {
   const body = $('#sheet .sheet-body');
   body.innerHTML = html;
@@ -1383,7 +1386,6 @@ function manualMain() {
       <div class="segmented two" role="radiogroup" aria-label="Var">
         ${['gym', 'home'].map((p) => `<button type="button" role="radio" aria-checked="${m.place === p}" data-action="m-place" data-value="${p}">${PLACE_NAME[p]}</button>`).join('')}
       </div>
-      <label>Hur länge tränade du? (minuter)<input type="number" inputmode="numeric" min="1" max="600" value="${m.minutes}" data-minput="minutes"></label>
     </div>
     ${m.items.map((it, i) => {
       const ex = BY_ID[it.exId];
@@ -1490,10 +1492,8 @@ function finishPick() {
 
 function saveManual() {
   const m = ui.manual;
-  const minutes = Math.max(1, Math.min(600, Number(m.minutes) || 30));
   const isToday = m.date === dayKey(new Date());
-  const end = isToday ? new Date() : new Date(`${m.date}T12:00:00`);
-  const start = new Date(end.getTime() - minutes * 60000);
+  const start = isToday ? new Date() : new Date(`${m.date}T12:00:00`);
   const entries = warmupFirst(m.items)
     .map((it) => ({ exId: it.exId, ...(it.warmup ? { warmup: true } : {}), sets: it.sets.filter((x) => x.reps > 0).map((x) => ({
       ...(BY_ID[it.exId].timed ? { reps: x.reps, weight: 0, sec: true } : { reps: x.reps, weight: x.weight || 0 }),
@@ -1504,9 +1504,10 @@ function saveManual() {
   if (!entries.length) { toast('Lägg till minst ett set'); return; }
   const old = m.editId && data.sessions.find((x) => x.id === m.editId);
   if (old) {
-    // Samma dag och längd: behåll starttiden.
-    const keep = dayKey(new Date(old.date)) === m.date && minutesOf(old) === minutes;
-    Object.assign(old, { place: m.place, entries, ...(keep ? {} : { date: start.toISOString(), endDate: end.toISOString() }) });
+    // Samma dag: behåll starttiden.
+    const keep = dayKey(new Date(old.date)) === m.date;
+    Object.assign(old, { place: m.place, entries, ...(keep ? {} : { date: start.toISOString() }) });
+    delete old.endDate;
     checkGoals();
     save();
     ui.manual = null;
@@ -1515,7 +1516,7 @@ function saveManual() {
     toast('Passet är ändrat');
     return;
   }
-  data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), endDate: end.toISOString(), entries, manual: true });
+  data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), entries, manual: true });
   checkGoals();
   save();
   ui.manual = null;
@@ -1546,7 +1547,7 @@ function sessionPraise(s) {
 function sessionSheet(s) {
   return `
     <div class="sheet-head"><h2>${s.place === 'gym' ? 'Gympass' : 'Hemmapass'}${s.type && s.type !== 'strength' ? ` · ${TYPES[s.type].name.toLowerCase()}` : ''}</h2><button class="btn-text" data-action="close-sheet">Klar</button></div>
-    <p class="muted">${fmtDate(s.date)} · ${minutesOf(s)} min</p>
+    <p class="muted">${fmtDate(s.date)}${minLabel(s)}</p>
     ${sessionPraise(s)}
     ${bodyCard(loadLevels(sessionLoad(s.entries.map((e) => ({ ...e, sets: e.sets.length })))), 'Musklerna i passet')}
     ${[['Uppvärmning', s.entries.filter((e) => e.warmup)], ['Pass', s.entries.filter((e) => !e.warmup)]].map(([title, list]) => (list.length ? `
@@ -2054,7 +2055,7 @@ function finishWorkout() {
       reps, weight: Number(weight) || 0, ...(BY_ID[it.exId]?.timed ? { sec: true } : {}), ...(dist > 0 ? { dist } : {}), ...(side ? { side } : {}) })) }))
     .filter((e) => e.sets.length);
   if (entries.length) {
-    data.sessions.push({ id: uid(), place: w.place, date: new Date(w.start).toISOString(), endDate: new Date().toISOString(), entries });
+    data.sessions.push({ id: uid(), place: w.place, date: new Date(w.start).toISOString(), entries });
   }
   const place = w.place;
   data.active = null;
@@ -2364,7 +2365,7 @@ document.addEventListener('click', (e) => {
 
     // Logg
     case 'manual-new':
-      ui.manual = { date: dayKey(new Date()), place: 'gym', minutes: 45, items: [] };
+      ui.manual = { date: dayKey(new Date()), place: 'gym', items: [] };
       openSheet(manualMain()); break;
     case 'm-place': ui.manual.place = t.dataset.value; sheetBody(manualMain()); break;
     case 'm-warmup': {
@@ -2376,7 +2377,7 @@ document.addEventListener('click', (e) => {
     case 'edit-session': {
       const s = data.sessions.find((x) => x.id === t.dataset.id);
       if (!s) break;
-      ui.manual = { editId: s.id, date: dayKey(new Date(s.date)), place: s.place === 'home' ? 'home' : 'gym', minutes: minutesOf(s),
+      ui.manual = { editId: s.id, date: dayKey(new Date(s.date)), place: s.place === 'home' ? 'home' : 'gym',
         items: s.entries.filter((e) => BY_ID[e.exId]).map((e) => ({ exId: e.exId, warmup: !!e.warmup, sets: e.sets.map((x) => ({ ...x })) })) };
       sheetBody(manualMain()); break;
     }
@@ -2621,7 +2622,7 @@ document.addEventListener('input', (e) => {
     save();
   } else if (t.dataset.minput && ui.manual) {
     const v = t.dataset.minput;
-    if (v === 'date' || v === 'minutes') ui.manual[v] = t.value;
+    if (v === 'date') ui.manual[v] = t.value;
     else {
       const i = Number(t.dataset.i);
       const k = Number(t.dataset.k);
