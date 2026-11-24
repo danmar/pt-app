@@ -884,8 +884,6 @@ function planView(place) {
     ${gear.length ? '' : '<p class="note warn">Välj minst en typ av utrustning.</p>'}
     <div class="stack">
       <button class="btn primary big" data-action="start" ${gear.length ? '' : 'disabled'}>${ICON.play} Börja träna</button>
-      <button class="btn secondary" data-action="setup-any">+ Välj övningar från listan</button>
-      <button class="btn secondary" data-action="library">Alla övningar</button>
     </div>`;
 }
 
