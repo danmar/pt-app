@@ -877,9 +877,10 @@ export function painOk(exercise, pain = {}) {
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
-/** opts: { hasDumbbells, kneeFriendly, pain } */
-export function isAvailable(exercise, place, { hasDumbbells = false, kneeFriendly = false, pain } = {}) {
+/** opts: { hasDumbbells, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
+export function isAvailable(exercise, place, { hasDumbbells = false, kneeFriendly = false, pain, gear } = {}) {
   if (pain ? !painOk(exercise, pain) : kneeFriendly && exercise.kneeHeavy) return false;
+  if (gear && !gear.includes(exercise.gear)) return false;
   if (place === 'gym') return true;
   return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells);
 }

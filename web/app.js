@@ -107,7 +107,7 @@ function regenerate(place) {
   if (place !== 'swim' && ui.type[place] !== 'strength') {
     ui.loaded[place] = null;
     ui.iplans[place] = buildInterval({
-      type: ui.type[place], place, minutes: ui.minutes[place], sessions: data.sessions, opts: exOpts(), physio: physioFor(place),
+      type: ui.type[place], place, minutes: ui.minutes[place], sessions: data.sessions, opts: exOpts(place), physio: physioFor(place),
     });
     return;
   }
@@ -591,7 +591,7 @@ function loadSaved(id) {
     } else {
       ui.fixed[s.place] = null;
       ui.iplans[s.place] = buildInterval({
-        type: s.type, place: s.place, minutes: ui.minutes[s.place], sessions: data.sessions, opts: exOpts(), physio: physioFor(s.place), stations: valid,
+        type: s.type, place: s.place, minutes: ui.minutes[s.place], sessions: data.sessions, opts: exOpts(s.place), physio: physioFor(s.place), stations: valid,
       });
     }
   }
@@ -604,7 +604,7 @@ function loadSaved(id) {
 }
 
 // ---- Gym / Hemma ----------------------------------------------------------
-const exOpts = () => ({ hasDumbbells: data.settings.hasDumbbells, pain: data.settings.pain });
+const exOpts = (place) => ({ hasDumbbells: data.settings.hasDumbbells, pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
 const painNames = (areas) => areas.map((a) => AREAS[a].the).join(' och ');
 const painWarn = (ex) => {
   const areas = painAreasFor(ex, data.settings.pain);
@@ -657,6 +657,8 @@ function placeHeader(place) {
         ${Object.entries(TYPES).map(([k, t]) => `<button role="radio" aria-checked="${ui.type[place] === k}" data-action="ptype" data-value="${k}">${t.name}</button>`).join('')}
       </div>
       ${ui.type[place] === 'strength' ? strengthControls(place) : `
+      <div class="field"><span class="field-label">Utrustning</span>
+        ${chipToggles('gear', Object.entries(GEAR), gearFor(place))}</div>
       <div class="segmented" role="radiogroup" aria-label="Passets längd">
         ${LENGTH_OPTIONS[place].map((m) => `<button role="radio" aria-checked="${ui.minutes[place] === m}" data-action="minutes" data-value="${m}">${m} min</button>`).join('')}
       </div>`}
@@ -2282,7 +2284,7 @@ document.addEventListener('click', (e) => {
     case 'swap': {
       const plan = ui.plans[place];
       const i = Number(t.dataset.index);
-      const next = replacement(plan[i].exId, plan.map((p) => p.exId), place, exOpts());
+      const next = replacement(plan[i].exId, plan.map((p) => p.exId), place, exOpts(place));
       if (next) { plan[i] = { exId: next.id, sets: next.sets }; render(); }
       else toast('Ingen annan övning för den muskelgruppen');
       break;
@@ -2301,7 +2303,7 @@ document.addEventListener('click', (e) => {
     case 'iswap': {
       const plan = ui.iplans[place];
       const i = Number(t.dataset.index);
-      const next = replacement(plan.stations[i].exId, plan.stations.map((x) => x.exId), place, exOpts());
+      const next = replacement(plan.stations[i].exId, plan.stations.map((x) => x.exId), place, exOpts(place));
       if (next && !(next.props || []).includes('barbell') && next.id !== 'bike') { plan.stations[i] = { exId: next.id }; render(); }
       else toast('Ingen annan övning för den muskelgruppen');
       break;
@@ -2512,7 +2514,7 @@ document.addEventListener('click', (e) => {
     }
     case 'wgear': w.gear = toggle(w.gear, t.dataset.value); save(); renderWorkout(); break;
     case 'wgroup': w.groups = toggle(w.groups, t.dataset.value); save(); renderWorkout(); break;
-    case 'gear': setPref('gear', place, toggle(gearFor(place), t.dataset.value)); render(); break;
+    case 'gear': setPref('gear', place, toggle(gearFor(place), t.dataset.value)); if (ui.type[place] !== 'strength') regenerate(place); render(); break;
     case 'group': setPref('groups', place, toggle(groupsFor(place), t.dataset.value)); render(); break;
     case 'prev': goTo(w.index - 1); break;
     case 'reps': {
