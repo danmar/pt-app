@@ -1987,7 +1987,10 @@ function renderPicker() {
   const qi = queueIndexes(w);
   const doneIdx = w.items.map((_, i) => i).filter((i) => doneSets(w.items[i]));
   const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
-  const setsText = (it, ex, n) => (ex.timed && n === 1 ? ex.reps : `${ex.unilateral ? Math.ceil(n / 2) : n} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`);
+  // Ingen uppvärmning gjord (eller i kön) och inte bortvald: visa uppvärmningsövningar.
+  const needWarm = !w.skipWarm && !w.items.some((it) => it.warmup);
+  const warmList = needWarm ? warmupOptions(w.place) : [];
+  const setsText = (it, ex, n) => (ex.timed && n === 1 ? fmtAmount(ex, it.sets[0].reps) : `${ex.unilateral ? Math.ceil(n / 2) : n} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`);
 
   root.innerHTML = `
     <div class="wk-top">
@@ -1996,6 +1999,12 @@ function renderPicker() {
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body picker" id="wk-body">
+      ${warmList.length ? `
+        <div class="warm-box"><h3 class="pk-title">Uppvärmning <small>lugnt tempo, pulsen ska upp lite</small></h3>
+        <ul class="ex-list">${warmList.map((ex) => suggestionItem(
+          { ex, reason: `${WARM_WHY[ex.id] ?? 'Lätt uppvärmning'} · ${inMinutes(ex) ? '5 min' : `${ex.reps} × ${ex.sets}`}` },
+          `<div class="ex-actions"><div class="pk-more">${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}</div></div>`, `data-action="w-go" data-id="${ex.id}"`)).join('')}</ul>
+        <button class="btn-text" data-action="skip-warm">Jag har redan värmt upp</button></div>` : ''}
       <div><h3 class="pk-title">Slutfört</h3>
       ${doneIdx.length ? `<ul class="ex-list">${doneIdx.map((i) => {
         const it = w.items[i], ex = BY_ID[it.exId];
@@ -2036,11 +2045,7 @@ function renderAdd() {
   const list = pickSuggestions(w, done, queueIds);
   const free = list.filter((x) => !x.busy);
   const busy = list.filter((x) => x.busy);
-  const started = w.items.some((it) => doneSets(it));
   const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
-  // Har man inte börjat och inte valt bort uppvärmningen föreslås den först.
-  const needWarm = !started && !w.skipWarm && !qi.some((i) => w.items[i].warmup);
-  const warmList = needWarm ? warmupOptions(w.place) : [];
   const actions = (ex) => `
     <div class="ex-actions">
       <div class="pk-more">
@@ -2057,12 +2062,6 @@ function renderAdd() {
     </div>
     <div class="wk-body picker" id="wk-body">
       <p class="hint center">Tryck på en övning för att köra den nu, eller på + för att lägga den i kön.</p>
-      ${warmList.length ? `
-        <div class="warm-box"><h3 class="pk-title">Uppvärmning <small>lugnt tempo, pulsen ska upp lite</small></h3>
-        <ul class="ex-list">${warmList.map((ex) => suggestionItem(
-          { ex, reason: `${WARM_WHY[ex.id] ?? 'Lätt uppvärmning'} · ${inMinutes(ex) ? '5 min' : `${ex.reps} × ${ex.sets}`}` },
-          actions(ex), `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul>
-        <button class="btn-text" data-action="skip-warm">Jag har redan värmt upp</button></div>` : ''}
       <section class="card controls pk-controls">${pickControls(w)}</section>
       <div><h3 class="pk-title">Förslag</h3>
       ${!w.gear.length && w.stype !== 'stretch' ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : free.length ? `
@@ -2600,6 +2599,12 @@ document.addEventListener('click', (e) => {
       openPicker(); break;
     case 'q-go': delete w.busy[w.items[k].exId]; delete w.items[k].fresh; runItem(w, w.items[k]); break;
     case 's-go': runItem(w, { ...newItem(t.dataset.id), fresh: true }); break;
+    case 'w-go': {
+      // Vald som uppvärmning, även om man redan kört andra övningar.
+      const it = { ...newItem(t.dataset.id), fresh: true, warmup: true };
+      if (inMinutes(BY_ID[it.exId])) for (const x of it.sets) x.reps = 300;
+      runItem(w, it); break;
+    }
     case 'body-muscle': openSheet(muscleSheet(t.dataset.muscle)); break;
     case 'body-view': w.bodyView = t.dataset.value; save(); renderWorkout(); break;
     case 'bm-go': {
