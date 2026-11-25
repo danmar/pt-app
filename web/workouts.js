@@ -34,6 +34,38 @@ const STATIONS = {
 const BALANCE_EXTRA = ['bird-dog', 'calf-raise'];
 const okForBalance = (ex) => ex.balance || BALANCE_EXTRA.includes(ex.id);
 
+// Stretch efter gympass. Ordningen gör att man går från stående till golvet.
+const STRETCH_ORDER = ['stretch-chest', 'stretch-shoulder', 'stretch-quad', 'stretch-calf', 'stretch-hamstring', 'stretch-hip-flexor', 'stretch-child'];
+const STRETCH_COUNT = 5;
+const STRETCH_HOLD = 30; // sekunder per sida
+const STRETCH_REST = 10;
+
+/** Väljer stretchövningar efter vilka muskelgrupper passet tränat. exIds: övningarna i passet. */
+export function buildStretch(exIds) {
+  const weight = {};
+  for (const id of exIds) {
+    const ex = BY_ID[id];
+    if (!ex || ex.stretch) continue;
+    ex.muscles.forEach((m, i) => { weight[m] = (weight[m] ?? 0) + (i ? 1 : 2); });
+  }
+  const none = !Object.keys(weight).length;
+  const scored = STRETCH_ORDER.map((id) => ({ id, s: (none ? 1 : BY_ID[id].stretch.reduce((n, m) => n + (weight[m] ?? 0), 0)) + Math.random() }));
+  const keep = new Set(scored.sort((a, b) => b.s - a.s).slice(0, STRETCH_COUNT).map((x) => x.id));
+  return STRETCH_ORDER.filter((id) => keep.has(id));
+}
+
+/** Timersteg för stretchen. */
+export function stretchSteps(ids) {
+  const steps = [];
+  ids.forEach((exId, i) => {
+    const ex = BY_ID[exId];
+    if (i) steps.push({ kind: 'rest', sec: STRETCH_REST, label: 'Byt stretch' });
+    steps.push({ kind: 'work', exId, mode: 'time', stretch: true, sec: ex.bothSides ? STRETCH_HOLD * 2 : ex.defaultReps,
+      label: `Stretch · håll stilla och andas lugnt${ex.bothSides ? ' · byt sida halvvägs' : ''}`, repsText: ex.reps });
+  });
+  return steps;
+}
+
 /** Annan balansövning att byta till, eller null. */
 export function balanceSwap(current, used, place, opts) {
   const options = EXERCISES.filter((e) => okForBalance(e) && isAvailable(e, place, opts) && !used.includes(e.id));
@@ -112,7 +144,9 @@ export function buildInterval({ type, place, minutes, sessions, opts, physio = [
     warmup = { exId: useBike ? 'bike' : 'march', sec: place === 'gym' ? 180 : minutes <= 10 ? 90 : 120 };
   }
   // Fysio först bara i HIIT. Cirkeln har fysio som stationer, kondition och balans hoppar över fysio.
-  const plan = { type, stations, physio: type === 'hiit' ? physio : [], rounds: 1, bikeSec, warmup };
+  // Gympass avslutas alltid med stretch.
+  const stretch = place === 'gym' ? buildStretch(stations.map((x) => x.exId)) : [];
+  const plan = { type, stations, physio: type === 'hiit' ? physio : [], rounds: 1, bikeSec, warmup, stretch };
   const fit = () => {
     // Flest varv som ryms i passlängden (lite marginal).
     plan.rounds = plan.stations.length ? 1 : 0;
@@ -185,6 +219,10 @@ export function expandSteps(plan) {
     if (r < plan.rounds) pause(t.roundRest, `Vila innan varv ${r + 1}`);
   }
   while (steps.length && steps[steps.length - 1].kind === 'rest') steps.pop();
+  if (plan.stretch?.length) {
+    pause(30, 'Bra jobbat! Dags att stretcha');
+    steps.push(...stretchSteps(plan.stretch));
+  }
   return steps;
 }
 

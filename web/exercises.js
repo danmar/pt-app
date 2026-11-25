@@ -553,6 +553,37 @@ const sideWalkB = {
   kneeN: P(0.65, 0.73), footN: P(0.71, 0.95), kneeF: P(0.47, 0.74), footF: P(0.45, 0.95),
 };
 
+// Stretch: håll stilla, andas lugnt. B-ställningen är en liten utandning djupare in i stretchen.
+const quadA = mod(standing, {
+  elbowN: P(0.45, 0.355), handN: P(0.42, 0.49), kneeN: P(0.51, 0.72), footN: P(0.41, 0.51),
+  elbowF: P(0.60, 0.29), handF: P(0.72, 0.29), kneeF: P(0.49, 0.72), footF: P(0.48, 0.95),
+});
+const quadB = mod(quadA, { kneeN: P(0.49, 0.72), footN: P(0.39, 0.51), handN: P(0.40, 0.49) });
+const hamA = {
+  head: P(0.70, 0.27), neck: P(0.62, 0.32), hip: P(0.44, 0.52),
+  elbowN: P(0.66, 0.45), handN: P(0.62, 0.58), elbowF: P(0.65, 0.455), handF: P(0.61, 0.585),
+  kneeN: P(0.57, 0.73), footN: P(0.68, 0.93), kneeF: P(0.40, 0.73), footF: P(0.34, 0.95),
+};
+const hamB = mod(hamA, { head: P(0.73, 0.31), neck: P(0.645, 0.355), elbowN: P(0.68, 0.49), handN: P(0.64, 0.62), elbowF: P(0.67, 0.495), handF: P(0.63, 0.625) });
+const calfA = {
+  head: P(0.70, 0.22), neck: P(0.62, 0.29), hip: P(0.45, 0.52),
+  elbowN: P(0.74, 0.32), handN: P(0.86, 0.30), elbowF: P(0.73, 0.325), handF: P(0.85, 0.305),
+  kneeN: P(0.36, 0.73), footN: P(0.27, 0.95), kneeF: P(0.60, 0.72), footF: P(0.60, 0.95),
+};
+const calfB = mod(calfA, { head: P(0.72, 0.23), neck: P(0.64, 0.30), hip: P(0.47, 0.53), elbowN: P(0.76, 0.34), elbowF: P(0.75, 0.345), kneeF: P(0.63, 0.73) });
+const chestA = mod(standing, { elbowN: P(0.38, 0.24), handN: P(0.28, 0.22), elbowF: P(0.50, 0.36), handF: P(0.52, 0.49) });
+const chestB = mod(chestA, { head: P(0.54, 0.12), neck: P(0.52, 0.22), elbowF: P(0.52, 0.36), handF: P(0.54, 0.49) });
+const shoulderA = mod(rotIn, { elbowN: P(0.44, 0.30), handN: P(0.31, 0.28), elbowF: P(0.40, 0.40), handF: P(0.44, 0.31) });
+const shoulderB = mod(shoulderA, { elbowN: P(0.42, 0.30), handN: P(0.29, 0.28), handF: P(0.42, 0.31) });
+const hipFlexA = mod(lungeBottom, { elbowN: P(0.58, 0.53), handN: P(0.67, 0.62), elbowF: P(0.57, 0.535), handF: P(0.66, 0.625) });
+const hipFlexB = mod(hipFlexA, { head: P(0.53, 0.31), neck: P(0.53, 0.41), hip: P(0.53, 0.70), kneeF: P(0.43, 0.90) });
+const childA = {
+  head: P(0.60, 0.88), neck: P(0.51, 0.85), hip: P(0.26, 0.76),
+  elbowN: P(0.64, 0.92), handN: P(0.77, 0.94), elbowF: P(0.63, 0.925), handF: P(0.76, 0.945),
+  kneeN: P(0.42, 0.93), footN: P(0.18, 0.95), kneeF: P(0.41, 0.935), footF: P(0.17, 0.95),
+};
+const childB = mod(childA, { hip: P(0.25, 0.775), neck: P(0.50, 0.86), head: P(0.59, 0.895) });
+
 const boardSquatUp = mod(boardFront(0), { elbowN: P(0.60, 0.30), handN: P(0.55, 0.24), elbowF: P(0.40, 0.30), handF: P(0.45, 0.24) });
 
 /** period = sekunder för ett helt varv genom alla ställningar (två ställningar = fram och tillbaka). */
@@ -610,6 +641,13 @@ export const ANIMATIONS = {
   boardTilt:        { period: 2.4, frames: [boardFront(0.035, 0.02), boardFront(-0.035, -0.02)], front: true },
   boardSquat:       { period: 2.8, frames: [boardSquatUp, boardSquatDown], front: true },
   boardSingleLeg:   { period: 3.4, frames: [onBoard(oneLegA), onBoard(oneLegB)] },
+  stretchQuad:      { period: 5.0, frames: [quadA, quadB] },
+  stretchHam:       { period: 5.0, frames: [hamA, hamB] },
+  stretchCalf:      { period: 5.0, frames: [calfA, calfB] },
+  stretchChest:     { period: 5.0, frames: [chestA, chestB] },
+  stretchShoulder:  { period: 5.0, frames: [shoulderA, shoulderB], front: true },
+  stretchHipFlex:   { period: 5.0, frames: [hipFlexA, hipFlexB] },
+  stretchChild:     { period: 5.0, frames: [childA, childB] },
   ballSit:          { period: 3.4, frames: [ballSitA, ballSitB] },
   ballCrunch:       { period: 2.4, frames: [ballCrunchDown, ballCrunchUp] },
   ballCurl:         { period: 2.8, frames: [ballCurlOut, ballCurlIn] },
@@ -1069,6 +1107,50 @@ export const EXERCISES = [
            'Böj lätt på knäna och skjut bak höften lite.',
            'Ta korta steg åt sidan utan att fötterna går ihop.',
            'Håll knäna utåt mot bandet. Bra för höfter och knän.'] },
+
+  // Stretch efter passet. stretch = muskelgrupperna stretchen passar efter.
+  { noAuto: true, stretch: ['chest', 'shoulders', 'arms'], bothSides: true, id: 'stretch-chest', name: 'Bröststretch mot vägg', muscles: ['chest'], equipment: 'none',
+    sets: 1, reps: '30 s per sida', defaultReps: 30, anim: 'stretchChest', props: ['wall'], timed: true,
+    tips: ['Ställ dig med sidan mot en vägg eller dörrkarm.',
+           'Lägg handflatan mot väggen bakom dig, armen i axelhöjd.',
+           'Vrid överkroppen sakta bort från väggen tills det drar i bröstet.',
+           'Håll stilla och andas lugnt. Byt sida halvvägs.'] },
+  { noAuto: true, stretch: ['shoulders', 'back', 'arms'], bothSides: true, id: 'stretch-shoulder', name: 'Axelstretch', muscles: ['shoulders'], equipment: 'none',
+    sets: 1, reps: '30 s per sida', defaultReps: 30, anim: 'stretchShoulder', timed: true,
+    tips: ['För ena armen rakt över bröstet.',
+           'Dra den lätt närmare kroppen med den andra handen ovanför armbågen.',
+           'Håll axlarna nere och avslappnade.',
+           'Byt sida halvvägs.'] },
+  { noAuto: true, stretch: ['legs'], bothSides: true, id: 'stretch-quad', name: 'Stretch framsida lår', muscles: ['legs'], equipment: 'none',
+    sets: 1, reps: '30 s per ben', defaultReps: 30, anim: 'stretchQuad', timed: true,
+    tips: ['Håll i något med ena handen.',
+           'Ta tag i foten och dra hälen mot rumpan.',
+           'Knäna nära varandra och höften lätt framskjuten.',
+           'Byt ben halvvägs. Gör det ont i knät: ta ett handduksband runt foten.'] },
+  { noAuto: true, stretch: ['legs', 'cardio'], bothSides: true, id: 'stretch-calf', name: 'Vadstretch mot vägg', muscles: ['legs'], equipment: 'none',
+    sets: 1, reps: '30 s per ben', defaultReps: 30, anim: 'stretchCalf', props: ['wallR'], timed: true,
+    tips: ['Stå med händerna mot en vägg och ena benet bakåt.',
+           'Håll bakre benet rakt och hälen i golvet.',
+           'Luta dig mot väggen tills det drar i vaden.',
+           'Byt ben halvvägs.'] },
+  { noAuto: true, stretch: ['legs', 'back', 'cardio'], bothSides: true, id: 'stretch-hamstring', name: 'Stretch baksida lår', muscles: ['legs'], equipment: 'none',
+    sets: 1, reps: '30 s per ben', defaultReps: 30, anim: 'stretchHam', timed: true,
+    tips: ['Sätt ena hälen en bit framför dig med rakt ben och tån uppåt.',
+           'Böj det bakre knät och fäll framåt från höften med rak rygg.',
+           'Händerna vilar på låret, inte på knät.',
+           'Byt ben halvvägs.'] },
+  { noAuto: true, stretch: ['legs', 'core'], bothSides: true, id: 'stretch-hip-flexor', name: 'Höftböjarstretch', muscles: ['legs'], equipment: 'none',
+    sets: 1, reps: '30 s per sida', defaultReps: 30, anim: 'stretchHipFlex', timed: true,
+    tips: ['Ställ dig på ena knät med andra foten framför dig, gärna på en matta.',
+           'Spänn rumpan och skjut höften lätt framåt.',
+           'Håll överkroppen upprätt. Det ska dra på framsidan av höften.',
+           'Byt sida halvvägs.'] },
+  { noAuto: true, stretch: ['back', 'core', 'shoulders'], id: 'stretch-child', name: 'Barnets position', muscles: ['back'], equipment: 'none',
+    sets: 1, reps: '30–45 s', defaultReps: 40, anim: 'stretchChild', timed: true,
+    tips: ['Stå på knä och sätt dig bakåt mot hälarna.',
+           'Fäll fram överkroppen och sträck armarna framåt i golvet.',
+           'Låt pannan vila mot golvet eller händerna.',
+           'Andas djupt ner i ryggen.'] },
 
   // Kondition
   { kneeHeavy: true, id: 'jumping-jack', name: 'Jumping jacks', muscles: ['cardio'], equipment: 'none',

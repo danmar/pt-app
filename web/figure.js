@@ -56,6 +56,7 @@ function build(exercise) {
     el('line', { x1: 0.72, y1: 0.70, x2: 0.72, y2: 0.92, class: 'prop-line' }, svg);
   }
   if (exercise.cable) el('circle', { cx: exercise.cable[0], cy: exercise.cable[1], r: 0.03, class: 'prop-ring' }, svg);
+  if (props.includes('wallR')) el('line', { x1: 0.87, y1: -0.12, x2: 0.87, y2: 0.96, class: 'prop-line soft' }, svg);
   if (props.includes('wall')) el('line', { x1: 0.265, y1: -0.12, x2: 0.265, y2: 0.96, class: 'prop-line soft' }, svg);
   if (props.includes('machine')) {
     el('rect', { x: 0.30, y: 0.60, width: 0.36, height: 0.04, rx: 0.01, class: 'prop soft' }, svg);

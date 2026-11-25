@@ -121,6 +121,10 @@ export const SAFETY = {
     'Ha plattan på ett golv där den inte glider, gärna på en matta, och något att hålla i inom räckhåll.',
     'Kliv av framåt eller åt sidan om du tappar balansen. Försök inte rädda dig kvar på plattan.',
   ],
+  // Stretch
+  'stretch-quad': ['Håll i något stadigt så att du inte tappar balansen.'],
+  'stretch-hip-flexor': ['Lägg en matta eller handduk under knät.'],
+  'stretch-child': ['Gör det ont i knäna? Lägg en kudde mellan rumpa och hälar.'],
   // Gymboll
   'ball-crunch': [
     'Ha fötterna stadigt i golvet och lite isär så att bollen inte rullar undan.',

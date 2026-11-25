@@ -1,7 +1,7 @@
 import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk, addCustomExercise, matchesQuery } from './exercises.js';
 import { mountFigures } from './figure.js';
 import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
-import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor, balanceSwap } from './workouts.js';
+import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor, balanceSwap, buildStretch, stretchSteps } from './workouts.js';
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
@@ -667,7 +667,7 @@ function placeHeader(place) {
         ${LENGTH_OPTIONS[place].map((m) => `<button role="radio" aria-checked="${ui.minutes[place] === m}" data-action="minutes" data-value="${m}">${m} min</button>`).join('')}
       </div>`}
     </section>
-    <p class="hint">${ui.type[place] === 'strength' ? 'När du trycker på Börja träna föreslår appen uppvärmning och sedan övning för övning, efter det du redan kört idag.' : TYPES[ui.type[place]].desc}</p>`;
+    <p class="hint">${ui.type[place] === 'strength' ? `När du trycker på Börja träna föreslår appen uppvärmning och sedan övning för övning, efter det du redan kört idag.${place === 'gym' ? ' Passet avslutas med stretch.' : ''}` : TYPES[ui.type[place]].desc}</p>`;
 }
 
 const physioNote = (place) => `<p class="note">Dina fysioövningar ingår alltid och ligger först. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`;
@@ -700,7 +700,7 @@ function intervalView(place) {
       <span class="est">Ungefär ${estimateMinutes(steps)} minuter totalt</span>
     </section>
     ${hasPhysio ? `<p class="note">${ICON.shield} Dina fysioövningar ingår i passet. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>` : ''}
-    <p class="hint">${plan.warmup ? `Passet börjar med ${Math.round(plan.warmup.sec / 60) || 1} min uppvärmning ${plan.warmup.exId === 'bike' ? 'på cykel' : 'på stället'}.` : 'Konditionspass behöver ingen separat uppvärmning. Börja lugnt och öka tempot.'}</p>
+    <p class="hint">${plan.warmup ? `Passet börjar med ${Math.round(plan.warmup.sec / 60) || 1} min uppvärmning ${plan.warmup.exId === 'bike' ? 'på cykel' : 'på stället'}.` : 'Konditionspass behöver ingen separat uppvärmning. Börja lugnt och öka tempot.'}${plan.stretch?.length ? ' Passet avslutas med stretch.' : ''}</p>
     <details class="card station-details"><summary>Visa övningarna i passet</summary>
     ${plan.physio.length ? `<h3 class="group-title">Fysio först</h3>
       <ul class="ex-list">${plan.physio.map((p) => item(p.exId, `${p.sets} set × ${BY_ID[p.exId].reps}`)).join('')}</ul>` : ''}
@@ -714,7 +714,10 @@ function intervalView(place) {
           ${st.physio ? '' : `<button class="icon-btn" data-action="iswap" data-index="${i}" aria-label="Byt ${esc(ex.name)}">${ICON.swap}</button>`}
           <button class="icon-btn" data-action="iremove" data-index="${i}" aria-label="Ta bort ${esc(ex.name)}">${ICON.remove}</button></div>`);
       }).join('')}
-    </ol></details>
+    </ol>
+    ${plan.stretch?.length ? `<h3 class="group-title">Stretch <span class="title-note">sist</span></h3>
+      <ul class="ex-list">${plan.stretch.map((id) => item(id, BY_ID[id].reps)).join('')}</ul>` : ''}
+    </details>
     <div class="stack">
       <button class="btn primary big" data-action="start" ${plan.stations.length ? '' : 'disabled'}>${ICON.play} ${startLabel}</button>
       <div class="row">
@@ -1744,12 +1747,12 @@ function renderRunner() {
   $('#workout').innerHTML = `
     <div class="wk-top">
       <span class="wk-spacer"></span>
-      <div class="wk-title"><b>${TYPES[a.type].name}</b><span id="elapsed">0:00</span></div>
+      <div class="wk-title"><b>${a.type === 'stretch' ? 'Stretch' : TYPES[a.type].name}</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
     <div class="progress"><div style="width:${(a.index / a.steps.length) * 100}%"></div></div>
     <div class="wk-body run ${working ? (step.physio ? 'is-physio' : 'is-work') : 'is-rest'}" id="wk-body">
-      <p class="run-phase">${working ? (step.physio ? 'Fysio' : 'Kör!') : esc(step.label)}</p>
+      <p class="run-phase">${working ? (step.physio ? 'Fysio' : step.stretch ? 'Stretcha' : 'Kör!') : esc(step.label)}</p>
       <p class="run-label">${working ? esc(step.label || '') : ex ? 'Nästa övning' : ''}</p>
       ${ex ? `<div class="fig big" data-ex="${ex.id}" ${working ? 'data-play="1"' : ''}></div>
         <h2 class="wk-name">${esc(ex.name)}</h2>` : '<h2 class="wk-name">Snart klart!</h2>'}
@@ -1767,7 +1770,7 @@ function renderRunner() {
         ? '<button class="btn success grow" data-action="run-done">Klar</button>'
         : `<button class="btn primary grow" data-action="run-pause">${a.paused != null ? `${ICON.play} Fortsätt` : 'Paus'}</button>`}
       <button class="btn secondary square" data-action="run-skip" aria-label="Hoppa över">${ICON.chevronR}</button>
-      <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
+      <button class="btn-text wk-end" data-action="end">${a.type === 'stretch' ? 'Hoppa över stretchen' : 'Avsluta passet'}</button>
     </div>`;
   mountFigures($('#workout'));
 }
@@ -1811,10 +1814,21 @@ function finishInterval() {
   const byEx = new Map();
   for (const i of a.done) {
     const st = a.steps[i];
+    if (st.stretch) continue; // stretchen loggas inte som träning
     if (!byEx.has(st.exId)) byEx.set(st.exId, []);
     byEx.get(st.exId).push(st.mode === 'time' ? { reps: st.sec, weight: 0, sec: true } : { reps: BY_ID[st.exId].defaultReps, weight: 0 });
   }
   const entries = [...byEx].map(([exId, sets]) => ({ exId, sets }));
+  if (a.type === 'stretch') { // stretch efter ett styrkepass som redan är sparat
+    data.active = null;
+    save();
+    closeWorkout();
+    ui.tab = 'log';
+    render();
+    const session = data.sessions.find((s) => s.id === a.feedbackFor);
+    if (session) showFeedback(session);
+    return;
+  }
   if (entries.length) {
     data.sessions.push({ id: uid(), place: a.place, type: a.type, date: new Date(a.start).toISOString(), endDate: new Date().toISOString(), entries });
   }
@@ -1863,7 +1877,6 @@ function bodyCard(levels, title, { interactive = false, extra = '' } = {}) {
   </div>`;
 }
 
-const isStrength = (s) => !s.type || s.type === 'strength';
 const lastStrengthSession = () => [...data.sessions].reverse().find(isStrength);
 
 /** Musklerna i det här passet eller förra passet, under passet. */
@@ -2034,7 +2047,7 @@ function renderPicker() {
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
       ${w.items[w.index] ? `<button class="btn secondary square" data-action="pk-back" aria-label="Tillbaka till övningen">${ICON.chevronL}</button>` : ''}
-      <button class="btn success grow" data-action="finish" ${started ? '' : 'disabled'}>Klar – spara passet</button>
+      <button class="btn success grow" data-action="finish" ${started ? '' : 'disabled'}>${w.place === 'gym' ? 'Klar – spara och stretcha' : 'Klar – spara passet'}</button>
       <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
     </div>`;
   mountFigures(root);
@@ -2080,6 +2093,17 @@ function finishWorkout() {
   const place = w.place;
   data.active = null;
   checkGoals();
+  // Gympass avslutas alltid med stretch. Passet är redan sparat; omdömet visas när stretchen är klar.
+  if (place === 'gym' && entries.length) {
+    const ids = buildStretch(entries.filter((e) => !e.warmup).map((e) => e.exId));
+    const steps = [{ kind: 'rest', sec: 10, label: 'Passet är sparat. Dags att stretcha' }, ...stretchSteps(ids)];
+    data.active = { mode: 'interval', place, type: 'stretch', feedbackFor: data.sessions[data.sessions.length - 1].id,
+      start: Date.now(), steps, index: 0, endsAt: Date.now() + 10000, paused: null, done: [] };
+    save();
+    regenerate(place);
+    renderRunner();
+    return;
+  }
   save();
   closeWorkout();
   regenerate(place);
@@ -2110,6 +2134,17 @@ function feedbackSheet(fb) {
 }
 
 function endWorkoutDialog() {
+  if (data.active.type === 'stretch') {
+    confirmDialog({
+      title: 'Hoppa över stretchen?',
+      message: 'Passet är redan sparat. Stretch efter passet hjälper musklerna att slappna av.',
+      buttons: [
+        { label: 'Avsluta', style: 'primary', onClick: finishInterval },
+        { label: 'Fortsätt stretcha', style: 'secondary' },
+      ],
+    });
+    return;
+  }
   const interval = data.active.mode === 'interval';
   const done = interval ? data.active.done.length : data.active.items.reduce((n, it) => n + it.sets.filter((s) => s.done).length, 0);
   confirmDialog({
