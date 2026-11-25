@@ -1514,6 +1514,7 @@ function finishPick() {
     w.adding = false;
     save();
     renderWorkout();
+    $('#wk-body').scrollTop = 0;
   }
   toast(`${n} ${n === 1 ? 'övning' : 'övningar'} tillagda`);
 }
@@ -1921,7 +1922,15 @@ function muscleSheet(m) {
       : '<p class="empty">Inga övningar för den här muskeln passar med vald utrustning.</p>'}`;
 }
 
+/** Ritar om passet men behåller scrollpositionen (byte av vy nollställer den separat). */
 function renderWorkout() {
+  const top = $('#wk-body')?.scrollTop ?? 0;
+  drawWorkout();
+  const body = $('#wk-body');
+  if (body) body.scrollTop = top;
+}
+
+function drawWorkout() {
   const w = data.active;
   w.busy ??= {};
   w.gear ??= gearFor(w.place);
