@@ -1511,6 +1511,7 @@ function finishPick() {
     w.items = warmupFirst(w.items);
     if (current) w.index = w.items.indexOf(current);
     w.picking = true;
+    w.adding = false;
     save();
     renderWorkout();
   }
@@ -1700,6 +1701,7 @@ function runItem(w, item) {
   w.items = [...started, item, ...queued];
   w.index = started.length;
   w.picking = false;
+  w.adding = false;
   w.restEnd = w.restEnd && w.restEnd > Date.now() ? w.restEnd : null;
   save();
   renderWorkout();
@@ -1709,6 +1711,7 @@ function runItem(w, item) {
 function openPicker() {
   const w = data.active;
   w.picking = true;
+  w.adding = false;
   save();
   renderWorkout();
   $('#wk-body').scrollTop = 0;
@@ -1976,7 +1979,55 @@ const WARM_WHY = {
   'jumping-jack': 'Får igång pulsen snabbt',
 };
 
+/** Översikten under passet: slutförda övningar och kön, plus knappar för att lägga till och avsluta. */
 function renderPicker() {
+  const w = data.active;
+  if (w.adding) { renderAdd(); return; }
+  const root = $('#workout');
+  const qi = queueIndexes(w);
+  const doneIdx = w.items.map((_, i) => i).filter((i) => doneSets(w.items[i]));
+  const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
+  const setsText = (it, ex, n) => (ex.timed && n === 1 ? ex.reps : `${ex.unilateral ? n / 2 : n} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`);
+
+  root.innerHTML = `
+    <div class="wk-top">
+      <span class="wk-spacer"></span>
+      <div class="wk-title"><b>Passet</b><span id="elapsed">0:00</span></div>
+      <span class="wk-spacer"></span>
+    </div>
+    <div class="wk-body picker" id="wk-body">
+      <div><h3 class="pk-title">Slutfört</h3>
+      ${doneIdx.length ? `<ul class="ex-list">${doneIdx.map((i) => {
+        const it = w.items[i], ex = BY_ID[it.exId];
+        return suggestionItem({ ex, reason: `${it.warmup ? 'Uppvärmning · ' : ''}${setsText(it, ex, doneSets(it))} klart` },
+          `<div class="ex-actions"><div class="pk-more">${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}</div></div>`,
+          `data-action="d-go" data-k="${i}"`);
+      }).join('')}</ul>` : '<p class="empty">Inga övningar ännu.</p>'}</div>
+      <div><h3 class="pk-title">Din kö <small>tryck på övningen du ska köra</small></h3>
+      ${qi.length ? `<ul class="ex-list">${qi.map((i, n) => {
+        const it = w.items[i], ex = BY_ID[it.exId];
+        return suggestionItem({ ex, reason: `${it.warmup ? 'Uppvärmning · ' : ''}${setsText(it, ex, it.sets.length)}`, busy: w.busy[ex.id] }, `
+          <div class="ex-actions">
+            <div class="pk-more">
+              ${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}
+              ${n ? btn('q-up', `data-k="${i}"`, `Flytta upp ${esc(ex.name)}`, ICON.up) : ''}
+              ${btn('q-busy', `data-k="${i}"`, `${esc(ex.name)} är upptagen, flytta sist`, ICON.clock)}
+              ${btn('q-remove', `data-k="${i}"`, `Ta bort ${esc(ex.name)}`, ICON.remove)}
+            </div>
+          </div>`, `data-action="q-go" data-k="${i}"`);
+      }).join('')}</ul>` : '<p class="empty">Kön är tom.</p>'}</div>
+      <div class="stack">
+        <button class="btn primary big" data-action="add-open">${ICON.plus} Lägg till övning</button>
+        <button class="btn secondary" data-action="end">Avsluta passet</button>
+      </div>
+    </div>
+    <div id="rest" class="rest" hidden></div>`;
+  mountFigures(root);
+  updateTimers();
+}
+
+/** Ny sida: välj typ, muskelgrupper och utrustning och få förslag. */
+function renderAdd() {
   const w = data.active;
   const root = $('#workout');
   const done = exercisesToday();
@@ -1987,46 +2038,33 @@ function renderPicker() {
   const busy = list.filter((x) => x.busy);
   const started = w.items.some((it) => doneSets(it));
   const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
-  // Varje pass börjar med uppvärmning, om man inte väljer bort den.
-  const needWarm = !started && !w.skipWarm;
-  const queuedWarm = qi.filter((i) => w.items[i].warmup);
-  const warmList = warmupOptions(w.place).filter((ex) => !queueIds.includes(ex.id));
+  // Har man inte börjat och inte valt bort uppvärmningen föreslås den först.
+  const needWarm = !started && !w.skipWarm && !qi.some((i) => w.items[i].warmup);
+  const warmList = needWarm ? warmupOptions(w.place) : [];
+  const actions = (ex) => `
+    <div class="ex-actions">
+      <div class="pk-more">
+        ${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}
+        ${btn('s-queue', `data-id="${ex.id}"`, `Lägg ${esc(ex.name)} i kön`, ICON.plus)}
+      </div>
+    </div>`;
 
   root.innerHTML = `
     <div class="wk-top">
-      <span class="wk-spacer"></span>
-      <div class="wk-title"><b>${started ? 'Nästa övning' : needWarm ? 'Uppvärmning' : 'Första övningen'}</b><span id="elapsed">0:00</span></div>
+      <button class="back wk-back" data-action="add-close">${ICON.chevronL}Passet</button>
+      <div class="wk-title"><b>Lägg till övning</b><span id="elapsed">0:00</span></div>
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body picker" id="wk-body">
-      <p class="hint center">${needWarm ? 'Börja med 5 minuters uppvärmning. Tryck på den du vill köra.' : 'Tryck på övningen du ska köra.'}</p>
-      ${needWarm ? `
+      <p class="hint center">Tryck på en övning för att köra den nu, eller på + för att lägga den i kön.</p>
+      ${warmList.length ? `
         <div class="warm-box"><h3 class="pk-title">Uppvärmning <small>lugnt tempo, pulsen ska upp lite</small></h3>
-        <ul class="ex-list">${[...queuedWarm.map((i) => ({ ex: BY_ID[w.items[i].exId], k: i })), ...warmList.map((ex) => ({ ex }))].map(({ ex, k }) => suggestionItem(
+        <ul class="ex-list">${warmList.map((ex) => suggestionItem(
           { ex, reason: `${WARM_WHY[ex.id] ?? 'Lätt uppvärmning'} · ${inMinutes(ex) ? '5 min' : `${ex.reps} × ${ex.sets}`}` },
-          `<div class="ex-actions"><div class="pk-more">${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}</div></div>`,
-          k != null ? `data-action="q-go" data-k="${k}"` : `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul>
-        <button class="btn-text" data-action="skip-warm">Jag har redan värmt upp</button></div>
-        <h3 class="pk-title then-title">Sedan</h3>` : ''}
-      ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
-      ${sessionBodyCard(w)}
-      ${qi.some((i) => !(needWarm && w.items[i].warmup)) ? `
-        <div><h3 class="pk-title">Din kö <small>flytta om något är upptaget</small></h3>
-        <ul class="ex-list">${qi.filter((i) => !(needWarm && w.items[i].warmup)).map((i, n) => {
-          const ex = BY_ID[w.items[i].exId];
-          return suggestionItem({ ex, reason: `${w.items[i].warmup ? 'Uppvärmning · ' : ''}${ex.timed && w.items[i].sets.length === 1 ? ex.reps : `${ex.unilateral ? w.items[i].sets.length / 2 : w.items[i].sets.length} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`}`, busy: w.busy[ex.id] }, `
-            <div class="ex-actions">
-              <div class="pk-more">
-                ${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}
-                ${n ? btn('q-up', `data-k="${i}"`, `Flytta upp ${esc(ex.name)}`, ICON.up) : ''}
-                ${btn('q-busy', `data-k="${i}"`, `${esc(ex.name)} är upptagen, flytta sist`, ICON.clock)}
-                ${btn('q-remove', `data-k="${i}"`, `Ta bort ${esc(ex.name)}`, ICON.remove)}
-              </div>
-            </div>`, `data-action="q-go" data-k="${i}"`);
-        }).join('')}</ul></div>` : ''}
-      <button class="btn secondary" data-action="any-exercise">+ Välj övningar från listan</button>
-      <div><h3 class="pk-title">${qi.length ? 'Eller välj ett förslag' : 'Förslag'}</h3>
+          actions(ex), `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul>
+        <button class="btn-text" data-action="skip-warm">Jag har redan värmt upp</button></div>` : ''}
       <section class="card controls pk-controls">${pickControls(w)}</section>
+      <div><h3 class="pk-title">Förslag</h3>
       ${!w.gear.length && w.stype !== 'stretch' ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : free.length ? `
         <ul class="ex-list">${free.map((x) => suggestionItem(x, `
           <div class="ex-actions">
@@ -2040,19 +2078,14 @@ function renderPicker() {
       </div>
       ${rehabSuggestions(w.place, [...queueIds, ...done.map((d) => d.exId), ...free.map((x) => x.ex.id)]).map(([area, list]) => `
         <div><h3 class="pk-title">Fysio för ${AREAS[area].the}</h3>
-        <ul class="ex-list">${list.map((ex) => suggestionItem({ ex, reason: `Stärker och avlastar ${AREAS[area].the}` }, `
-          <div class="ex-actions">
-            <div class="pk-more">${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}${btn('s-queue', `data-id="${ex.id}"`, `Lägg ${esc(ex.name)} i kön`, ICON.plus)}</div>
-          </div>`, `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul></div>`).join('')}
+        <ul class="ex-list">${list.map((ex) => suggestionItem({ ex, reason: `Stärker och avlastar ${AREAS[area].the}` }, actions(ex), `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul></div>`).join('')}
       ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
         <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
+      <button class="btn secondary" data-action="any-exercise">Välj övningar från listan</button>
+      ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
+      ${sessionBodyCard(w)}
     </div>
-    <div id="rest" class="rest" hidden></div>
-    <div class="wk-bottom">
-      ${w.items[w.index] ? `<button class="btn secondary square" data-action="pk-back" aria-label="Tillbaka till övningen">${ICON.chevronL}</button>` : ''}
-      <button class="btn success grow" data-action="finish" ${started ? '' : 'disabled'}>${w.place === 'gym' ? 'Klar – spara och stretcha' : 'Klar – spara passet'}</button>
-      <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
-    </div>`;
+    <div id="rest" class="rest" hidden></div>`;
   mountFigures(root);
   updateTimers();
 }
@@ -2558,6 +2591,9 @@ document.addEventListener('click', (e) => {
     case 's-queue': w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
     case 's-busy': markBusy(w, t.dataset.id); save(); renderWorkout(); break;
     case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
+    case 'add-open': w.adding = true; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
+    case 'add-close': w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
+    case 'd-go': w.index = k; w.picking = false; w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
     case 'wtype': w.stype = t.dataset.value; save(); renderWorkout(); break;
     case 'skip-warm': w.skipWarm = true; save(); renderWorkout(); break;
     case 'q-up': {

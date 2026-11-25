@@ -875,3 +875,4 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .body-card .legend { gap: 12px; flex-wrap: wrap; }
 .body-card .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .body-card .legend .sw { margin-left: 0; }
+.wk-back { margin: 0; justify-self: start; }
