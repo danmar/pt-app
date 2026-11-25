@@ -660,14 +660,14 @@ function placeHeader(place) {
       <div class="segmented types" role="radiogroup" aria-label="Typ av pass">
         ${Object.entries(TYPES).map(([k, t]) => `<button role="radio" aria-checked="${ui.type[place] === k}" data-action="ptype" data-value="${k}">${t.name}</button>`).join('')}
       </div>
-      ${ui.type[place] === 'strength' ? strengthControls(place) : `
+      ${ui.type[place] === 'strength' ? '' : `
       <div class="field"><span class="field-label">Utrustning</span>
         ${chipToggles('gear', Object.entries(GEAR).filter(([k]) => (ui.type[place] === 'balance' ? BALANCE_PASS_GEAR.includes(k) : !BALANCE_GEAR.includes(k))), gearFor(place))}</div>
       <div class="segmented" role="radiogroup" aria-label="Passets längd">
         ${LENGTH_OPTIONS[place].map((m) => `<button role="radio" aria-checked="${ui.minutes[place] === m}" data-action="minutes" data-value="${m}">${m} min</button>`).join('')}
       </div>`}
     </section>
-    <p class="hint">${ui.type[place] === 'strength' ? `När du trycker på Börja träna föreslår appen uppvärmning och sedan övning för övning, efter det du redan kört idag.${place === 'gym' ? ' Passet avslutas med stretch.' : ''}` : TYPES[ui.type[place]].desc}</p>`;
+    <p class="hint">${ui.type[place] === 'strength' ? `När du trycker på Börja träna föreslår appen uppvärmning och sedan övning för övning, efter det du redan kört idag. Utrustning och muskelgrupper väljer du under passet.${place === 'gym' ? ' Passet avslutas med stretch.' : ''}` : TYPES[ui.type[place]].desc}</p>`;
 }
 
 const physioNote = (place) => `<p class="note">Dina fysioövningar ingår alltid och ligger först. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`;
