@@ -67,6 +67,13 @@ function build(exercise) {
     el('line', { x1: 0.80, y1: 0.40, x2: 1.02, y2: 0.24, class: 'prop-line soft' }, svg);
   }
 
+  // Balansplatta: en halvkupa på golvet och plattan ovanpå, som följer fötterna.
+  let board = null;
+  if (props.includes('board')) {
+    el('path', { d: 'M0.44,0.96 A0.06,0.06 0 0 1 0.56,0.96 Z', class: 'prop soft' }, svg);
+    board = el('line', { class: 'prop-line board' }, svg);
+  }
+
   const far = anim.front ? 'limb' : 'limb far';
   const parts = {
     farLeg: el('polyline', { class: far }, svg),
@@ -86,6 +93,7 @@ function build(exercise) {
     parts.plate = el('circle', { r: 0.075, class: 'prop plate' }, svg);
     parts.hub = el('circle', { r: 0.019, class: 'hub' }, svg);
   }
+  if (board) { parts.board = board; parts.boardFront = !!anim.front; }
   parts.torso = el('polyline', { class: 'limb' }, svg);
   parts.nearLeg = el('polyline', { class: 'limb' }, svg);
   if (exercise.cable) { parts.cable = el('line', { class: 'prop-rope' }, svg); parts.cableAt = exercise.cable; }
@@ -133,6 +141,15 @@ function draw({ parts }, p) {
     const [x, y] = p.footN;
     parts.platform.setAttribute('x1', x + 0.025 - 0.07); parts.platform.setAttribute('y1', y + 0.03 - 0.1);
     parts.platform.setAttribute('x2', x + 0.025 + 0.07); parts.platform.setAttribute('y2', y + 0.03 + 0.1);
+  }
+  if (parts.board) {
+    // Framifrån står båda fötterna på plattan och den lutar med dem. Från sidan står den närmsta foten mitt på.
+    const R = 0.17, under = 0.016;
+    const [a, b] = parts.boardFront ? [p.footF, p.footN] : [[p.footN[0] - 0.05, p.footN[1]], [p.footN[0] + 0.05, p.footN[1]]];
+    const cx = parts.boardFront ? (a[0] + b[0]) / 2 : 0.50, cy = (a[1] + b[1]) / 2 + under;
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]), dx = (b[0] - a[0]) / len, dy = (b[1] - a[1]) / len;
+    parts.board.setAttribute('x1', cx - dx * R); parts.board.setAttribute('y1', cy - dy * R);
+    parts.board.setAttribute('x2', cx + dx * R); parts.board.setAttribute('y2', cy + dy * R);
   }
   for (const key of ['plate', 'hub']) {
     if (!parts[key]) continue;

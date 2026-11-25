@@ -16,6 +16,7 @@ export const EQUIPMENT = {
   none: 'Ingen utrustning',
   dumbbells: 'Hantlar',
   kettlebell: 'Kettlebell',
+  board: 'Balansplatta',
   gym: 'Gymutrustning',
 };
 
@@ -26,6 +27,7 @@ export const GEAR = {
   kettlebell: 'Kettlebell',
   barbell: 'Skivstång',
   machine: 'Maskiner & kabel',
+  board: 'Balansplatta',
 };
 export const GEAR_IDS = Object.keys(GEAR);
 
@@ -458,6 +460,26 @@ const slRdlBottom = {
 const swingFront = mod(standing, { ...balanceArms, kneeF: P(0.61, 0.70), footF: P(0.72, 0.91) });
 const swingBack = mod(standing, { ...balanceArms, kneeF: P(0.40, 0.70), footF: P(0.30, 0.91) });
 
+// Balansplatta: gubben står på plattan, en bit ovanför golvet.
+const BOARD_H = 0.075;
+const onBoard = (pose) => Object.fromEntries(Object.entries(pose).map(([k, [x, y]]) => [k, P(x, y - BOARD_H)]));
+// Framifrån med fötterna isär. tilt > 0 = höger fot (i bild) ner.
+const boardFront = (tilt, shift = 0) => onBoard({
+  head: P(0.50 + shift, 0.11), neck: P(0.50 + shift, 0.21), hip: P(0.50 + shift * 0.6, 0.50),
+  elbowN: P(0.61 + shift, 0.34), handN: P(0.68 + shift, 0.44),
+  elbowF: P(0.39 + shift, 0.34), handF: P(0.32 + shift, 0.44),
+  kneeN: P(0.575, 0.725 + tilt * 0.6), footN: P(0.60, 0.95 + tilt),
+  kneeF: P(0.425, 0.725 - tilt * 0.6), footF: P(0.40, 0.95 - tilt),
+});
+const boardSquatDown = onBoard({
+  head: P(0.50, 0.23), neck: P(0.50, 0.33), hip: P(0.50, 0.62),
+  elbowN: P(0.60, 0.42), handN: P(0.55, 0.36),
+  elbowF: P(0.40, 0.42), handF: P(0.45, 0.36),
+  kneeN: P(0.63, 0.76), footN: P(0.60, 0.95),
+  kneeF: P(0.37, 0.76), footF: P(0.40, 0.95),
+});
+const boardSquatUp = mod(boardFront(0), { elbowN: P(0.60, 0.30), handN: P(0.55, 0.24), elbowF: P(0.40, 0.30), handF: P(0.45, 0.24) });
+
 /** period = sekunder för ett helt varv genom alla ställningar (två ställningar = fram och tillbaka). */
 export const ANIMATIONS = {
   squat:            { period: 2.6, frames: [squatTop, squatBottom] },
@@ -509,6 +531,10 @@ export const ANIMATIONS = {
   tandemStand:      { period: 3.4, frames: [tandemA, tandemB] },
   singleLegRdl:     { period: 3.0, frames: [slRdlTop, slRdlBottom] },
   legSwing:         { period: 2.0, frames: [swingFront, swingBack] },
+  boardStand:       { period: 3.6, frames: [boardFront(0.012, 0.008), boardFront(-0.012, -0.008)], front: true },
+  boardTilt:        { period: 2.4, frames: [boardFront(0.035, 0.02), boardFront(-0.035, -0.02)], front: true },
+  boardSquat:       { period: 2.8, frames: [boardSquatUp, boardSquatDown], front: true },
+  boardSingleLeg:   { period: 3.4, frames: [onBoard(oneLegA), onBoard(oneLegB)] },
 };
 
 // ---------------------------------------------------------------------------
@@ -870,6 +896,32 @@ export const EXERCISES = [
            'Håll överkroppen stilla och stående benet stabilt.',
            'Byt ben halvvägs. Släpp stödet när det känns tryggt.'] },
 
+  // Balansplatta
+  { noAuto: true, balance: true, id: 'board-stand', name: 'Stå på balansplattan', muscles: ['legs', 'core'], equipment: 'board',
+    sets: 3, reps: '40 s', defaultReps: 40, anim: 'boardStand', props: ['board'], timed: true,
+    tips: ['Ställ plattan nära en vägg eller stol som du kan ta tag i.',
+           'Kliv upp med en fot i taget och ställ fötterna höftbrett, lika långt från mitten.',
+           'Försök hålla plattan plan utan att kanterna slår i golvet.',
+           'Lätt böjda knän och blicken rakt fram. Blunda för mer utmaning.'] },
+  { noAuto: true, balance: true, id: 'board-tilt', name: 'Tippa på balansplattan', muscles: ['legs', 'core'], equipment: 'board',
+    sets: 3, reps: '40 s', defaultReps: 40, anim: 'boardTilt', props: ['board'], timed: true,
+    tips: ['Stå på plattan med fötterna höftbrett.',
+           'Tippa lugnt åt höger tills kanten nästan når golvet, sedan åt vänster.',
+           'Rör dig från fotlederna och höften, inte genom att kasta med armarna.',
+           'Byt till fram och tillbaka halvvägs om plattan går åt alla håll.'] },
+  { noAuto: true, balance: true, id: 'board-squat', name: 'Knäböj på balansplattan', muscles: ['legs', 'core'], equipment: 'board',
+    sets: 3, reps: '8–10', defaultReps: 8, anim: 'boardSquat', props: ['board'],
+    tips: ['Stå på plattan med fötterna höftbrett och armarna framför dig.',
+           'Böj knäna och skjut bak höften en liten bit. Djupa knäböj behövs inte.',
+           'Håll plattan så plan du kan hela vägen.',
+           'Res dig lugnt. Håll i något tills det känns stabilt.'] },
+  { noAuto: true, balance: true, bothSides: true, id: 'board-single-leg', name: 'Ett ben på balansplattan', muscles: ['legs', 'core'], equipment: 'board',
+    sets: 3, reps: '20–30 s per ben', defaultReps: 20, anim: 'boardSingleLeg', props: ['board'], timed: true,
+    tips: ['Den svåraste varianten. Gör den när du står stadigt på två ben.',
+           'Ställ en fot mitt på plattan och lyft den andra.',
+           'Håll i en vägg eller stol i början.',
+           'Byt ben halvvägs.'] },
+
   // Kondition
   { kneeHeavy: true, id: 'jumping-jack', name: 'Jumping jacks', muscles: ['cardio'], equipment: 'none',
     sets: 3, reps: '45 s', defaultReps: 45, anim: 'jumpingJack', timed: true, warmup: true,
@@ -926,6 +978,7 @@ const GEAR_OF = {
   'battle-ropes': 'machine', bike: 'machine', 'rowing-machine': 'machine', 'captains-chair': 'machine',
   'kb-goblet-squat': 'kettlebell', 'kb-swing': 'kettlebell', 'kb-clean': 'kettlebell', 'kb-row': 'kettlebell', 'kb-curl': 'kettlebell',
   'kb-triceps-ext': 'kettlebell', 'kb-halo': 'kettlebell', 'kb-pullover': 'kettlebell',
+  'board-stand': 'board', 'board-tilt': 'board', 'board-squat': 'board', 'board-single-leg': 'board',
 };
 
 // Belastning på kroppsdelar som kan göra ont: 1 = viss, 2 = hög.
@@ -942,7 +995,7 @@ const LOAD = {
   'kb-goblet-squat': { knees: 2, back: 1 }, 'kb-clean': { back: 2, shoulders: 1, knees: 1 }, 'kb-swing': { back: 2 }, 'kb-row': { back: 1 },
   'kb-triceps-ext': { shoulders: 2, back: 1 }, 'kb-halo': { shoulders: 2 }, 'kb-pullover': { shoulders: 2, back: 1 },
   'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
-  'single-leg-rdl': { back: 1 },
+  'single-leg-rdl': { back: 1 }, 'board-squat': { knees: 1 },
 };
 
 // Andra namn som sökningen ska hitta.
@@ -971,6 +1024,10 @@ const ALIASES = {
   'kb-halo': ['kettlebell', 'halo'],
   'kb-pullover': ['kettlebell', 'pullover', 'pullovers'],
   'lying-leg-raise': ['benlyft', 'leg raise', 'bensänkning'],
+  'board-stand': ['balansplatta', 'balansbräda', 'wobble board', 'balance board', 'bosu'],
+  'board-tilt': ['balansplatta', 'balansbräda', 'wobble board', 'balance board', 'bosu'],
+  'board-squat': ['balansplatta', 'balansbräda', 'knäböj', 'bosu'],
+  'board-single-leg': ['balansplatta', 'balansbräda', 'ett ben', 'bosu'],
   'captains-chair': ['captains chair', 'benlyft', 'knälyft', 'hängande knälyft', 'vertical knee raise', 'dipsställning'],
 };
 // Övningar som görs ett ben i taget: varje set får H eller V.
@@ -997,7 +1054,7 @@ export function addCustomExercise(def) {
   const ex = {
     sets: 3, reps: def.timed ? '30 s' : '10', defaultReps: def.timed ? 30 : 10, anim: 'idle', tips: [], noAuto: true,
     ...def, custom: true, safety: [], load: {}, aliases: [],
-    equipment: def.gear === 'body' ? 'none' : def.gear === 'dumbbells' || def.gear === 'kettlebell' ? def.gear : 'gym',
+    equipment: def.gear === 'body' ? 'none' : ['dumbbells', 'kettlebell', 'board'].includes(def.gear) ? def.gear : 'gym',
   };
   EXERCISES.push(ex);
   BY_ID[ex.id] = ex;
@@ -1019,11 +1076,12 @@ export function painOk(exercise, pain = {}) {
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
-/** opts: { hasDumbbells, hasKettlebell, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
-export function isAvailable(exercise, place, { hasDumbbells = false, hasKettlebell = false, kneeFriendly = false, pain, gear } = {}) {
+/** opts: { hasDumbbells, hasKettlebell, hasBoard, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
+export function isAvailable(exercise, place, { hasDumbbells = false, hasKettlebell = false, hasBoard = false, kneeFriendly = false, pain, gear } = {}) {
   if (pain ? !painOk(exercise, pain) : kneeFriendly && exercise.kneeHeavy) return false;
   if (gear && !gear.includes(exercise.gear)) return false;
   if (place === 'gym') return true;
   return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells)
-    || (exercise.equipment === 'kettlebell' && (hasKettlebell || !!gear?.includes('kettlebell')));
+    || (exercise.equipment === 'kettlebell' && (hasKettlebell || !!gear?.includes('kettlebell')))
+    || (exercise.equipment === 'board' && (hasBoard || !!gear?.includes('board')));
 }

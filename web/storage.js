@@ -32,9 +32,17 @@ function normalize(raw) {
     week: oldProposal(raw) ? base.week : Array.isArray(raw.week) && raw.week.length === 7 ? raw.week.map((v) => (typeof v === 'string' ? v : '')) : base.week,
     goals: Array.isArray(raw.goals) ? raw.goals : [],
     customExercises: Array.isArray(raw.customExercises) ? raw.customExercises.filter((c) => c && c.id && c.name) : [],
-    settings: { ...base.settings, ...(raw.settings || {}) },
+    settings: withBoard({ ...base.settings, ...(raw.settings || {}) }),
     active: raw.active && (Array.isArray(raw.active.items) || Array.isArray(raw.active.steps)) ? raw.active : null,
   };
+}
+
+// Balansplattan kom till senare: lägg till den i ett redan sparat utrustningsval för gymmet.
+function withBoard(settings) {
+  if (settings.boardAdded) return settings;
+  const gym = settings.gear?.gym;
+  if (Array.isArray(gym) && !gym.includes('board')) settings.gear = { ...settings.gear, gym: [...gym, 'board'] };
+  return { ...settings, boardAdded: true };
 }
 
 function load() {

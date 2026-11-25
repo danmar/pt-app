@@ -103,6 +103,24 @@ export const SAFETY = {
   'leg-swing': [
     'Pendla lugnt, inga kast. Rörelsen ska inte göra ont i höften.',
   ],
+  'board-stand': [
+    'Ha plattan på ett golv där den inte glider, gärna på en matta, och något att hålla i inom räckhåll.',
+    'Kliv av framåt eller åt sidan om du tappar balansen. Försök inte rädda dig kvar på plattan.',
+  ],
+  'board-tilt': [
+    'Ha plattan på ett golv där den inte glider, gärna på en matta, och något att hålla i inom räckhåll.',
+    'Kliv av framåt eller åt sidan om du tappar balansen. Försök inte rädda dig kvar på plattan.',
+    'Tippa bara så långt du har kontroll.',
+  ],
+  'board-squat': [
+    'Ha plattan på ett golv där den inte glider, gärna på en matta, och något att hålla i inom räckhåll.',
+    'Kliv av framåt eller åt sidan om du tappar balansen. Försök inte rädda dig kvar på plattan.',
+    'Knäna ska peka åt samma håll som tårna.',
+  ],
+  'board-single-leg': [
+    'Ha plattan på ett golv där den inte glider, gärna på en matta, och något att hålla i inom räckhåll.',
+    'Kliv av framåt eller åt sidan om du tappar balansen. Försök inte rädda dig kvar på plattan.',
+  ],
   // Fysio
   'single-leg-extension': [
     'Ställ in maskinen ordentligt: knät ska vara i linje med maskinens vridpunkt.',
