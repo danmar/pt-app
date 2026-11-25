@@ -37,12 +37,17 @@ function normalize(raw) {
   };
 }
 
-// Balansplattan kom till senare: lägg till den i ett redan sparat utrustningsval för gymmet.
+// Utrustning som kom till senare: lägg till den en gång i ett redan sparat utrustningsval för gymmet.
+const LATER_GEAR = [['boardAdded', 'board'], ['ballBandAdded', 'ball'], ['ballBandAdded', 'band']];
 function withBoard(settings) {
-  if (settings.boardAdded) return settings;
-  const gym = settings.gear?.gym;
-  if (Array.isArray(gym) && !gym.includes('board')) settings.gear = { ...settings.gear, gym: [...gym, 'board'] };
-  return { ...settings, boardAdded: true };
+  const out = { ...settings };
+  for (const [flag, g] of LATER_GEAR) {
+    if (settings[flag]) continue;
+    const gym = out.gear?.gym;
+    if (Array.isArray(gym) && !gym.includes(g)) out.gear = { ...out.gear, gym: [...gym, g] };
+  }
+  for (const [flag] of LATER_GEAR) out[flag] = true;
+  return out;
 }
 
 function load() {

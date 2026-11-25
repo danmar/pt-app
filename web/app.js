@@ -606,7 +606,9 @@ function loadSaved(id) {
 // ---- Gym / Hemma ----------------------------------------------------------
 // Utrustning som bara visas i balanspasset.
 const BALANCE_GEAR = ['board'];
-const exOpts = (place) => ({ hasDumbbells: data.settings.hasDumbbells, hasKettlebell: data.settings.hasKettlebell, hasBoard: data.settings.hasBoard, pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
+// Utrustning i balanspasset.
+const BALANCE_PASS_GEAR = ['body', 'board', 'ball'];
+const exOpts = (place) => ({ hasDumbbells: data.settings.hasDumbbells, hasKettlebell: data.settings.hasKettlebell, hasBoard: data.settings.hasBoard, hasBall: data.settings.hasBall, hasBand: data.settings.hasBand, pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
 const painNames = (areas) => areas.map((a) => AREAS[a].the).join(' och ');
 const painWarn = (ex) => {
   const areas = painAreasFor(ex, data.settings.pain);
@@ -660,7 +662,7 @@ function placeHeader(place) {
       </div>
       ${ui.type[place] === 'strength' ? strengthControls(place) : `
       <div class="field"><span class="field-label">Utrustning</span>
-        ${chipToggles('gear', Object.entries(GEAR).filter(([k]) => (ui.type[place] === 'balance') === BALANCE_GEAR.includes(k) || k === 'body'), gearFor(place))}</div>
+        ${chipToggles('gear', Object.entries(GEAR).filter(([k]) => (ui.type[place] === 'balance' ? BALANCE_PASS_GEAR.includes(k) : !BALANCE_GEAR.includes(k))), gearFor(place))}</div>
       <div class="segmented" role="radiogroup" aria-label="Passets längd">
         ${LENGTH_OPTIONS[place].map((m) => `<button role="radio" aria-checked="${ui.minutes[place] === m}" data-action="minutes" data-value="${m}">${m} min</button>`).join('')}
       </div>`}
@@ -829,7 +831,7 @@ function painSheet(ex) {
 }
 
 // ---- Fri styrketräning ------------------------------------------------------
-const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body', ...(data.settings.hasDumbbells ? ['dumbbells'] : []), ...(data.settings.hasKettlebell ? ['kettlebell'] : []), ...(data.settings.hasBoard ? ['board'] : [])]);
+const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body', ...(data.settings.hasDumbbells ? ['dumbbells'] : []), ...(data.settings.hasKettlebell ? ['kettlebell'] : []), ...(data.settings.hasBoard ? ['board'] : []), ...(data.settings.hasBall ? ['ball'] : []), ...(data.settings.hasBand ? ['band'] : [])]);
 const gearFor = (place) => data.settings.gear?.[place] ?? defaultGear(place);
 const groupsFor = (place) => data.settings.groups?.[place] ?? [];
 const toggle = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -1200,6 +1202,14 @@ function settingsView() {
       <label class="list-row">
         <span>Jag har balansplatta hemma</span>
         <input type="checkbox" class="switch" data-change="board" ${s.hasBoard ? 'checked' : ''}>
+      </label>
+      <label class="list-row">
+        <span>Jag har gymboll hemma</span>
+        <input type="checkbox" class="switch" data-change="ball" ${s.hasBall ? 'checked' : ''}>
+      </label>
+      <label class="list-row">
+        <span>Jag har gummiband hemma</span>
+        <input type="checkbox" class="switch" data-change="band" ${s.hasBand ? 'checked' : ''}>
       </label>
       <div class="list-row">
         <span>Vila mellan set</span>
@@ -2600,9 +2610,11 @@ document.addEventListener('change', (e) => {
     case 'dumbbells':
       data.settings.hasDumbbells = t.checked; save(); ui.plans.home = null; ui.iplans.home = null; break;
     case 'kettlebell':
-    case 'board': {
+    case 'board':
+    case 'ball':
+    case 'band': {
       const gear = t.dataset.change;
-      data.settings[gear === 'board' ? 'hasBoard' : 'hasKettlebell'] = t.checked;
+      data.settings[{ kettlebell: 'hasKettlebell', board: 'hasBoard', ball: 'hasBall', band: 'hasBand' }[gear]] = t.checked;
       // Följ med i hemmavalet av utrustning om man redan valt där.
       const home = data.settings.gear?.home;
       if (home && t.checked !== home.includes(gear)) setPref('gear', 'home', toggle(home, gear));

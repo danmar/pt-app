@@ -234,6 +234,8 @@ svg { display: block; }
 .figure-svg .hub { fill: var(--card); }
 .figure-svg .soft { opacity: 0.6; }
 .figure-svg .prop-rope { fill: none; stroke: var(--prop); stroke-width: 0.016; stroke-linecap: round; stroke-linejoin: round; }
+.figure-svg .prop-band { stroke: var(--accent); stroke-width: 0.012; stroke-linecap: round; opacity: 0.7; }
+.figure-svg .prop.ball { opacity: 0.55; }
 .figure-svg .prop-ring { fill: none; stroke: var(--prop); stroke-width: 0.02; }
 .figure-svg .kb-handle { stroke-width: 0.012; }
 .figure-svg .prop-line { stroke: var(--prop); stroke-width: 0.024; stroke-linecap: round; }

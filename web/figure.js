@@ -28,6 +28,7 @@ function build(exercise) {
   const props = exercise.props ?? [];
   const svg = el('svg', { viewBox: '-0.09 -0.18 1.18 1.18', class: 'figure-svg', 'aria-hidden': 'true' });
   el('line', { x1: 0, y1: 0.96, x2: 1, y2: 0.96, class: 'floor' }, svg);
+  const parts0 = exercise.ball ? { ballSpec: exercise.ball } : {};
 
   if (props.includes('bench')) {
     el('rect', { x: 0.26, y: 0.72, width: 0.58, height: 0.045, rx: 0.01, class: 'prop soft' }, svg);
@@ -74,8 +75,12 @@ function build(exercise) {
     board = el('line', { class: 'prop-line board' }, svg);
   }
 
+  // Gymboll: fast eller följer en led (at). x/y = fast läge, dx/dy = förskjutning från leden.
+  if (exercise.ball) parts0.ball = el('circle', { r: exercise.ball.r, class: 'prop ball' }, svg);
+
   const far = anim.front ? 'limb' : 'limb far';
   const parts = {
+    ...parts0,
     farLeg: el('polyline', { class: far }, svg),
     farArm: el('polyline', { class: far }, svg),
   };
@@ -96,7 +101,9 @@ function build(exercise) {
   if (board) { parts.board = board; parts.boardFront = !!anim.front; }
   parts.torso = el('polyline', { class: 'limb' }, svg);
   parts.nearLeg = el('polyline', { class: 'limb' }, svg);
-  if (exercise.cable) { parts.cable = el('line', { class: 'prop-rope' }, svg); parts.cableAt = exercise.cable; }
+  if (exercise.cable) { parts.cable = el('line', { class: exercise.band ? 'prop-band' : 'prop-rope' }, svg); parts.cableAt = exercise.cable; }
+  // Gummiband mellan två leder, t.ex. foten och handen.
+  if (exercise.bandLines) parts.bands = exercise.bandLines.map(([a, b]) => ({ a, b, line: el('line', { class: 'prop-band' }, svg) }));
   if (props.includes('rope')) { parts.ropeN = el('polyline', { class: 'prop-rope' }, svg); parts.ropeF = el('polyline', { class: 'prop-rope soft' }, svg); }
   if (props.includes('pad')) parts.pad = el('circle', { r: 0.035, class: 'prop' }, svg);
   if (props.includes('legpress')) parts.platform = el('line', { class: 'prop-line' }, svg);
@@ -141,6 +148,15 @@ function draw({ parts }, p) {
     const [x, y] = p.footN;
     parts.platform.setAttribute('x1', x + 0.025 - 0.07); parts.platform.setAttribute('y1', y + 0.03 - 0.1);
     parts.platform.setAttribute('x2', x + 0.025 + 0.07); parts.platform.setAttribute('y2', y + 0.03 + 0.1);
+  }
+  if (parts.ball) {
+    const b = parts.ballSpec, at = b.at ? p[b.at] : [0, 0];
+    parts.ball.setAttribute('cx', b.x ?? at[0] + (b.dx ?? 0));
+    parts.ball.setAttribute('cy', b.y ?? at[1] + (b.dy ?? 0));
+  }
+  for (const { a, b, line } of parts.bands ?? []) {
+    line.setAttribute('x1', p[a][0]); line.setAttribute('y1', p[a][1]);
+    line.setAttribute('x2', p[b][0]); line.setAttribute('y2', p[b][1]);
   }
   if (parts.board) {
     // Framifrån står båda fötterna på plattan och den lutar med dem. Från sidan står den närmsta foten mitt på.

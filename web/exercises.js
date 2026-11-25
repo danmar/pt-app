@@ -17,6 +17,8 @@ export const EQUIPMENT = {
   dumbbells: 'Hantlar',
   kettlebell: 'Kettlebell',
   board: 'Balansplatta',
+  ball: 'Gymboll',
+  band: 'Gummiband',
   gym: 'Gymutrustning',
 };
 
@@ -27,6 +29,8 @@ export const GEAR = {
   kettlebell: 'Kettlebell',
   barbell: 'Skivstång',
   machine: 'Maskiner & kabel',
+  ball: 'Gymboll',
+  band: 'Gummiband',
   board: 'Balansplatta',
 };
 export const GEAR_IDS = Object.keys(GEAR);
@@ -478,6 +482,77 @@ const boardSquatDown = onBoard({
   kneeN: P(0.63, 0.76), footN: P(0.60, 0.95),
   kneeF: P(0.37, 0.76), footF: P(0.40, 0.95),
 });
+// Gymboll
+const ballSitA = {
+  head: P(0.45, 0.26), neck: P(0.45, 0.36), hip: P(0.45, 0.64),
+  elbowN: P(0.52, 0.47), handN: P(0.59, 0.56),
+  elbowF: P(0.38, 0.47), handF: P(0.31, 0.56),
+  kneeN: P(0.65, 0.72), footN: P(0.66, 0.95),
+  kneeF: P(0.66, 0.66), footF: P(0.88, 0.64),
+};
+const ballSitB = mod(ballSitA, { head: P(0.46, 0.26), neck: P(0.455, 0.36), handN: P(0.60, 0.54), handF: P(0.30, 0.58), footF: P(0.88, 0.61) });
+const ballCrunchDown = {
+  head: P(0.22, 0.58), neck: P(0.31, 0.62), hip: P(0.58, 0.66),
+  elbowN: P(0.36, 0.50), handN: P(0.24, 0.55),
+  elbowF: P(0.35, 0.51), handF: P(0.23, 0.56),
+  kneeN: P(0.79, 0.72), footN: P(0.81, 0.95),
+  kneeF: P(0.78, 0.72), footF: P(0.80, 0.95),
+};
+const ballCrunchUp = mod(ballCrunchDown, {
+  head: P(0.30, 0.41), neck: P(0.36, 0.49),
+  elbowN: P(0.44, 0.39), handN: P(0.32, 0.37), elbowF: P(0.43, 0.40), handF: P(0.31, 0.38),
+});
+const ballCurlOut = {
+  head: P(0.03, 0.91), neck: P(0.12, 0.90), hip: P(0.38, 0.82),
+  elbowN: P(0.22, 0.93), handN: P(0.34, 0.94),
+  elbowF: P(0.21, 0.93), handF: P(0.33, 0.94),
+  kneeN: P(0.60, 0.76), footN: P(0.82, 0.72),
+  kneeF: P(0.59, 0.765), footF: P(0.81, 0.725),
+};
+const ballCurlIn = mod(ballCurlOut, {
+  neck: P(0.15, 0.89), head: P(0.06, 0.90), hip: P(0.40, 0.74),
+  kneeN: P(0.50, 0.53), footN: P(0.66, 0.68), kneeF: P(0.49, 0.535), footF: P(0.65, 0.685),
+});
+const ballWallTop = {
+  head: P(0.52, 0.12), neck: P(0.52, 0.22), hip: P(0.52, 0.50),
+  elbowN: P(0.54, 0.36), handN: P(0.55, 0.49), elbowF: P(0.50, 0.36), handF: P(0.49, 0.49),
+  kneeN: P(0.60, 0.72), footN: P(0.68, 0.95), kneeF: P(0.59, 0.72), footF: P(0.67, 0.95),
+};
+const ballWallBottom = {
+  head: P(0.50, 0.32), neck: P(0.50, 0.42), hip: P(0.50, 0.70),
+  elbowN: P(0.62, 0.48), handN: P(0.75, 0.48), elbowF: P(0.61, 0.485), handF: P(0.74, 0.485),
+  kneeN: P(0.70, 0.72), footN: P(0.68, 0.95), kneeF: P(0.69, 0.725), footF: P(0.67, 0.95),
+};
+const ballPlankA = {
+  head: P(0.79, 0.47), neck: P(0.70, 0.52), hip: P(0.47, 0.68),
+  elbowN: P(0.70, 0.66), handN: P(0.81, 0.65),
+  elbowF: P(0.69, 0.66), handF: P(0.80, 0.65),
+  kneeN: P(0.29, 0.81), footN: P(0.10, 0.95),
+  kneeF: P(0.28, 0.81), footF: P(0.09, 0.95),
+};
+const ballPlankB = mod(ballPlankA, { hip: P(0.47, 0.665), neck: P(0.70, 0.515), head: P(0.79, 0.465) });
+
+// Gummiband
+const bandRowOut = mod(standing, {
+  hip: P(0.49, 0.51), kneeN: P(0.53, 0.73), kneeF: P(0.49, 0.73),
+  elbowN: P(0.62, 0.32), handN: P(0.75, 0.33), elbowF: P(0.61, 0.33), handF: P(0.74, 0.34),
+});
+const bandRowIn = mod(bandRowOut, { elbowN: P(0.39, 0.37), handN: P(0.52, 0.36), elbowF: P(0.38, 0.38), handF: P(0.51, 0.37) });
+const bandPressIn = mod(standing, { elbowN: P(0.42, 0.33), handN: P(0.54, 0.29), elbowF: P(0.41, 0.34), handF: P(0.53, 0.30) });
+const bandPressOut = mod(standing, { elbowN: P(0.64, 0.25), handN: P(0.77, 0.25), elbowF: P(0.63, 0.26), handF: P(0.76, 0.26) });
+const pullApartIn = mod(rotIn, { elbowN: P(0.57, 0.27), handN: P(0.535, 0.27), elbowF: P(0.43, 0.27), handF: P(0.465, 0.27) });
+const pullApartOut = mod(rotIn, { elbowN: P(0.64, 0.23), handN: P(0.77, 0.23), elbowF: P(0.36, 0.23), handF: P(0.23, 0.23) });
+const sideWalkA = {
+  head: P(0.50, 0.15), neck: P(0.50, 0.25), hip: P(0.50, 0.53),
+  elbowN: P(0.61, 0.38), handN: P(0.57, 0.50), elbowF: P(0.39, 0.38), handF: P(0.43, 0.50),
+  kneeN: P(0.57, 0.74), footN: P(0.59, 0.95), kneeF: P(0.43, 0.74), footF: P(0.41, 0.95),
+};
+const sideWalkB = {
+  head: P(0.55, 0.15), neck: P(0.55, 0.25), hip: P(0.55, 0.53),
+  elbowN: P(0.66, 0.38), handN: P(0.62, 0.50), elbowF: P(0.44, 0.38), handF: P(0.48, 0.50),
+  kneeN: P(0.65, 0.73), footN: P(0.71, 0.95), kneeF: P(0.47, 0.74), footF: P(0.45, 0.95),
+};
+
 const boardSquatUp = mod(boardFront(0), { elbowN: P(0.60, 0.30), handN: P(0.55, 0.24), elbowF: P(0.40, 0.30), handF: P(0.45, 0.24) });
 
 /** period = sekunder för ett helt varv genom alla ställningar (två ställningar = fram och tillbaka). */
@@ -535,6 +610,15 @@ export const ANIMATIONS = {
   boardTilt:        { period: 2.4, frames: [boardFront(0.035, 0.02), boardFront(-0.035, -0.02)], front: true },
   boardSquat:       { period: 2.8, frames: [boardSquatUp, boardSquatDown], front: true },
   boardSingleLeg:   { period: 3.4, frames: [onBoard(oneLegA), onBoard(oneLegB)] },
+  ballSit:          { period: 3.4, frames: [ballSitA, ballSitB] },
+  ballCrunch:       { period: 2.4, frames: [ballCrunchDown, ballCrunchUp] },
+  ballCurl:         { period: 2.8, frames: [ballCurlOut, ballCurlIn] },
+  ballWallSquat:    { period: 3.0, frames: [ballWallTop, ballWallBottom] },
+  ballPlank:        { period: 3.0, frames: [ballPlankA, ballPlankB] },
+  bandRow:          { period: 2.4, frames: [bandRowOut, bandRowIn] },
+  bandPress:        { period: 2.4, frames: [bandPressIn, bandPressOut] },
+  pullApart:        { period: 2.4, frames: [pullApartIn, pullApartOut], front: true },
+  sideWalk:         { period: 1.6, frames: [sideWalkA, sideWalkB], front: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -922,6 +1006,70 @@ export const EXERCISES = [
            'Håll i en vägg eller stol i början.',
            'Byt ben halvvägs.'] },
 
+  // Gymboll
+  { id: 'ball-crunch', name: 'Crunches på gymboll', muscles: ['core'], equipment: 'ball',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'ballCrunch', ball: { x: 0.45, y: 0.81, r: 0.15 },
+    tips: ['Ligg med ländryggen mot bollen och fötterna i golvet, höftbrett isär.',
+           'Händerna lätt vid huvudet. Dra inte i nacken.',
+           'Rulla upp överkroppen med magmusklerna.',
+           'Sänk långsamt tillbaka över bollen.'] },
+  { id: 'ball-leg-curl', name: 'Bencurl på gymboll', muscles: ['legs', 'core'], equipment: 'ball',
+    sets: 3, reps: '10–12', defaultReps: 10, anim: 'ballCurl', ball: { at: 'footN', dx: 0.10, y: 0.81, r: 0.15 },
+    tips: ['Ligg på rygg med hälarna på bollen och armarna i golvet.',
+           'Lyft höften så att kroppen blir rak.',
+           'Dra bollen mot rumpan med hälarna och håll höften uppe.',
+           'Rulla ut igen långsamt. Lättare: sänk höften mellan varje.'] },
+  { kneeHeavy: true, id: 'ball-wall-squat', name: 'Väggknäböj med gymboll', muscles: ['legs'], equipment: 'ball',
+    sets: 3, reps: '12', defaultReps: 12, anim: 'ballWallSquat', props: ['wall'], ball: { x: 0.375, at: 'hip', dy: -0.07, r: 0.11 },
+    tips: ['Ställ bollen mellan ländryggen och en vägg och fötterna en bit framför dig.',
+           'Böj knäna och låt bollen rulla med längs väggen.',
+           'Knäna ovanför fötterna. Gå så djupt det känns bra.',
+           'Tryck dig upp genom hälarna.'] },
+  { id: 'ball-plank', name: 'Planka på gymboll', muscles: ['core', 'shoulders'], equipment: 'ball',
+    sets: 3, reps: '20–40 s', defaultReps: 30, anim: 'ballPlank', timed: true, ball: { x: 0.70, y: 0.81, r: 0.15 },
+    tips: ['Lägg underarmarna på bollen och sträck ut benen bakåt.',
+           'Kroppen rak från huvud till hälar. Spänn magen och rumpan.',
+           'Håll bollen stilla och andas lugnt.',
+           'Lättare: stå på knäna i stället för tårna.'] },
+  { noAuto: true, balance: true, bothSides: true, id: 'ball-sit', name: 'Sitt på gymbollen med ett ben lyft', muscles: ['core', 'legs'], equipment: 'ball',
+    sets: 3, reps: '30 s per ben', defaultReps: 30, anim: 'ballSit', timed: true, ball: { x: 0.45, y: 0.81, r: 0.15 },
+    tips: ['Sitt rakt mitt på bollen med fötterna i golvet.',
+           'Spänn magen lätt och lyft ena foten en bit från golvet.',
+           'Håll ryggen rak och bollen stilla.',
+           'Byt ben halvvägs. Ha fritt runt dig.'] },
+
+  // Gummiband
+  { id: 'band-row', name: 'Rodd med gummiband', muscles: ['back', 'arms'], equipment: 'band',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'bandRow', cable: [0.98, 0.34], band: true,
+    tips: ['Fäst bandet i en dörr eller runt något stadigt i brösthöjd.',
+           'Stå med lätt böjda knän och sträckta armar.',
+           'Dra händerna mot magen och kläm ihop skulderbladen.',
+           'Släpp tillbaka långsamt.'] },
+  { id: 'band-press', name: 'Bröstpress med gummiband', muscles: ['chest', 'arms', 'shoulders'], equipment: 'band',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'bandPress', cable: [0.10, 0.30], band: true,
+    tips: ['Fäst bandet bakom dig i brösthöjd, eller lägg det runt ryggen.',
+           'Stå med ena foten framför den andra och händerna vid bröstet.',
+           'Pressa rakt fram tills armarna är nästan raka.',
+           'För tillbaka långsamt.'] },
+  { id: 'band-curl', name: 'Bicepscurl med gummiband', muscles: ['arms'], equipment: 'band',
+    sets: 3, reps: '12–15', defaultReps: 12, anim: 'bicepCurl', bandLines: [['footN', 'handN']],
+    tips: ['Stå på mitten av bandet och håll i ändarna.',
+           'Armbågarna intill sidorna.',
+           'Böj armarna och lyft händerna mot axlarna.',
+           'Sänk långsamt.'] },
+  { id: 'band-pull-apart', name: 'Pull-apart med gummiband', muscles: ['shoulders', 'back'], equipment: 'band',
+    sets: 3, reps: '15', defaultReps: 15, anim: 'pullApart', bandLines: [['handF', 'handN']],
+    tips: ['Håll bandet med raka armar framför dig i axelhöjd.',
+           'Dra isär bandet tills det nuddar bröstet.',
+           'Kläm ihop skulderbladen och håll axlarna nere.',
+           'Släpp tillbaka långsamt. Bra för hållningen.'] },
+  { id: 'band-side-walk', name: 'Sidogång med gummiband', muscles: ['legs'], equipment: 'band',
+    sets: 3, reps: '10 steg åt varje håll', defaultReps: 10, anim: 'sideWalk', bandLines: [['kneeF', 'kneeN']],
+    tips: ['Lägg ett minband runt benen strax ovanför knäna.',
+           'Böj lätt på knäna och skjut bak höften lite.',
+           'Ta korta steg åt sidan utan att fötterna går ihop.',
+           'Håll knäna utåt mot bandet. Bra för höfter och knän.'] },
+
   // Kondition
   { kneeHeavy: true, id: 'jumping-jack', name: 'Jumping jacks', muscles: ['cardio'], equipment: 'none',
     sets: 3, reps: '45 s', defaultReps: 45, anim: 'jumpingJack', timed: true, warmup: true,
@@ -979,6 +1127,8 @@ const GEAR_OF = {
   'kb-goblet-squat': 'kettlebell', 'kb-swing': 'kettlebell', 'kb-clean': 'kettlebell', 'kb-row': 'kettlebell', 'kb-curl': 'kettlebell',
   'kb-triceps-ext': 'kettlebell', 'kb-halo': 'kettlebell', 'kb-pullover': 'kettlebell',
   'board-stand': 'board', 'board-tilt': 'board', 'board-squat': 'board', 'board-single-leg': 'board',
+  'ball-crunch': 'ball', 'ball-leg-curl': 'ball', 'ball-wall-squat': 'ball', 'ball-plank': 'ball', 'ball-sit': 'ball',
+  'band-row': 'band', 'band-press': 'band', 'band-curl': 'band', 'band-pull-apart': 'band', 'band-side-walk': 'band',
 };
 
 // Belastning på kroppsdelar som kan göra ont: 1 = viss, 2 = hög.
@@ -996,6 +1146,7 @@ const LOAD = {
   'kb-triceps-ext': { shoulders: 2, back: 1 }, 'kb-halo': { shoulders: 2 }, 'kb-pullover': { shoulders: 2, back: 1 },
   'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
   'single-leg-rdl': { back: 1 }, 'board-squat': { knees: 1 },
+  'ball-wall-squat': { knees: 1 }, 'ball-crunch': { back: 1 }, 'ball-plank': { back: 1, shoulders: 1 }, 'band-press': { shoulders: 1 },
 };
 
 // Andra namn som sökningen ska hitta.
@@ -1028,6 +1179,10 @@ const ALIASES = {
   'board-tilt': ['balansplatta', 'balansbräda', 'wobble board', 'balance board', 'bosu'],
   'board-squat': ['balansplatta', 'balansbräda', 'knäböj', 'bosu'],
   'board-single-leg': ['balansplatta', 'balansbräda', 'ett ben', 'bosu'],
+  'ball-crunch': ['gymboll', 'pilatesboll', 'crunch'], 'ball-leg-curl': ['gymboll', 'bencurl', 'hamstrings'],
+  'ball-wall-squat': ['gymboll', 'knäböj', 'väggknäböj'], 'ball-plank': ['gymboll', 'planka'], 'ball-sit': ['gymboll', 'balans'],
+  'band-row': ['gummiband', 'rodd', 'band'], 'band-press': ['gummiband', 'bröstpress', 'band'], 'band-curl': ['gummiband', 'curl', 'band'],
+  'band-pull-apart': ['gummiband', 'pull apart', 'band'], 'band-side-walk': ['gummiband', 'miniband', 'monster walk', 'sidosteg', 'band'],
   'captains-chair': ['captains chair', 'benlyft', 'knälyft', 'hängande knälyft', 'vertical knee raise', 'dipsställning'],
 };
 // Övningar som görs ett ben i taget: varje set får H eller V.
@@ -1054,7 +1209,7 @@ export function addCustomExercise(def) {
   const ex = {
     sets: 3, reps: def.timed ? '30 s' : '10', defaultReps: def.timed ? 30 : 10, anim: 'idle', tips: [], noAuto: true,
     ...def, custom: true, safety: [], load: {}, aliases: [],
-    equipment: def.gear === 'body' ? 'none' : ['dumbbells', 'kettlebell', 'board'].includes(def.gear) ? def.gear : 'gym',
+    equipment: def.gear === 'body' ? 'none' : ['dumbbells', 'kettlebell', 'board', 'ball', 'band'].includes(def.gear) ? def.gear : 'gym',
   };
   EXERCISES.push(ex);
   BY_ID[ex.id] = ex;
@@ -1076,12 +1231,14 @@ export function painOk(exercise, pain = {}) {
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
-/** opts: { hasDumbbells, hasKettlebell, hasBoard, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
-export function isAvailable(exercise, place, { hasDumbbells = false, hasKettlebell = false, hasBoard = false, kneeFriendly = false, pain, gear } = {}) {
+/** opts: { hasDumbbells, hasKettlebell, hasBoard, hasBall, hasBand, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
+export function isAvailable(exercise, place, { hasDumbbells = false, hasKettlebell = false, hasBoard = false, hasBall = false, hasBand = false, kneeFriendly = false, pain, gear } = {}) {
   if (pain ? !painOk(exercise, pain) : kneeFriendly && exercise.kneeHeavy) return false;
   if (gear && !gear.includes(exercise.gear)) return false;
   if (place === 'gym') return true;
   return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells)
     || (exercise.equipment === 'kettlebell' && (hasKettlebell || !!gear?.includes('kettlebell')))
-    || (exercise.equipment === 'board' && (hasBoard || !!gear?.includes('board')));
+    || (exercise.equipment === 'board' && (hasBoard || !!gear?.includes('board')))
+    || (exercise.equipment === 'ball' && (hasBall || !!gear?.includes('ball')))
+    || (exercise.equipment === 'band' && (hasBand || !!gear?.includes('band')));
 }

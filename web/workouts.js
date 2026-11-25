@@ -46,7 +46,7 @@ const HIIT_ORDER = ['cardio', 'chest', 'cardio', 'core', 'cardio', 'legs', 'back
 
 const primary = (ex) => ex.muscles[0];
 const okForCircuit = (ex) => !ex.physio && !ex.noAuto && !ex.props?.includes('barbell') && ex.id !== 'bike' && ex.id !== 'rowing-machine';
-const okForHiit = (ex) => okForCircuit(ex) && (!['dumbbells', 'kettlebell'].includes(ex.equipment) || ex.id === 'kb-swing') && !['pull-up', 'db-bench', 'side-leg-raise', 'straight-leg-raise', 'calf-raise'].includes(ex.id);
+const okForHiit = (ex) => okForCircuit(ex) && (!['dumbbells', 'kettlebell', 'ball'].includes(ex.equipment) || ex.id === 'kb-swing') && !['pull-up', 'db-bench', 'side-leg-raise', 'straight-leg-raise', 'calf-raise'].includes(ex.id);
 
 function pickFor(group, pool, used, rest) {
   const options = pool.filter((e) => primary(e) === group && !used.has(e.id));

@@ -121,6 +121,43 @@ export const SAFETY = {
     'Ha plattan på ett golv där den inte glider, gärna på en matta, och något att hålla i inom räckhåll.',
     'Kliv av framåt eller åt sidan om du tappar balansen. Försök inte rädda dig kvar på plattan.',
   ],
+  // Gymboll
+  'ball-crunch': [
+    'Ha fötterna stadigt i golvet och lite isär så att bollen inte rullar undan.',
+    'Dra inte i nacken med händerna.',
+  ],
+  'ball-leg-curl': [
+    'Börja nära en vägg eller soffa så att bollen inte rullar iväg.',
+    'Krampar baksidan av låret? Vila och sträck ut.',
+  ],
+  'ball-wall-squat': [
+    'Kolla att bollen är ordentligt pumpad och att golvet inte är halt.',
+  ],
+  'ball-plank': [
+    'Svårare än vanlig planka. Börja kort och sluta när ryggen börjar svanka.',
+  ],
+  'ball-sit': [
+    'Ha fritt runt dig och gärna en vägg eller stol inom räckhåll.',
+    'Använd en boll i rätt storlek: knäna ungefär i höjd med höften när du sitter.',
+  ],
+  // Gummiband
+  'band-row': [
+    'Kolla att bandet sitter fast ordentligt innan du drar, så att det inte slår tillbaka.',
+    'Byt ut bandet om det har sprickor eller känns slitet.',
+  ],
+  'band-press': [
+    'Kolla att bandet sitter fast ordentligt innan du pressar.',
+    'Byt ut bandet om det har sprickor eller känns slitet.',
+  ],
+  'band-curl': [
+    'Stå stadigt på bandet så att det inte glider ut under foten.',
+  ],
+  'band-pull-apart': [
+    'Håll bandet bort från ansiktet. Byt ut det om det är slitet.',
+  ],
+  'band-side-walk': [
+    'Låt inte knäna falla inåt. Välj ett lättare band om det händer.',
+  ],
   // Fysio
   'single-leg-extension': [
     'Ställ in maskinen ordentligt: knät ska vara i linje med maskinens vridpunkt.',
