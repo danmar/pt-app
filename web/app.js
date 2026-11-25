@@ -2565,7 +2565,13 @@ document.addEventListener('click', (e) => {
     case 'finish': finishWorkout(); break;
     case 'next': goTo(w.index + 1); break;
     case 'pick': openPicker(); break;
-    case 'ex-done': delete w.items[w.index].fresh; openPicker(); break;
+    case 'ex-done': {
+      // Klar: övningen flyttas till Slutfört. Har man inte bockat av något set räknas alla set som gjorda.
+      const it = w.items[w.index];
+      delete it.fresh;
+      if (!doneSets(it)) for (const x of it.sets) x.done = true;
+      openPicker(); break;
+    }
     case 'ex-cancel': {
       const it = w.items[w.index];
       // Avbryt: det du ändrat sedan övningen öppnades sparas inte. En nyvald övning tas bort helt.
