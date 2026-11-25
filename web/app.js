@@ -1702,6 +1702,7 @@ function runItem(w, item) {
   w.index = started.length;
   w.picking = false;
   w.adding = false;
+  w.snap = JSON.stringify(item.sets); // för Avbryt
   w.restEnd = w.restEnd && w.restEnd > Date.now() ? w.restEnd : null;
   save();
   renderWorkout();
@@ -1956,9 +1957,8 @@ function renderWorkout() {
     </div>
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
-      <button class="btn secondary square" data-action="prev" ${w.index === 0 ? 'disabled' : ''} aria-label="Föregående övning">${ICON.chevronL}</button>
-      <button class="btn primary grow" data-action="pick">Nästa övning</button>
-      <button class="btn-text wk-end" data-action="end">Avsluta passet</button>
+      <button class="btn secondary grow" data-action="ex-cancel">Avbryt</button>
+      <button class="btn primary grow" data-action="ex-done">Klar</button>
     </div>`;
   mountFigures(root);
   updateTimers();
@@ -1987,7 +1987,7 @@ function renderPicker() {
   const qi = queueIndexes(w);
   const doneIdx = w.items.map((_, i) => i).filter((i) => doneSets(w.items[i]));
   const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
-  const setsText = (it, ex, n) => (ex.timed && n === 1 ? ex.reps : `${ex.unilateral ? n / 2 : n} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`);
+  const setsText = (it, ex, n) => (ex.timed && n === 1 ? ex.reps : `${ex.unilateral ? Math.ceil(n / 2) : n} set × ${ex.reps}${ex.unilateral ? ' (H/V)' : ''}`);
 
   root.innerHTML = `
     <div class="wk-top">
@@ -2112,6 +2112,7 @@ function goTo(index) {
   if (index < 0) return;
   if (index >= w.items.length || w.picking) { if (!w.picking) openPicker(); return; }
   w.index = index;
+  w.snap = JSON.stringify(w.items[index].sets);
   save();
   renderWorkout();
   $('#wk-body').scrollTop = 0;
@@ -2565,6 +2566,25 @@ document.addEventListener('click', (e) => {
     case 'finish': finishWorkout(); break;
     case 'next': goTo(w.index + 1); break;
     case 'pick': openPicker(); break;
+    case 'ex-done': delete w.items[w.index].fresh; openPicker(); break;
+    case 'ex-cancel': {
+      const it = w.items[w.index];
+      // Avbryt: det du ändrat sedan övningen öppnades sparas inte. En nyvald övning tas bort helt.
+      const before = w.snap ? JSON.parse(w.snap) : it.sets.map((x) => ({ ...x, done: false }));
+      const lost = doneSets(it) - before.filter((x) => x.done).length;
+      const cancel = () => {
+        if (it.fresh) w.items.splice(w.index, 1);
+        else it.sets = before;
+        if (lost > 0) w.restEnd = null;
+        w.index = Math.max(0, w.items.filter((x) => doneSets(x)).length - 1);
+        openPicker();
+      };
+      if (lost <= 0) cancel();
+      else confirmDialog({ title: 'Avbryta övningen?', message: `${lost === 1 ? 'Setet' : `De ${lost} set`} du gjort på ${BY_ID[it.exId].name.toLowerCase()} sparas inte.`, buttons: [
+        { label: 'Avbryt övningen', style: 'danger', onClick: cancel },
+        { label: 'Fortsätt', style: 'secondary' }] });
+      break;
+    }
     case 'pain-sheet': openSheet(painSheet(BY_ID[w.items[w.index].exId])); break;
     case 'pain-swap': {
       closeSheet();
@@ -2578,14 +2598,14 @@ document.addEventListener('click', (e) => {
       markBusy(w, w.items[w.index].exId);
       w.index = Math.max(0, w.items.filter((it) => doneSets(it)).length - 1);
       openPicker(); break;
-    case 'q-go': delete w.busy[w.items[k].exId]; runItem(w, w.items[k]); break;
-    case 's-go': runItem(w, newItem(t.dataset.id)); break;
+    case 'q-go': delete w.busy[w.items[k].exId]; delete w.items[k].fresh; runItem(w, w.items[k]); break;
+    case 's-go': runItem(w, { ...newItem(t.dataset.id), fresh: true }); break;
     case 'body-muscle': openSheet(muscleSheet(t.dataset.muscle)); break;
     case 'body-view': w.bodyView = t.dataset.value; save(); renderWorkout(); break;
     case 'bm-go': {
       closeSheet();
       const i = queueIndexes(w).find((j) => w.items[j].exId === t.dataset.id);
-      runItem(w, i != null ? w.items[i] : newItem(t.dataset.id)); break;
+      runItem(w, i != null ? w.items[i] : { ...newItem(t.dataset.id), fresh: true }); break;
     }
     case 'bm-queue': closeSheet(); w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
     case 's-queue': w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
@@ -2593,7 +2613,7 @@ document.addEventListener('click', (e) => {
     case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
     case 'add-open': w.adding = true; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
     case 'add-close': w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
-    case 'd-go': w.index = k; w.picking = false; w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
+    case 'd-go': delete w.items[k].fresh; w.index = k; w.snap = JSON.stringify(w.items[k].sets); w.picking = false; w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
     case 'wtype': w.stype = t.dataset.value; save(); renderWorkout(); break;
     case 'skip-warm': w.skipWarm = true; save(); renderWorkout(); break;
     case 'q-up': {
