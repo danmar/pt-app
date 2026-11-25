@@ -47,42 +47,41 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --c-train: #dc6c30;
-    --c-swim: #4a94f0;
-    --c-walk: #22a06e;
-    --bg: #16121f;
-    --bg-top: #261d3a;
-    --card: #221c2e;
-    --card-2: #2e2640;
-    --text: #f3eeff;
-    --muted: #a99fc2;
-    --line: rgba(220, 210, 255, 0.13);
-    --accent: #9b85ff;
-    --accent-2: #ff7a9a;
-    --accent-ink: #ffffff;
-    --accent-soft: rgba(155, 133, 255, 0.18);
-    --grad: #7c5cff;
-    --walk: #ff7a9a;
-    --swim: #5ea8ff;
-    --success: #34d399;
-    --danger: #ff6369;
-    --warn-soft: rgba(255, 196, 80, 0.2);
-    --go-soft: rgba(52, 211, 153, 0.2);
-    --prop: #857ba3;
-    --floor: rgba(220, 210, 255, 0.22);
-    --tabbar: rgba(26, 21, 36, 0.9);
-    --shadow: none;
-    --pink: #ff7a9a;   --pink-bg: #3a2232;
-    --blue: #5ea8ff;   --blue-bg: #1f2a44;
-    --green: #34d399;  --green-bg: #1b3330;
-    --yellow: #f5b83d; --yellow-bg: #3a3020;
-    --purple: #9b85ff; --purple-bg: #2c2550;
-    --teal: #3fd0de;   --teal-bg: #183238;
-    --orange: #ff9a62; --orange-bg: #3b2a22;
-    color-scheme: dark;
-  }
+/* Mörkt läge. Appen sätter data-mode efter inställningen (eller telefonens läge). */
+:root[data-mode="dark"] {
+  --c-train: #dc6c30;
+  --c-swim: #4a94f0;
+  --c-walk: #22a06e;
+  --bg: #16121f;
+  --bg-top: #261d3a;
+  --card: #221c2e;
+  --card-2: #2e2640;
+  --text: #f3eeff;
+  --muted: #a99fc2;
+  --line: rgba(220, 210, 255, 0.13);
+  --accent: #9b85ff;
+  --accent-2: #ff7a9a;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(155, 133, 255, 0.18);
+  --grad: #7c5cff;
+  --walk: #ff7a9a;
+  --swim: #5ea8ff;
+  --success: #34d399;
+  --danger: #ff6369;
+  --warn-soft: rgba(255, 196, 80, 0.2);
+  --go-soft: rgba(52, 211, 153, 0.2);
+  --prop: #857ba3;
+  --floor: rgba(220, 210, 255, 0.22);
+  --tabbar: rgba(26, 21, 36, 0.9);
+  --shadow: none;
+  --pink: #ff7a9a;   --pink-bg: #3a2232;
+  --blue: #5ea8ff;   --blue-bg: #1f2a44;
+  --green: #34d399;  --green-bg: #1b3330;
+  --yellow: #f5b83d; --yellow-bg: #3a3020;
+  --purple: #9b85ff; --purple-bg: #2c2550;
+  --teal: #3fd0de;   --teal-bg: #183238;
+  --orange: #ff9a62; --orange-bg: #3b2a22;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -148,7 +147,7 @@ svg { display: block; }
   background: var(--card);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
-.segmented button[aria-checked="true"] { background: var(--accent); color: var(--accent-ink); }
+.segmented button[aria-checked="true"] { background: var(--grad); color: var(--accent-ink); }
 .select-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .select-row select {
   appearance: none;
@@ -344,7 +343,7 @@ svg { display: block; }
 .tips li::before {
   content: counter(tip); flex: none;
   width: 26px; height: 26px; border-radius: 50%;
-  background: var(--accent); color: var(--accent-ink);
+  background: var(--grad); color: var(--accent-ink);
   display: grid; place-items: center; font-size: 14px; font-weight: 700;
 }
 .search {
@@ -646,7 +645,7 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
   border: 1.5px solid var(--line); background: var(--card); color: var(--text);
   font-weight: 600; font-size: 14px; padding: 7px 13px; border-radius: 99px;
 }
-.toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.toggle[aria-pressed="true"] { background: var(--grad); border-color: var(--grad); color: var(--accent-ink); }
 .chips.left { justify-content: flex-start; }
 .chip.g-cardio { --gc: var(--g-cardio); } .chip.g-legs { --gc: var(--g-legs); } .chip.g-back { --gc: var(--g-back); }
 .chip.g-chest { --gc: var(--g-chest); } .chip.g-shoulders { --gc: var(--g-shoulders); } .chip.g-arms { --gc: var(--g-arms); }
@@ -798,7 +797,7 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .pick-footer .btn { width: 100%; }
 .side {
   width: 30px; height: 30px; border-radius: 50%; flex: none; border: 0;
-  background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px;
+  background: var(--grad); color: var(--accent-ink); font-weight: 700; font-size: 14px;
 }
 .hint.center { text-align: center; margin: 0; }
 .picker .ex-main { cursor: pointer; }
@@ -869,10 +868,22 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .legend .sw.bm-l2 { background: var(--bm-2); }
 .legend .sw.bm-l3 { background: var(--bm-3); }
 :root { --bm-0: #e9e1fb; --bm-1: #f7a8bb; --bm-2: #e5446d; --bm-3: #a8183f; }
-@media (prefers-color-scheme: dark) {
-  :root { --bm-0: #3a3352; --bm-1: #8a4560; --bm-2: #ff6f93; --bm-3: #ffb3c6; }
-}
+:root[data-mode="dark"] { --bm-0: #3a3352; --bm-1: #8a4560; --bm-2: #ff6f93; --bm-3: #ffb3c6; }
 .body-card .legend { gap: 12px; flex-wrap: wrap; }
 .body-card .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .body-card .legend .sw { margin-left: 0; }
 .wk-back { margin: 0; justify-self: start; }
+
+/* --- Färgtema (Inställningar) ---------------------------------------------- */
+:root[data-accent="blue"] { --accent: #2563eb; --grad: #2563eb; --accent-soft: rgba(37, 99, 235, 0.13); --bg: #f7faff; --bg-top: #e3edff; --card-2: #e9f0ff; --tabbar: rgba(247, 250, 255, 0.9); }
+:root[data-accent="green"] { --accent: #0f8a5a; --grad: #0f8a5a; --accent-soft: rgba(15, 138, 90, 0.13); --bg: #f6fcf9; --bg-top: #def5e9; --card-2: #e6f6ee; --tabbar: rgba(246, 252, 249, 0.9); }
+:root[data-accent="pink"] { --accent: #d6336c; --grad: #d6336c; --accent-soft: rgba(214, 51, 108, 0.13); --bg: #fff7fa; --bg-top: #ffe3ec; --card-2: #ffecf2; --tabbar: rgba(255, 247, 250, 0.9); }
+:root[data-accent="orange"] { --accent: #c9530c; --grad: #c9530c; --accent-soft: rgba(201, 83, 12, 0.13); --bg: #fffaf6; --bg-top: #ffe8d8; --card-2: #fff0e6; --tabbar: rgba(255, 250, 246, 0.9); }
+:root[data-mode="dark"][data-accent="blue"] { --accent: #6aa8ff; --grad: #2f6fed; --accent-soft: rgba(106, 168, 255, 0.18); --bg: #10141f; --bg-top: #1a2440; --card: #1b2130; --card-2: #253047; --tabbar: rgba(20, 25, 38, 0.9); }
+:root[data-mode="dark"][data-accent="green"] { --accent: #3ddc97; --grad: #15925f; --accent-soft: rgba(61, 220, 151, 0.18); --bg: #0f1714; --bg-top: #16302a; --card: #1a2420; --card-2: #22362f; --tabbar: rgba(19, 30, 26, 0.9); }
+:root[data-mode="dark"][data-accent="pink"] { --accent: #ff7aa2; --grad: #d6336c; --accent-soft: rgba(255, 122, 162, 0.18); --bg: #1a1116; --bg-top: #3a1d2c; --card: #271a21; --card-2: #3a2633; --tabbar: rgba(32, 21, 27, 0.9); }
+:root[data-mode="dark"][data-accent="orange"] { --accent: #ff9a5c; --grad: #c9530c; --accent-soft: rgba(255, 154, 92, 0.18); --bg: #1a140f; --bg-top: #3a2618; --card: #261e18; --card-2: #3a2c22; --tabbar: rgba(32, 25, 19, 0.9); }
+.theme-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.swatch { width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; box-shadow: 0 0 0 1px var(--line); padding: 0; }
+.swatch[aria-checked="true"] { border-color: var(--card); box-shadow: 0 0 0 3px var(--text); }
+.theme-row { flex-direction: column; align-items: stretch; gap: 10px; }

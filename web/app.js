@@ -87,6 +87,7 @@ const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON
 // ---------------------------------------------------------------------------
 // Rendering
 function render() {
+  applyTheme(); // även efter import eller radering av data
   const view = $('#view');
   const views = { start: startView, plan: planningView, log: logView, stats: statsView, settings: settingsView, swim: swimView, physio: physioView, activity: activityView, cardio: cardioView };
   view.innerHTML = views[ui.tab] ? views[ui.tab]() : planView(ui.tab);
@@ -1183,6 +1184,44 @@ function walkRow(w) {
 }
 
 // ---- Inställningar -----------------------------------------------------------
+const THEME_MODES = { auto: 'Som telefonen', light: 'Ljust', dark: 'Mörkt' };
+const THEME_ACCENTS = { purple: ['Lila', '#6d4aff'], blue: ['Blå', '#2563eb'], green: ['Grön', '#0f8a5a'], pink: ['Rosa', '#d6336c'], orange: ['Orange', '#c9530c'] };
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+/** Sätter ljust/mörkt läge och färg på sidan. */
+function applyTheme() {
+  const s = data.settings;
+  const root = document.documentElement;
+  const mode = s.themeMode ?? 'auto';
+  root.dataset.mode = mode === 'dark' || (mode === 'auto' && darkQuery.matches) ? 'dark' : 'light';
+  if (s.themeAccent && s.themeAccent !== 'purple') root.dataset.accent = s.themeAccent;
+  else delete root.dataset.accent;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg-top').trim());
+}
+darkQuery.addEventListener?.('change', applyTheme);
+
+function themeSection() {
+  const s = data.settings;
+  const mode = s.themeMode ?? 'auto';
+  const accent = s.themeAccent ?? 'purple';
+  return `
+    <h2 class="section-title">Färgtema</h2>
+    <section class="card list">
+      <div class="list-row theme-row">
+        <span>Läge</span>
+        <div class="segmented" role="radiogroup" aria-label="Ljust eller mörkt läge">
+          ${Object.entries(THEME_MODES).map(([k, name]) => `<button role="radio" aria-checked="${mode === k}" data-action="theme-mode" data-value="${k}">${name}</button>`).join('')}
+        </div>
+      </div>
+      <div class="list-row theme-row">
+        <span>Färg</span>
+        <div class="theme-swatches" role="radiogroup" aria-label="Färg">
+          ${Object.entries(THEME_ACCENTS).map(([k, [name, color]]) => `<button class="swatch" role="radio" aria-checked="${accent === k}" aria-label="${name}" title="${name}" style="background:${color}" data-action="theme-accent" data-value="${k}"></button>`).join('')}
+        </div>
+      </div>
+    </section>`;
+}
+
 function settingsView() {
   const s = data.settings;
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -1235,6 +1274,8 @@ function settingsView() {
         </div>
       </div>
     </section>
+
+    ${themeSection()}
 
     ${standalone ? '' : `
     <h2 class="section-title">Installera på iPhone</h2>
@@ -2550,6 +2591,8 @@ document.addEventListener('click', (e) => {
       break;
 
     // Inställningar
+    case 'theme-mode': data.settings.themeMode = t.dataset.value; save(); render(); break;
+    case 'theme-accent': data.settings.themeAccent = t.dataset.value; save(); render(); break;
     case 'rest-step':
       data.settings.restSeconds = Math.min(300, Math.max(15, data.settings.restSeconds + Number(t.dataset.d))); save(); render(); break;
     case 'goal-step':

@@ -5,8 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Min PT</title>
   <meta name="description" content="Din personliga tränare: passförslag för gym, hemma och simning, animerade övningar och träningslogg.">
-  <meta name="theme-color" content="#f1e9ff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#261d3a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f1e9ff">
+  <script>
+    // Färgtema sätts direkt så att sidan inte blinkar till i fel färg (samma logik som applyTheme i app.js).
+    try {
+      const t = (JSON.parse(localStorage.getItem('minpt-data-v1')) || {}).settings || {};
+      const dark = t.themeMode === 'dark' || (t.themeMode !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.mode = dark ? 'dark' : 'light';
+      if (t.themeAccent && t.themeAccent !== 'purple') document.documentElement.dataset.accent = t.themeAccent;
+    } catch (e) { /* standardtema */ }
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Min PT">
