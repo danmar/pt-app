@@ -441,6 +441,23 @@ const fourPoint = {
 };
 const birdDogOut = mod(fourPoint, { elbowN: P(0.80, 0.66), handN: P(0.93, 0.63), kneeF: P(0.17, 0.69), footF: P(-0.05, 0.68) });
 
+// Balans: stå på det närmsta benet.
+const balanceArms = { elbowN: P(0.57, 0.33), handN: P(0.64, 0.42), elbowF: P(0.44, 0.33), handF: P(0.37, 0.42) };
+const oneLegA = mod(standing, { ...balanceArms, kneeF: P(0.61, 0.60), footF: P(0.57, 0.81) });
+const oneLegB = mod(oneLegA, { head: P(0.515, 0.12), neck: P(0.508, 0.22), handN: P(0.65, 0.40), handF: P(0.36, 0.44) });
+const tandemA = mod(standing, { ...balanceArms, hip: P(0.51, 0.50), kneeN: P(0.555, 0.72), footN: P(0.58, 0.95), kneeF: P(0.47, 0.72), footF: P(0.44, 0.95) });
+const tandemB = mod(tandemA, { head: P(0.49, 0.12), neck: P(0.495, 0.22), handN: P(0.63, 0.44), handF: P(0.38, 0.40) });
+const slRdlTop = mod(standing, { kneeF: P(0.47, 0.73), footF: P(0.43, 0.93) });
+const slRdlBottom = {
+  head: P(0.83, 0.46), neck: P(0.73, 0.48), hip: P(0.46, 0.53),
+  elbowN: P(0.72, 0.62), handN: P(0.72, 0.75),
+  elbowF: P(0.71, 0.62), handF: P(0.71, 0.75),
+  kneeN: P(0.49, 0.74), footN: P(0.50, 0.95),
+  kneeF: P(0.25, 0.52), footF: P(0.03, 0.51),
+};
+const swingFront = mod(standing, { ...balanceArms, kneeF: P(0.61, 0.70), footF: P(0.72, 0.91) });
+const swingBack = mod(standing, { ...balanceArms, kneeF: P(0.40, 0.70), footF: P(0.30, 0.91) });
+
 /** period = sekunder för ett helt varv genom alla ställningar (två ställningar = fram och tillbaka). */
 export const ANIMATIONS = {
   squat:            { period: 2.6, frames: [squatTop, squatBottom] },
@@ -488,6 +505,10 @@ export const ANIMATIONS = {
   kbSwing:          { period: 1.6, frames: [swingBottom, swingTop] },
   halo:             { period: 3.2, frames: [haloFront, haloAbove, haloBehind, haloAbove] },
   pullover:         { period: 3.0, frames: [pulloverUp, pulloverBack] },
+  singleLegStand:   { period: 3.4, frames: [oneLegA, oneLegB] },
+  tandemStand:      { period: 3.4, frames: [tandemA, tandemB] },
+  singleLegRdl:     { period: 3.0, frames: [slRdlTop, slRdlBottom] },
+  legSwing:         { period: 2.0, frames: [swingFront, swingBack] },
 };
 
 // ---------------------------------------------------------------------------
@@ -823,6 +844,32 @@ export const EXERCISES = [
            'Sträck ut ena armen och motsatt ben samtidigt. Håll 2 sekunder.',
            'Byt sida. Höften ska inte vrida sig.'] },
 
+  // Balans
+  { noAuto: true, balance: true, bothSides: true, id: 'single-leg-stand', name: 'Stå på ett ben', muscles: ['legs', 'core'], equipment: 'none',
+    sets: 3, reps: '30 s per ben', defaultReps: 30, anim: 'singleLegStand', timed: true,
+    tips: ['Stå nära en vägg eller stol som du kan ta tag i om du tappar balansen.',
+           'Lyft ena foten från golvet och hitta en punkt framför dig att titta på.',
+           'Håll höften rak och knät på stående benet lätt böjt.',
+           'Byt ben halvvägs. För mer utmaning: blunda eller vrid långsamt på huvudet.'] },
+  { noAuto: true, balance: true, bothSides: true, id: 'tandem-stand', name: 'Tandemstående', muscles: ['legs', 'core'], equipment: 'none',
+    sets: 3, reps: '30 s', defaultReps: 30, anim: 'tandemStand', timed: true,
+    tips: ['Ställ ena foten precis framför den andra, häl mot tå, som på en lina.',
+           'Stå nära en vägg eller stol som stöd.',
+           'Spänn magen lätt och titta rakt fram.',
+           'Byt fot framför halvvägs.'] },
+  { noAuto: true, balance: true, bothSides: true, id: 'single-leg-rdl', name: 'Enbensmarklyft', muscles: ['legs', 'back'], equipment: 'none',
+    sets: 3, reps: '8 per ben', defaultReps: 8, anim: 'singleLegRdl',
+    tips: ['Stå på ett ben med lätt böjt knä.',
+           'Fäll framåt från höften medan det fria benet går rakt bakåt.',
+           'Håll ryggen rak och höften i nivå. Gå bara så långt du har kontroll.',
+           'Res dig långsamt. Byt ben halvvägs.'] },
+  { noAuto: true, balance: true, bothSides: true, id: 'leg-swing', name: 'Benpendel på ett ben', muscles: ['legs', 'core'], equipment: 'none',
+    sets: 3, reps: '30 s per ben', defaultReps: 30, anim: 'legSwing', timed: true,
+    tips: ['Stå på ett ben, gärna med en hand lätt mot en vägg.',
+           'Pendla det fria benet lugnt fram och tillbaka.',
+           'Håll överkroppen stilla och stående benet stabilt.',
+           'Byt ben halvvägs. Släpp stödet när det känns tryggt.'] },
+
   // Kondition
   { kneeHeavy: true, id: 'jumping-jack', name: 'Jumping jacks', muscles: ['cardio'], equipment: 'none',
     sets: 3, reps: '45 s', defaultReps: 45, anim: 'jumpingJack', timed: true, warmup: true,
@@ -895,6 +942,7 @@ const LOAD = {
   'kb-goblet-squat': { knees: 2, back: 1 }, 'kb-clean': { back: 2, shoulders: 1, knees: 1 }, 'kb-swing': { back: 2 }, 'kb-row': { back: 1 },
   'kb-triceps-ext': { shoulders: 2, back: 1 }, 'kb-halo': { shoulders: 2 }, 'kb-pullover': { shoulders: 2, back: 1 },
   'shadow-box': { shoulders: 1 }, 'rowing-machine': { back: 1, knees: 1 }, 'battle-ropes': { shoulders: 1, back: 1 }, 'wall-angel': { shoulders: 1 },
+  'single-leg-rdl': { back: 1 },
 };
 
 // Andra namn som sökningen ska hitta.

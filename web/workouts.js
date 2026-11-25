@@ -1,4 +1,4 @@
-// Passtyper: styrka (set och vila) samt cirkel, HIIT och kondition som körs
+// Passtyper: styrka (set och vila) samt cirkel, HIIT, kondition och balans som körs
 // med intervalltimer. Här byggs stationerna och stegen för timern.
 import { EXERCISES, BY_ID, isAvailable } from './exercises.js';
 import { daysSinceTrained } from './planner.js';
@@ -8,6 +8,7 @@ export const TYPES = {
   circuit: { name: 'Cirkel', desc: 'Stationer i följd där muskelgrupperna växlar, så att en muskel vilar medan nästa jobbar. Kör flera varv.' },
   hiit: { name: 'HIIT', desc: 'Korta intensiva intervaller med kort vila. Får upp pulsen snabbt.' },
   cardio: { name: 'Kondition', desc: 'Längre intervaller i jämnt tempo för hjärta och lungor.' },
+  balance: { name: 'Balans', desc: 'Lugna övningar på ett ben och på smal bas som tränar balans och stabilitet. Ha en vägg eller stol nära.' },
 };
 
 export const LENGTH_OPTIONS = { gym: [20, 40, 60], home: [10, 15, 20] };
@@ -16,6 +17,7 @@ export const TIMING = {
   circuit: { work: 40, rest: 15, roundRest: 60 },
   hiit: { work: 30, rest: 20, roundRest: 60 },
   cardio: { work: 90, rest: 30, roundRest: 30 },
+  balance: { work: 40, rest: 15, roundRest: 45 },
 };
 
 const PHYSIO_SET_SEC = 45; // uppskattad tid för ett fysioset räknat i reps
@@ -25,7 +27,18 @@ const STATIONS = {
   circuit: { gym: { 20: 5, 40: 6, 60: 7 }, home: { 10: 4, 15: 5, 20: 5 } },
   hiit: { gym: { 20: 5, 40: 6, 60: 6 }, home: { 10: 4, 15: 5, 20: 6 } },
   cardio: { gym: { 20: 3, 40: 3, 60: 4 }, home: { 10: 3, 15: 3, 20: 3 } },
+  balance: { gym: { 20: 5, 40: 6, 60: 6 }, home: { 10: 4, 15: 5, 20: 5 } },
 };
+
+// Övningar i balanspasset: de som är märkta som balans plus några som också utmanar balansen.
+const BALANCE_EXTRA = ['bird-dog', 'calf-raise'];
+const okForBalance = (ex) => ex.balance || BALANCE_EXTRA.includes(ex.id);
+
+/** Annan balansövning att byta till, eller null. */
+export function balanceSwap(current, used, place, opts) {
+  const options = EXERCISES.filter((e) => okForBalance(e) && isAvailable(e, place, opts) && !used.includes(e.id));
+  return options.length ? options[Math.floor(Math.random() * options.length)] : null;
+}
 
 // Ordning för muskelgrupper i en cirkel: överkropp, bål och ben växlar.
 const CIRCUIT_ORDER = ['legs', 'chest', 'back', 'core', 'shoulders', 'cardio', 'arms'];
@@ -58,7 +71,8 @@ function interleave(others, physio) {
  */
 export function buildInterval({ type, place, minutes, sessions, opts, physio = [], stations: given }) {
   const rest = daysSinceTrained(sessions);
-  const pool = EXERCISES.filter((e) => isAvailable(e, place, opts) && (type === 'hiit' ? okForHiit(e) : okForCircuit(e)));
+  const ok = { hiit: okForHiit, balance: okForBalance }[type] ?? okForCircuit;
+  const pool = EXERCISES.filter((e) => isAvailable(e, place, opts) && ok(e));
   const count = STATIONS[type][place][minutes] ?? 5;
   const used = new Set();
   let stations = given ? clone(given) : [];
@@ -78,6 +92,10 @@ export function buildInterval({ type, place, minutes, sessions, opts, physio = [
         const ex = pickFor(HIIT_ORDER[i % HIIT_ORDER.length], pool, used, rest);
         if (ex) { used.add(ex.id); stations.push({ exId: ex.id }); }
       }
+    } else if (type === 'balance') {
+      // Balansövningarna först, sedan de andra.
+      const shuffled = [...pool].sort(() => Math.random() - 0.5).sort((a, b) => !!b.balance - !!a.balance);
+      stations = shuffled.slice(0, count).map((e) => ({ exId: e.id }));
     } else {
       const cardio = pool.filter((e) => primary(e) === 'cardio').sort(() => Math.random() - 0.5);
       stations = cardio.slice(0, count).map((e) => ({ exId: e.id }));
@@ -93,7 +111,7 @@ export function buildInterval({ type, place, minutes, sessions, opts, physio = [
     const useBike = place === 'gym' && isAvailable(BY_ID.bike, place, opts);
     warmup = { exId: useBike ? 'bike' : 'march', sec: place === 'gym' ? 180 : minutes <= 10 ? 90 : 120 };
   }
-  // Fysio först bara i HIIT. Cirkeln har fysio som stationer och konditionspass hoppar över fysio.
+  // Fysio först bara i HIIT. Cirkeln har fysio som stationer, kondition och balans hoppar över fysio.
   const plan = { type, stations, physio: type === 'hiit' ? physio : [], rounds: 1, bikeSec, warmup };
   const fit = () => {
     // Flest varv som ryms i passlängden (lite marginal).
@@ -160,7 +178,8 @@ export function expandSteps(plan) {
     // Fysioövningar bara så många varv som antalet set (t.ex. 3 × 8).
     const these = plan.stations.filter((s) => !s.physio || r <= (s.sets ?? 3));
     these.forEach((s, i) => {
-      work(s.exId, { physio: !!s.physio, label: `Varv ${r} av ${plan.rounds}`, round: r });
+      const sides = plan.type === 'balance' && BY_ID[s.exId].bothSides ? ' · byt sida halvvägs' : '';
+      work(s.exId, { physio: !!s.physio, label: `Varv ${r} av ${plan.rounds}${sides}`, round: r });
       if (i < these.length - 1) pause(t.rest, plan.type === 'circuit' ? 'Byt station' : 'Vila');
     });
     if (r < plan.rounds) pause(t.roundRest, `Vila innan varv ${r + 1}`);

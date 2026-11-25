@@ -128,3 +128,12 @@ export function cardioFeedback({ minutes, kind, km, before = [], swims = [] }) {
   if (weekCount >= 2) hl.push({ icon: '🔥', text: `Ditt ${weekCount}:e pass på sju dagar. Fin kontinuitet!` });
   return { title: 'Bra jobbat!', highlights: hl, tip: 'Drick vatten och ta det lugnt en stund. Pulsen ska gå ner innan du duschar varmt.' };
 }
+
+/** Omdöme efter ett balanspass. */
+export function balanceFeedback({ minutes, before = [] }) {
+  const start = Date.now();
+  const weekCount = 1 + before.filter((s) => s.type === 'balance' && (start - new Date(s.date)) / DAY < 7).length;
+  const hl = [{ icon: '🧘', text: `${minutes} minuter balansträning. Det stärker fötter, höfter och bål och minskar risken att snubbla och falla.` }];
+  if (weekCount >= 2) hl.push({ icon: '🔥', text: `Ditt ${weekCount}:e balanspass på sju dagar. Balansen blir bättre ju oftare du tränar den.` });
+  return { title: 'Bra jobbat!', highlights: hl, tip: 'Gör övningarna svårare när de känns lätta: släpp stödet, blunda eller stå på en kudde.' };
+}

@@ -590,8 +590,8 @@ details.card .tips { margin-top: 12px; }
 .row-text small { font-size: 12px; color: var(--muted); }
 
 /* Passtyper och intervalltimer */
-.segmented.types { grid-template-columns: repeat(4, 1fr); }
-.segmented.types button { font-size: 14px; padding-left: 2px; padding-right: 2px; }
+.segmented.types { grid-template-columns: repeat(5, 1fr); }
+.segmented.types button { font-size: 13px; padding-left: 2px; padding-right: 2px; }
 .card.summary { display: flex; flex-direction: column; gap: 2px; background: var(--purple-bg); }
 .card.summary b { font-size: 20px; color: var(--purple); }
 .card.summary span { font-size: 14px; color: var(--muted); }

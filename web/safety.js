@@ -88,6 +88,21 @@ export const SAFETY = {
     'Långsamt och kontrollerat. Det är balansen som tränas.',
     'Ont i handlederna? Stöd på knytnävarna.',
   ],
+  // Balans
+  'single-leg-stand': [
+    'Ha alltid något att ta tag i inom räckhåll.',
+    'Ha fritt runt dig så att du inte slår i något om du tappar balansen.',
+  ],
+  'tandem-stand': [
+    'Stå nära en vägg eller i ett hörn så att du kan ta emot dig.',
+  ],
+  'single-leg-rdl': [
+    'Håll ryggen rak. Hellre kortare rörelse än rundad rygg.',
+    'Ta lätt stöd mot en vägg tills balansen sitter.',
+  ],
+  'leg-swing': [
+    'Pendla lugnt, inga kast. Rörelsen ska inte göra ont i höften.',
+  ],
   // Fysio
   'single-leg-extension': [
     'Ställ in maskinen ordentligt: knät ska vara i linje med maskinens vridpunkt.',

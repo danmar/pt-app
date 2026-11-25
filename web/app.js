@@ -1,12 +1,12 @@
 import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk, addCustomExercise, matchesQuery } from './exercises.js';
 import { mountFigures } from './figure.js';
 import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
-import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor } from './workouts.js';
+import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor, balanceSwap } from './workouts.js';
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
 import { WEEK_KINDS, PRIORITIES, suggestWeek } from './week.js';
-import { workoutFeedback, cardioFeedback } from './feedback.js';
+import { workoutFeedback, cardioFeedback, balanceFeedback } from './feedback.js';
 import { columns, hbars, line, table } from './charts.js';
 import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
 import { ACTS, CARDIO_IDS, CARDIO_FOCUS, suggestCardio, cardioAdvice } from './cardio.js';
@@ -20,7 +20,7 @@ const ui = {
   plans: { gym: null, home: null, swim: null },
   minutes: { gym: 40, home: 15, swim: 40 },
   type: { gym: 'strength', home: 'circuit' }, // passtyp per plats
-  iplans: { gym: null, home: null }, // cirkel-, HIIT- och konditionspass
+  iplans: { gym: null, home: null }, // cirkel-, HIIT-, konditions- och balanspass
   focus: { gym: '', home: '', swim: 'endurance' },
   fixed: { gym: null, home: null }, // fysioövningar som alltid ligger först i passet
   skipPhysio: { gym: false, home: false }, // "Vanligt pass i stället" för just den här gången
@@ -674,7 +674,7 @@ function intervalView(place) {
   const t = TIMING[plan.type];
   const steps = expandSteps(plan);
   const hasPhysio = plan.physio.length || plan.stations.some((s) => s.physio);
-  const startLabel = { circuit: 'Starta cirkeln', hiit: 'Starta HIIT', cardio: 'Starta konditionspasset' }[plan.type];
+  const startLabel = { circuit: 'Starta cirkeln', hiit: 'Starta HIIT', cardio: 'Starta konditionspasset', balance: 'Starta balanspasset' }[plan.type];
   const item = (exId, text, actions = '') => {
     const ex = BY_ID[exId];
     return `
@@ -701,7 +701,7 @@ function intervalView(place) {
     ${plan.physio.length ? `<h3 class="group-title">Fysio först</h3>
       <ul class="ex-list">${plan.physio.map((p) => item(p.exId, `${p.sets} set × ${BY_ID[p.exId].reps}`)).join('')}</ul>` : ''}
     ${plan.bikeSec ? `<h3 class="group-title">Först</h3><ul class="ex-list">${item('bike', `${Math.round(plan.bikeSec / 60)} min i jämnt tempo`)}</ul>` : ''}
-    <h3 class="group-title">${plan.type === 'circuit' ? 'Stationer' : 'Intervaller'} <span class="title-note">varje varv</span></h3>
+    <h3 class="group-title">${plan.type === 'circuit' ? 'Stationer' : plan.type === 'balance' ? 'Övningar' : 'Intervaller'} <span class="title-note">varje varv</span></h3>
     <ol class="ex-list stations">
       ${plan.stations.map((st, i) => {
         const ex = BY_ID[st.exId];
@@ -1144,7 +1144,7 @@ function swimRow(w) {
     </button></li>`;
 }
 
-// Styrkepass loggas utan tid. Bara intervallpass (cirkel, HIIT, kondition) har minuter.
+// Styrkepass loggas utan tid. Bara intervallpass (cirkel, HIIT, kondition, balans) har minuter.
 const isStrength = (s) => !s.type || s.type === 'strength';
 const minutesOf = (s) => (isStrength(s) || !s.endDate ? 0 : Math.max(1, Math.round((new Date(s.endDate) - new Date(s.date)) / 60000)));
 const minLabel = (s) => (isStrength(s) ? '' : ` · ${minutesOf(s)} min`);
@@ -1706,7 +1706,7 @@ function openWorkout() {
 }
 
 // ---------------------------------------------------------------------------
-// Intervalltimer (cirkel, HIIT, kondition)
+// Intervalltimer (cirkel, HIIT, kondition, balans)
 function startInterval(place) {
   let n = Math.floor(Math.random() * QUICK_TIPS.length);
   const steps = [{ kind: 'rest', sec: 10, label: 'Gör dig redo' }, ...expandSteps(ui.iplans[place])]
@@ -2075,7 +2075,8 @@ function finishWorkout() {
 /** Visar PT:ns omdöme för ett nyss sparat pass. */
 function showFeedback(session) {
   const before = data.sessions.filter((x) => x !== session && new Date(x.date) < new Date(session.date));
-  const fb = session.type && session.type !== 'strength'
+  const fb = session.type === 'balance' ? balanceFeedback({ minutes: minutesOf(session), before })
+    : session.type && session.type !== 'strength'
     ? cardioFeedback({ minutes: minutesOf(session), kind: TYPES[session.type].name.toLowerCase(), before, swims: data.swims })
     : workoutFeedback({ session, before, swims: data.swims, walks: data.walks, goals: data.goals, pain: data.settings.pain, goalLabel });
   openSheet(feedbackSheet(fb));
@@ -2306,7 +2307,8 @@ document.addEventListener('click', (e) => {
     case 'iswap': {
       const plan = ui.iplans[place];
       const i = Number(t.dataset.index);
-      const next = replacement(plan.stations[i].exId, plan.stations.map((x) => x.exId), place, exOpts(place));
+      const used = plan.stations.map((x) => x.exId);
+      const next = plan.type === 'balance' ? balanceSwap(used[i], used, place, exOpts(place)) : replacement(used[i], used, place, exOpts(place));
       if (next && !(next.props || []).includes('barbell') && next.id !== 'bike') { plan.stations[i] = { exId: next.id }; render(); }
       else toast('Ingen annan övning för den muskelgruppen');
       break;
