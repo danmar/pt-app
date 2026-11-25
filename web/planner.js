@@ -138,10 +138,11 @@ export function volumeByGroup(done) {
 /**
  * done: [{ exId, sets }] i den ordning de kördes idag (antal klara set).
  * groups: valda muskelgrupper (tom = alla utom kondition). gear: vald utrustning. pain: se painOk.
+ * filter: valfritt urval av övningar för en passtyp (cirkel, HIIT, kondition, balans).
  * exclude: övningar som redan ligger i kön. busy: { exId: true } för upptagna maskiner.
  * Returnerar [{ ex, reason, busy }], bästa först. Upptagna hamnar sist.
  */
-export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], priority = 'balanced', exclude = [], busy = {}, sessions = [], limit = 5 }) {
+export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], priority = 'balanced', exclude = [], busy = {}, sessions = [], limit = 5, filter = null }) {
   const targets = groups.length ? groups : MUSCLE_IDS.filter((m) => m !== 'cardio');
   const doneIds = new Set(done.map((d) => d.exId));
   const vol = volumeByGroup(done);
@@ -154,7 +155,7 @@ export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], pr
   const goalFor = Object.fromEntries(goals.map((g) => [g.exId, g.label]));
 
   const scored = EXERCISES
-    .filter((e) => !e.physio && (!e.noAuto || goalFor[e.id]) && gear.includes(e.gear) && painOk(e, pain))
+    .filter((e) => (filter ? filter(e) : !e.physio && (!e.noAuto || goalFor[e.id])) && gear.includes(e.gear) && painOk(e, pain))
     .filter((e) => !doneIds.has(e.id) && !exclude.includes(e.id) && targets.includes(primary(e)))
     .map((ex) => {
       const g = primary(ex);

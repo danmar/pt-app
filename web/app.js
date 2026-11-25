@@ -1,7 +1,7 @@
 import { EXERCISES, BY_ID, MUSCLES, MUSCLE_IDS, EQUIPMENT, GEAR, GEAR_IDS, isAvailable, painOk, addCustomExercise, matchesQuery } from './exercises.js';
 import { mountFigures } from './figure.js';
 import { LENGTHS, replacement, lastWeights, daysBetween, suggestNext, volumeByGroup } from './planner.js';
-import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor, balanceSwap, buildStretch, stretchSteps } from './workouts.js';
+import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinutes, workFor, balanceSwap, buildStretch, stretchSteps, PICK_TYPES, pickFilter, suggestStretch } from './workouts.js';
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
@@ -842,21 +842,35 @@ function chipToggles(action, entries, selected) {
   return `<div class="toggles">${entries.map(([k, label]) =>
     `<button class="toggle" data-action="${action}" data-value="${k}" aria-pressed="${selected.includes(k)}">${label}</button>`).join('')}</div>`;
 }
-function strengthControls(place, prefix = '') {
-  const groups = prefix ? data.active.groups : groupsFor(place);
+/** Val i passet: typ, muskelgrupper och utrustning (bland det som valts som tillgängligt). */
+function pickControls(w) {
+  const type = w.stype ?? 'strength';
+  const avail = w.avail ?? GEAR_IDS;
   return `
-      <div class="field"><span class="field-label">Utrustning</span>
-        ${chipToggles(`${prefix}gear`, Object.entries(GEAR).filter(([k]) => k !== 'board'), prefix ? data.active.gear : gearFor(place))}</div>
-      <div class="field"><span class="field-label">Muskelgrupper <small>${groups.length ? '' : 'inget valt = alla'}</small></span>
-        ${chipToggles(`${prefix}group`, MUSCLE_IDS.map((m) => [m, MUSCLES[m].name]), groups)}</div>`;
+      <div class="field"><span class="field-label">Typ</span>
+        <div class="toggles">${Object.entries(PICK_TYPES).map(([k, name]) => `<button class="toggle" data-action="wtype" data-value="${k}" aria-pressed="${type === k}">${name}</button>`).join('')}</div></div>
+      ${type === 'cardio' ? '' : `<div class="field"><span class="field-label">Muskelgrupper <small>${w.groups.length ? '' : 'inget valt = alla'}</small></span>
+        ${chipToggles('wgroup', MUSCLE_IDS.filter((m) => m !== 'cardio').map((m) => [m, MUSCLES[m].name]), w.groups)}</div>`}
+      ${type === 'stretch' ? '' : `<div class="field"><span class="field-label">Utrustning</span>
+        ${chipToggles('wgear', avail.filter((k) => GEAR[k]).map((k) => [k, GEAR[k]]), w.gear)}</div>`}`;
+}
+
+/** 3–6 förslag efter vald typ, muskelgrupper och utrustning. Kompletterar det du redan kört idag. */
+function pickSuggestions(w, done, exclude) {
+  const type = w.stype ?? 'strength';
+  const groups = w.groups.filter((m) => m !== 'cardio');
+  if (type === 'stretch') return suggestStretch({ done, groups, pain: data.settings.pain, exclude, limit: 5 });
+  if (!w.gear.length) return [];
+  return suggestNext({ done, groups: type === 'cardio' ? ['cardio'] : groups, gear: w.gear, pain: data.settings.pain, goals: type === 'strength' ? goalHints() : [],
+    priority: priority(), exclude, busy: w.busy, sessions: data.sessions, limit: 5, filter: pickFilter(type) });
 }
 
 /** Det du kört idag: tidigare sparade pass + klara set i pågående pass, i tidsordning. */
 function exercisesToday() {
   const done = [];
   // Uppvärmningen räknas inte som träning av muskelgrupperna.
-  for (const s of data.sessions) if (isToday(s.date)) for (const e of s.entries) if (!e.warmup) done.push({ exId: e.exId, sets: e.sets.length });
-  if (data.active?.items) for (const it of data.active.items) if (doneSets(it) && !it.warmup) done.push({ exId: it.exId, sets: doneSets(it) });
+  for (const s of data.sessions) if (isToday(s.date)) for (const e of s.entries) if (!e.warmup && !BY_ID[e.exId]?.stretch) done.push({ exId: e.exId, sets: e.sets.length });
+  if (data.active?.items) for (const it of data.active.items) if (doneSets(it) && !it.warmup && !BY_ID[it.exId]?.stretch) done.push({ exId: it.exId, sets: doneSets(it) });
   return done;
 }
 function todaySummary(done) {
@@ -876,7 +890,7 @@ function planView(place) {
     <header class="page-head"><h1>${PLACE_NAME[place]}</h1></header>
     <section class="card controls">
       <div class="field"><span class="field-label">Tillgänglig utrustning</span>
-        ${chipToggles('gear', Object.entries(GEAR).filter(([k]) => k !== 'board'), gear)}</div>
+        ${chipToggles('gear', Object.entries(GEAR), gear)}</div>
     </section>
     ${gear.length ? '' : '<p class="note warn">Välj minst en typ av utrustning.</p>'}
     <div class="stack">
@@ -1664,8 +1678,10 @@ function startWorkout(place) {
     index: 0,
     restEnd: null,
     restBeeped: false,
+    avail: [...gearFor(place)], // Tillgänglig utrustning från Gym/Hemma-sidan
     gear: [...gearFor(place)],
     groups: [...groupsFor(place)],
+    stype: 'strength',
     busy: {},
     picking: true, // man trycker själv på övningen man ska köra
     items,
@@ -1693,7 +1709,6 @@ function runItem(w, item) {
 function openPicker() {
   const w = data.active;
   w.picking = true;
-  w.more = false;
   save();
   renderWorkout();
   $('#wk-body').scrollTop = 0;
@@ -1967,8 +1982,7 @@ function renderPicker() {
   const done = exercisesToday();
   const qi = queueIndexes(w);
   const queueIds = qi.map((i) => w.items[i].exId);
-  const list = w.gear.length ? suggestNext({ done, groups: w.groups, gear: w.gear, pain: data.settings.pain, goals: goalHints(), priority: priority(),
-    exclude: queueIds, busy: w.busy, sessions: data.sessions, limit: w.more ? 99 : 4 }) : [];
+  const list = pickSuggestions(w, done, queueIds);
   const free = list.filter((x) => !x.busy);
   const busy = list.filter((x) => x.busy);
   const started = w.items.some((it) => doneSets(it));
@@ -2012,7 +2026,8 @@ function renderPicker() {
         }).join('')}</ul></div>` : ''}
       <button class="btn secondary" data-action="any-exercise">+ Välj övningar från listan</button>
       <div><h3 class="pk-title">${qi.length ? 'Eller välj ett förslag' : 'Förslag'}</h3>
-      ${!w.gear.length ? '<p class="note warn">Välj minst en typ av utrustning nedan.</p>' : free.length ? `
+      <section class="card controls pk-controls">${pickControls(w)}</section>
+      ${!w.gear.length && w.stype !== 'stretch' ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : free.length ? `
         <ul class="ex-list">${free.map((x) => suggestionItem(x, `
           <div class="ex-actions">
             <div class="pk-more">
@@ -2020,9 +2035,8 @@ function renderPicker() {
               ${btn('s-queue', `data-id="${x.ex.id}"`, `Lägg ${esc(x.ex.name)} i kön`, ICON.plus)}
               ${btn('s-busy', `data-id="${x.ex.id}"`, `${esc(x.ex.name)} är upptagen`, ICON.clock)}
             </div>
-          </div>`, `data-action="s-go" data-id="${x.ex.id}"`)).join('')}</ul>
-        ${w.more ? '' : '<button class="btn-text" data-action="s-more">Visa fler förslag</button>'}`
-        : '<p class="empty">Inga fler övningar passar. Välj fler muskelgrupper eller mer utrustning nedan.</p>'}
+          </div>`, `data-action="s-go" data-id="${x.ex.id}"`)).join('')}</ul>`
+        : '<p class="empty">Inga fler övningar passar. Välj en annan typ, fler muskelgrupper eller mer utrustning.</p>'}
       </div>
       ${rehabSuggestions(w.place, [...queueIds, ...done.map((d) => d.exId), ...free.map((x) => x.ex.id)]).map(([area, list]) => `
         <div><h3 class="pk-title">Fysio för ${AREAS[area].the}</h3>
@@ -2032,7 +2046,6 @@ function renderPicker() {
           </div>`, `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul></div>`).join('')}
       ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
         <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
-      <details class="card"><summary>Ändra utrustning och muskelgrupper</summary><div class="controls pk-controls">${strengthControls(w.place, 'w')}</div></details>
     </div>
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
@@ -2545,7 +2558,7 @@ document.addEventListener('click', (e) => {
     case 's-queue': w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
     case 's-busy': markBusy(w, t.dataset.id); save(); renderWorkout(); break;
     case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
-    case 's-more': w.more = true; save(); renderWorkout(); break;
+    case 'wtype': w.stype = t.dataset.value; save(); renderWorkout(); break;
     case 'skip-warm': w.skipWarm = true; save(); renderWorkout(); break;
     case 'q-up': {
       const qi = queueIndexes(w);

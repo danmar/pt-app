@@ -1,6 +1,6 @@
 // Passtyper: styrka (set och vila) samt cirkel, HIIT, kondition och balans som körs
 // med intervalltimer. Här byggs stationerna och stegen för timern.
-import { EXERCISES, BY_ID, isAvailable } from './exercises.js';
+import { EXERCISES, BY_ID, MUSCLES, isAvailable, painOk } from './exercises.js';
 import { daysSinceTrained } from './planner.js';
 
 export const TYPES = {
@@ -64,6 +64,42 @@ export function stretchSteps(ids) {
       label: `Stretch · håll stilla och andas lugnt${ex.bothSides ? ' · byt sida halvvägs' : ''}`, repsText: ex.reps });
   });
   return steps;
+}
+
+// Typer man väljer mellan när man plockar nästa övning under ett pass.
+export const PICK_TYPES = { strength: 'Styrka', circuit: 'Cirkel', hiit: 'HIIT', cardio: 'Kondition', balance: 'Balans', stretch: 'Stretch' };
+
+/** Vilka övningar som passar en typ när man plockar nästa övning (stretch hanteras av suggestStretch). */
+export function pickFilter(type) {
+  if (type === 'circuit') return okForCircuit;
+  if (type === 'hiit') return okForHiit;
+  if (type === 'balance') return (ex) => okForBalance(ex) && !ex.physio;
+  if (type === 'cardio') return (ex) => !ex.physio && !ex.noAuto && primary(ex) === 'cardio';
+  return null; // styrka: planerarens vanliga urval
+}
+
+/**
+ * Stretchförslag som passar det man tränat idag. done: [{ exId, sets }].
+ * groups: valda muskelgrupper (tom = alla). Returnerar [{ ex, reason }].
+ */
+export function suggestStretch({ done, groups = [], pain = {}, exclude = [], limit = 5 }) {
+  const weight = {};
+  for (const { exId, sets } of done) {
+    const ex = BY_ID[exId];
+    if (!ex || ex.stretch) continue;
+    ex.muscles.forEach((m, i) => { weight[m] = (weight[m] ?? 0) + sets * (i ? 0.5 : 1); });
+  }
+  const doneIds = new Set(done.map((d) => d.exId));
+  return EXERCISES
+    .filter((ex) => ex.stretch && !doneIds.has(ex.id) && !exclude.includes(ex.id) && painOk(ex, pain))
+    .filter((ex) => !groups.length || ex.stretch.some((m) => groups.includes(m)))
+    .map((ex) => {
+      const hit = ex.stretch.filter((m) => weight[m] > 0).sort((a, b) => weight[b] - weight[a]);
+      return { ex, score: ex.stretch.reduce((n, m) => n + (weight[m] ?? 0), 0), hit };
+    })
+    .sort((a, b) => b.score - a.score || STRETCH_ORDER.indexOf(a.ex.id) - STRETCH_ORDER.indexOf(b.ex.id))
+    .slice(0, limit)
+    .map(({ ex, hit }) => ({ ex, reason: hit.length ? `Stretchar ${hit.slice(0, 2).map((m) => MUSCLES[m].name.toLowerCase()).join(' och ')} som du tränat idag` : 'Skön stretch för kroppen' }));
 }
 
 /** Annan balansövning att byta till, eller null. */
