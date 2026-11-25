@@ -19,7 +19,7 @@ const ui = {
   back: 'start', // vart tillbaka-knappen i Gym/Hemma/Simma leder
   plans: { gym: null, home: null, swim: null },
   minutes: { gym: 40, home: 15, swim: 40 },
-  type: { gym: 'strength', home: 'circuit' }, // passtyp per plats
+  type: { gym: 'strength', home: 'strength' }, // passtyp per plats
   iplans: { gym: null, home: null }, // cirkel-, HIIT-, konditions- och balanspass
   focus: { gym: '', home: '', swim: 'endurance' },
   fixed: { gym: null, home: null }, // fysioövningar som alltid ligger först i passet
@@ -657,9 +657,6 @@ function placeHeader(place) {
       <p class="sub">${ui.loaded[place] ? `Sparat pass: ${esc(ui.loaded[place])}` : place === 'gym' ? 'Ett pass för gymmet' : 'Korta pass hemma'}</p>
     </header>
     <section class="card controls">
-      <div class="segmented types" role="radiogroup" aria-label="Typ av pass">
-        ${Object.entries(TYPES).map(([k, t]) => `<button role="radio" aria-checked="${ui.type[place] === k}" data-action="ptype" data-value="${k}">${t.name}</button>`).join('')}
-      </div>
       ${ui.type[place] === 'strength' ? '' : `
       <div class="field"><span class="field-label">Utrustning</span>
         ${chipToggles('gear', Object.entries(GEAR).filter(([k]) => (ui.type[place] === 'balance' ? BALANCE_PASS_GEAR.includes(k) : !BALANCE_GEAR.includes(k))), gearFor(place))}</div>
@@ -873,21 +870,14 @@ function planView(place) {
   if (ui.type[place] !== 'strength') return intervalView(place);
   if (!ui.plans[place]) regenerate(place);
   const queue = ui.plans[place];
-  const done = exercisesToday();
   const gear = gearFor(place);
-  // Bara fysio i kön: visa det som en rad i stället för en lista med övningar.
-  const onlyPhysio = queue.length && ui.fixed[place] && queue.every((p) => BY_ID[p.exId]?.physio);
-
   return `
-    ${placeHeader(place)}
-    ${focusNote(place)}
-    ${painNote()}
-    ${done.length ? `<h2 class="section-title">Kört idag</h2>${todaySummary(done)}` : ''}
-    ${onlyPhysio ? `<p class="note">${ICON.shield} Dina ${queue.length} fysioövningar ingår i passet. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`
-    : queue.length ? `
-      ${ui.fixed[place] ? physioNote(place) : ''}
-      <h2 class="section-title">Först i passet</h2>
-      <ul class="ex-list">${queue.map((p, i) => planItem(p, i)).join('')}</ul>` : ''}
+    ${backButton()}
+    <header class="page-head"><h1>${PLACE_NAME[place]}</h1></header>
+    <section class="card controls">
+      <div class="field"><span class="field-label">Tillgänglig utrustning</span>
+        ${chipToggles('gear', Object.entries(GEAR).filter(([k]) => k !== 'board'), gear)}</div>
+    </section>
     ${gear.length ? '' : '<p class="note warn">Välj minst en typ av utrustning.</p>'}
     <div class="stack">
       <button class="btn primary big" data-action="start" ${gear.length ? '' : 'disabled'}>${ICON.play} Börja träna</button>
@@ -2258,6 +2248,7 @@ document.addEventListener('click', (e) => {
         ui.back = ui.tab;
         // Via startsidan eller Planera: börja med ett vanligt förslag, inte ett tidigare inläst pass.
         if (ui.loaded[to]) { ui.loaded[to] = null; ui.plans[to] = null; if (to !== 'swim') { ui.fixed[to] = null; ui.iplans[to] = null; } }
+        if (to !== 'swim') ui.type[to] = 'strength';
         if (to !== 'swim' && ui.skipPhysio[to] && data.settings.physioAlways) { ui.skipPhysio[to] = false; ui.plans[to] = null; ui.iplans[to] = null; }
       }
       ui.tab = to; render(); window.scrollTo(0, 0); break;
