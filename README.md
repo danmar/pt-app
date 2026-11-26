@@ -88,12 +88,13 @@ python3 -m http.server 8000
 
 ## Tester
 
-Testerna är skrivna i Gherkin (på svenska) i mappen `tests/` och körs med Cucumber. De körs också på GitHub vid varje push.
+Testerna är skrivna i Gherkin (på svenska) i mappen `tests/` och körs med Cucumber. De körs också på GitHub vid varje push. Hur testerna är organiserade står i [`tests/README.md`](tests/README.md).
 
 ```sh
 cd tests
 npm install
 npm test            # alla tester
+npm run test:gym    # bara testerna för gympass (@gym)
 npm run test:logik  # bara logiken (snabbt, ingen webbläsare)
 npm run test:ui     # bara appen i webbläsaren (@ui)
 ```

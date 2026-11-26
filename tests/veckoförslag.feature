@@ -9,6 +9,7 @@ Egenskap: Veckoförslag
     Och förslaget ska ha 4 träningsdagar
     Och förslaget ska ha minst 1 vilodag
 
+  @gym
   Scenario: Styrkedagar läggs inte dag efter dag
     Givet att jag vill träna 3 dagar i veckan med "gym"
     När jag ber om ett veckoförslag

@@ -48,6 +48,7 @@ Egenskap: Appen i webbläsaren
     Så ska sidan vara i mörkt läge
     Och mörkt läge ska vara sparat
 
+  @gym
   Scenario: Gym-sidan går att öppna från startsidan
     Givet att jag öppnar appen med tom data
     När jag väljer "Gym" på startsidan

@@ -4,6 +4,7 @@ Egenskap: Övningar anpassas efter ont
   vill jag att appen hoppar över övningar som belastar stället där jag har ont.
   Lite ont tar bort tung belastning, ont tar bort all belastning.
 
+  @gym
   Abstrakt Scenario: <övning> när knäna har nivå <nivå>
     Givet att jag har ont i "knees" på nivå <nivå>
     Så ska övningen "<övning>" vara <tillåten>
@@ -18,6 +19,7 @@ Egenskap: Övningar anpassas efter ont
       | straight-leg-raise | 2    | tillåten   |
       | push-up            | 2    | tillåten   |
 
+  @gym
   Scenario: Lite ont i axlarna tar bort bänkpress men inte armhävningar
     Givet att jag har ont i "shoulders" på nivå 1
     Så ska övningen "bench-press" vara bortvald

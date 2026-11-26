@@ -2,6 +2,7 @@
 Egenskap: Säkerhetskopia
   All data sparas i telefonen. Jag kan exportera och importera en säkerhetskopia.
 
+  @gym
   Scenario: Export tar inte med ett pågående pass
     Givet en tom app
     Och att ett pass pågår

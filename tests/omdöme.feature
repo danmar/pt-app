@@ -1,4 +1,5 @@
 # language: sv
+@gym
 Egenskap: Omdöme efter passet
   Som hos en PT får jag ett positivt omdöme och ett tips efter passet.
 

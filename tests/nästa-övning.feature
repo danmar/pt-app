@@ -1,4 +1,5 @@
 # language: sv
+@gym
 Egenskap: Förslag på nästa övning under passet
   Under ett styrkepass föreslår appen nästa övning utifrån det jag redan kört idag.
 

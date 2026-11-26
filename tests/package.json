@@ -6,7 +6,8 @@
   "scripts": {
     "test": "cucumber-js",
     "test:logik": "cucumber-js --tags 'not @ui'",
-    "test:ui": "cucumber-js --tags @ui"
+    "test:ui": "cucumber-js --tags @ui",
+    "test:gym": "cucumber-js --tags @gym"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^13.3.0",
