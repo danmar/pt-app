@@ -1,7 +1,7 @@
-// Inställningar för Cucumber. Kör med `npm test`.
+// Inställningar för Cucumber. Kör med `npm test` i mappen tests/.
 export default {
-  paths: ['features/**/*.feature'],
-  import: ['features/stöd/**/*.mjs', 'features/steg/**/*.mjs'],
+  paths: ['*.feature'],
+  import: ['stöd/**/*.mjs', 'steg/**/*.mjs'],
   format: ['progress-bar'],
   formatOptions: { snippetInterface: 'async-await' },
 };

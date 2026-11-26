@@ -88,9 +88,10 @@ python3 -m http.server 8000
 
 ## Tester
 
-Testerna är skrivna i Gherkin (på svenska) i `features/` och körs med Cucumber. De körs också på GitHub vid varje push.
+Testerna är skrivna i Gherkin (på svenska) i mappen `tests/` och körs med Cucumber. De körs också på GitHub vid varje push.
 
 ```sh
+cd tests
 npm install
 npm test            # alla tester
 npm run test:logik  # bara logiken (snabbt, ingen webbläsare)
@@ -107,7 +108,7 @@ npm run test:ui     # bara appen i webbläsaren (@ui)
 | `lagring.feature` | Export och import av säkerhetskopia |
 | `appen.feature` | Appen i Chromium: start utan konsolfel, flikar, layoutfiler, steg och färgtema |
 
-Stegen finns i `features/steg/`. UI-testerna använder Chromium som redan finns på datorn (sätt `CHROMIUM_PATH` om den inte hittas).
+Stegen finns i `tests/steg/`. UI-testerna använder Chromium som redan finns på datorn (sätt `CHROMIUM_PATH` om den inte hittas).
 
 ## Lägga ut appen gratis
 
