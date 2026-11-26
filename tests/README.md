@@ -54,7 +54,7 @@ En tagg på raden ovanför `Egenskap:` gäller alla scenarier i filen. En tagg o
 
 ## Tester för gympass
 
-24 scenarier har taggen `@gym`:
+27 scenarier har taggen `@gym`:
 
 | Fil | Scenarier | Vad som testas |
 |---|---|---|
@@ -63,7 +63,7 @@ En tagg på raden ovanför `Egenskap:` gäller alla scenarier i filen. En tagg o
 | `smärta.feature` | 2 (8 med exemplen) | Knäböj och benspark när knäna gör ont, bänkpress när axlarna gör ont |
 | `veckoförslag.feature` | 1 | Styrkedagar läggs inte dag efter dag |
 | `lagring.feature` | 1 | Ett pågående pass kommer inte med i säkerhetskopian |
-| `appen.feature` | 1 | Gym-sidan går att öppna från startsidan och visar "Börja träna" |
+| `appen.feature` | 4 | Gym-sidan går att öppna, set, reps och vikt anges en gång per övning, Set klart och Ångra, enbensövningar med höger och vänster ben var för sig |
 
 Testerna för simpass, steg, färgtema och fysioövningar har inte taggen.
 

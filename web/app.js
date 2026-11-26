@@ -2028,8 +2028,9 @@ function drawWorkout() {
         <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
       </details>
       ${ex.safety.length ? `<details class="card safety-card"><summary>${ICON.shield} Tänk på</summary>${safetyList(ex)}</details>` : ''}
+      ${simpleSets(ex) ? setsForm(ex, item) : `
       <div class="sets">${item.sets.map((s, k) => setRow(ex, s, k)).join('')}</div>
-      <button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>
+      <button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>`}
     </div>
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
@@ -2163,6 +2164,66 @@ function renderAdd() {
     <div id="rest" class="rest" hidden></div>`;
   mountFigures(root);
   updateTimers();
+}
+
+/** Styrkeövningar med reps anges som antal set, reps och vikt, i stället för set för set. */
+const simpleSets = (ex) => !ex.timed && !ex.distance;
+const sidesOf = (ex) => (ex.unilateral ? ['H', 'V'] : ['']);
+/** Seten för en sida: 'H', 'V' eller '' för övningar med båda benen. */
+const sideSets = (sets, side) => sets.filter((x) => (x.side ?? '') === side);
+const doneCount = (list) => list.filter((x) => x.done).length;
+/** Antal set i rad som är klara; för enbensövningar räknas den sida som kommit längst. */
+const doneRounds = (ex, item) => Math.max(...sidesOf(ex).map((side) => doneCount(sideSets(item.sets, side))));
+const roundCount = (ex, item) => Math.max(...sidesOf(ex).map((side) => sideSets(item.sets, side).length));
+
+/** Ändrar antalet set för en sida. Klara set tas aldrig bort. Enbensövningar läggs H, V, H, V … */
+function setSideCount(ex, item, side, n) {
+  const lists = Object.fromEntries(sidesOf(ex).map((x) => [x, sideSets(item.sets, x)]));
+  const list = lists[side];
+  n = Math.min(20, Math.max(1, doneCount(list), n));
+  while (list.length < n) {
+    const last = list[list.length - 1];
+    list.push({ reps: last?.reps ?? ex.defaultReps, weight: last?.weight ?? 0, done: false, ...(side ? { side } : {}) });
+  }
+  while (list.length > n) list.splice(list.findLastIndex((x) => !x.done), 1);
+  const max = Math.max(...Object.values(lists).map((l) => l.length));
+  item.sets = [...Array(max)].flatMap((_, i) => Object.values(lists).map((l) => l[i]).filter(Boolean));
+}
+
+/** Formuläret för en styrkeövning: set, reps och vikt, en gång per ben för enbensövningar. */
+function setsForm(ex, item) {
+  const weighted = ex.equipment !== 'none';
+  const rounds = roundCount(ex, item);
+  const done = doneRounds(ex, item);
+  const blocks = sidesOf(ex).map((side) => {
+    const list = sideSets(item.sets, side);
+    const first = list[0] ?? { reps: ex.defaultReps, weight: 0 };
+    const leg = side === 'H' ? 'höger ben' : side === 'V' ? 'vänster ben' : '';
+    const label = (what) => `${what}${leg ? `, ${leg}` : ''}`;
+    return `
+      <div class="set-form${doneCount(list) >= list.length ? ' done' : ''}">
+        ${side ? `<h3 class="sf-side"><span class="side">${side}</span>${side === 'H' ? 'Höger' : 'Vänster'} ben</h3>` : ''}
+        <div class="sf-row"><span>Set</span>
+          <div class="stepper">
+            <button data-action="snum" data-side="${side}" data-d="-1" aria-label="${label('Färre set')}">−</button>
+            <b>${list.length}</b>
+            <button data-action="snum" data-side="${side}" data-d="1" aria-label="${label('Fler set')}">+</button>
+          </div></div>
+        <div class="sf-row"><span>Reps</span>
+          <div class="stepper">
+            <button data-action="sreps" data-side="${side}" data-d="-1" aria-label="${label('Färre reps')}">−</button>
+            <b>${first.reps} st</b>
+            <button data-action="sreps" data-side="${side}" data-d="1" aria-label="${label('Fler reps')}">+</button>
+          </div></div>
+        ${weighted ? `<div class="sf-row"><span>Vikt</span>
+          <label class="kg"><input type="text" inputmode="decimal" autocomplete="off" placeholder="0" value="${first.weight ? fmtNum(first.weight, 2) : ''}" data-input="sweight" data-side="${side}" aria-label="${label('Vikt')}"><span>kg</span></label></div>` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <div class="sets">${blocks}</div>
+    <button class="btn ${done >= rounds ? 'secondary' : 'primary'} set-next" data-action="set-done" ${done >= rounds ? 'disabled' : ''}>
+      ${done >= rounds ? `${ICON.check} Alla ${rounds} set klara` : `${ICON.check} Set ${done + 1} av ${rounds} klart`}</button>
+    ${done ? `<button class="btn-text add-set" data-action="set-undo">Ångra senaste set</button>` : ''}`;
 }
 
 function setRow(ex, s, k) {
@@ -2755,6 +2816,44 @@ document.addEventListener('click', (e) => {
       set.side = flip(set.side);
       save(); renderWorkout(); break;
     }
+    case 'snum': {
+      const item = w.items[w.index];
+      const ex = BY_ID[item.exId];
+      const side = t.dataset.side;
+      setSideCount(ex, item, side, sideSets(item.sets, side).length + Number(t.dataset.d));
+      save(); renderWorkout(); break;
+    }
+    case 'sreps': {
+      const list = sideSets(w.items[w.index].sets, t.dataset.side);
+      const reps = Math.min(300, Math.max(1, (list[0]?.reps ?? 10) + Number(t.dataset.d)));
+      for (const x of list) x.reps = reps;
+      save(); renderWorkout(); break;
+    }
+    case 'set-done': {
+      // Markerar nästa set som klart, för båda benen på en gång om det är en enbensövning.
+      unlockAudio();
+      const item = w.items[w.index];
+      const ex = BY_ID[item.exId];
+      const round = doneRounds(ex, item);
+      let marked = false;
+      for (const side of sidesOf(ex)) {
+        const list = sideSets(item.sets, side);
+        const next = doneCount(list) <= round ? list.find((x) => !x.done) : null;
+        if (next) { next.done = true; marked = true; }
+      }
+      if (marked && !item.warmup) { w.restEnd = Date.now() + data.settings.restSeconds * 1000; w.restBeeped = false; }
+      save(); renderWorkout(); break;
+    }
+    case 'set-undo': {
+      const item = w.items[w.index];
+      const ex = BY_ID[item.exId];
+      const round = doneRounds(ex, item);
+      for (const side of sidesOf(ex)) {
+        const list = sideSets(item.sets, side);
+        if (doneCount(list) === round) list.findLast((x) => x.done).done = false;
+      }
+      save(); renderWorkout(); break;
+    }
     case 'add-set': {
       const sets = w.items[w.index].sets;
       const prev = sets[sets.length - 1];
@@ -2832,7 +2931,11 @@ document.addEventListener('change', (e) => {
 
 document.addEventListener('input', (e) => {
   const t = e.target;
-  if ((t.dataset.input === 'weight' || t.dataset.input === 'dist') && data.active) {
+  if (t.dataset.input === 'sweight' && data.active) {
+    const v = parseFloat(String(t.value).replace(/\s/g, '').replace(',', '.'));
+    for (const x of sideSets(data.active.items[data.active.index].sets, t.dataset.side)) x.weight = Number.isFinite(v) && v > 0 ? v : 0;
+    save();
+  } else if ((t.dataset.input === 'weight' || t.dataset.input === 'dist') && data.active) {
     const v = parseFloat(String(t.value).replace(/\s/g, '').replace(',', '.'));
     const ok = Number.isFinite(v) && v > 0;
     data.active.items[data.active.index].sets[Number(t.dataset.k)][t.dataset.input] = ok ? (t.dataset.input === 'dist' ? Math.round(v) : v) : 0;

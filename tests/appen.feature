@@ -54,3 +54,34 @@ Egenskap: Appen i webbläsaren
     När jag väljer "Gym" på startsidan
     Så ska jag se knappen "Börja träna"
     Och konsolen ska inte ha några fel
+
+  @gym
+  Scenario: En styrkeövning anges med set, reps och vikt en gång
+    Givet att jag kör övningen "bench-press" med 3 set om 10 reps på 40 kg
+    Så ska fälten för set och reps finnas en gång
+    När jag trycker på "Fler set"
+    Och trycker på "Färre reps"
+    Och skriver vikten "42,5"
+    Så ska övningen ha 4 set om 9 reps på 42,5 kg
+    Och konsolen ska inte ha några fel
+
+  @gym
+  Scenario: Set klart bockar av ett set i taget
+    Givet att jag kör övningen "bench-press" med 3 set om 10 reps på 40 kg
+    När jag trycker på "Set 1 av 3 klart"
+    Och trycker på "Set 2 av 3 klart"
+    Så ska 2 set vara klara
+    När jag trycker på "Ångra senaste set"
+    Så ska 1 set vara klara
+
+  @gym
+  Scenario: En enbensövning anges för höger och vänster ben var för sig
+    Givet att jag kör övningen "single-leg-press" med 3 set om 12 reps på 30 kg
+    När jag trycker på "Fler reps" för höger ben
+    Och skriver vikten "25" för vänster ben
+    Och trycker på "Färre set" för vänster ben
+    Så ska övningen ha 3 set om 13 reps på 30 kg för höger ben
+    Och ska övningen ha 2 set om 12 reps på 25 kg för vänster ben
+    När jag trycker på "Set 1 av 3 klart"
+    Så ska 1 set vara klara för varje ben
+    Och konsolen ska inte ha några fel
