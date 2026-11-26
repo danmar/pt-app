@@ -2020,7 +2020,7 @@ function drawWorkout() {
       ${exerciseBody(ex, true)}
       <div class="wk-links">
         <button class="toggle small" data-action="wk-warmup" aria-pressed="${!!item.warmup}">Uppvärmning</button>
-        ${doneSets(item) || ex.physio ? '' : '<button class="btn-text busy-link" data-action="busy-now">Upptagen?</button>'}
+        ${doneSets(item) || ex.physio || item.preview ? '' : '<button class="btn-text busy-link" data-action="busy-now">Upptagen?</button>'}
         <button class="btn-text busy-link" data-action="pain-sheet">Gör det ont?</button>
       </div>
       <details class="card">
@@ -2028,14 +2028,14 @@ function drawWorkout() {
         <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
       </details>
       ${ex.safety.length ? `<details class="card safety-card"><summary>${ICON.shield} Tänk på</summary>${safetyList(ex)}</details>` : ''}
-      ${simpleSets(ex) ? setsForm(ex, item) : `
+      ${item.preview ? '' : simpleSets(ex) ? setsForm(ex, item) : `
       <div class="sets">${item.sets.map((s, k) => setRow(ex, s, k)).join('')}</div>
       <button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>`}
     </div>
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
       <button class="btn secondary grow" data-action="ex-cancel">Avbryt</button>
-      <button class="btn primary grow" data-action="ex-done">Klar</button>
+      ${item.preview ? '<button class="btn primary grow" data-action="ex-add">Lägg till</button>' : '<button class="btn primary grow" data-action="ex-done">Klar</button>'}
     </div>`;
   mountFigures(root);
   updateTimers();
@@ -2742,8 +2742,16 @@ document.addEventListener('click', (e) => {
       markBusy(w, w.items[w.index].exId);
       w.index = Math.max(0, w.items.filter((it) => doneSets(it)).length - 1);
       openPicker(); break;
-    case 'q-go': delete w.busy[w.items[k].exId]; delete w.items[k].fresh; runItem(w, w.items[k]); break;
-    case 's-go': runItem(w, { ...newItem(t.dataset.id), fresh: true }); break;
+    case 'q-go': delete w.busy[w.items[k].exId]; delete w.items[k].fresh; delete w.items[k].preview; runItem(w, w.items[k]); break;
+    // Vald under Lägg till övning: visas utan set och reps, och Lägg till lägger den i kön.
+    case 's-go': runItem(w, { ...newItem(t.dataset.id), fresh: true, preview: true }); break;
+    case 'ex-add': {
+      const it = w.items[w.index];
+      delete it.fresh;
+      delete it.preview;
+      toast('Lagd i kön');
+      openPicker(); break;
+    }
     case 'w-go': {
       // Vald som uppvärmning, även om man redan kört andra övningar.
       const it = { ...newItem(t.dataset.id), fresh: true, warmup: true };

@@ -85,3 +85,15 @@ Egenskap: Appen i webbläsaren
     När jag trycker på "Set 1 av 3 klart"
     Så ska 1 set vara klara för varje ben
     Och konsolen ska inte ha några fel
+
+  @gym
+  Scenario: En övning som läggs till under passet visas utan set och reps
+    Givet att jag har startat ett gympass med kroppsvikt för bröstet
+    När jag trycker på "Lägg till övning"
+    Och väljer övningen "Armhävningar"
+    Så ska jag inte se valen för set och reps
+    Och ska jag se knappen "Lägg till"
+    Och ska jag inte se knappen "Klar"
+    När jag trycker på "Lägg till"
+    Så ska "push-up" ligga i kön utan klara set
+    Och konsolen ska inte ha några fel

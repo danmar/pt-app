@@ -21,6 +21,12 @@ Given('att jag kör övningen {string} med {int} set om {int} reps på {int} kg'
   await openApp(this, { active });
 });
 
+Given('att jag har startat ett gympass med kroppsvikt för bröstet', async function () {
+  const active = { place: 'gym', start: Date.now(), index: 0, restEnd: null, restBeeped: false, avail: ['body'], gear: ['body'], groups: ['chest'],
+    stype: 'strength', busy: {}, picking: true, skipWarm: true, items: [] };
+  await openApp(this, { active });
+});
+
 async function openApp(world, seed) {
   const page = await world.context.newPage();
   world.page = page;
@@ -144,4 +150,25 @@ Then('ska fälten för set och reps finnas en gång', async function () {
 Then('ska seten ligga höger, vänster växelvis', async function () {
   const sides = (await activeSets(this.page)).map((x) => x.side).join('');
   assert.match(sides, /^(HV)+$/);
+});
+
+// ---- Lägga till en övning under passet -----------------------------------
+When('väljer övningen {string}', async function (name) {
+  await this.page.locator('#workout .ex-main:visible').filter({ has: this.page.locator('strong', { hasText: exact(name) }) }).first().click();
+});
+
+Then('ska jag inte se valen för set och reps', async function () {
+  await this.page.locator('#workout .wk-name').waitFor();
+  assert.equal(await this.page.locator('#workout .set-form, #workout .set, #workout .stepper').count(), 0);
+});
+
+Then('ska jag inte se knappen {string}', async function (text) {
+  assert.equal(await this.page.locator('button:visible').filter({ hasText: exact(text) }).count(), 0);
+});
+
+Then('ska {string} ligga i kön utan klara set', async function (exId) {
+  await this.page.locator('#workout .picker').waitFor();
+  const items = (await readData(this.page)).active.items.filter((it) => it.exId === exId);
+  assert.equal(items.length, 1);
+  assert.ok(!items[0].sets.some((x) => x.done) && !items[0].preview && !items[0].fresh);
 });
