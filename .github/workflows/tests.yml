@@ -1,0 +1,18 @@
+# Kör Gherkin-testerna (Cucumber) vid varje push och pull request.
+name: Tester
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci
+      # UI-testerna använder Chrome som redan finns på GitHubs Ubuntu-maskiner.
+      - run: npm test
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome

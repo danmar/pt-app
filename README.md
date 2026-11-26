@@ -86,6 +86,29 @@ python3 -m http.server 8000
 
 Öppna sedan http://localhost:8000. Appen måste köras via en server, så det fungerar inte att dubbelklicka på `index.html`.
 
+## Tester
+
+Testerna är skrivna i Gherkin (på svenska) i `features/` och körs med Cucumber. De körs också på GitHub vid varje push.
+
+```sh
+npm install
+npm test            # alla tester
+npm run test:logik  # bara logiken (snabbt, ingen webbläsare)
+npm run test:ui     # bara appen i webbläsaren (@ui)
+```
+
+| Fil | Testar |
+|---|---|
+| `smärta.feature` | Övningar som tas bort när du har ont, och utrustning hemma |
+| `nästa-övning.feature` | Förslag på nästa övning under passet |
+| `simpass.feature` | Simpassens delar och längd |
+| `veckoförslag.feature` | Veckoförslaget, vilodagar och dagar du lagt in själv |
+| `omdöme.feature` | Omdöme och tips efter passet |
+| `lagring.feature` | Export och import av säkerhetskopia |
+| `appen.feature` | Appen i Chromium: start utan konsolfel, flikar, layoutfiler, steg och färgtema |
+
+Stegen finns i `features/steg/`. UI-testerna använder Chromium som redan finns på datorn (sätt `CHROMIUM_PATH` om den inte hittas).
+
 ## Lägga ut appen gratis
 
 Appen måste ligga på en **https**-adress för att fungera som app på telefonen. Två gratis sätt:

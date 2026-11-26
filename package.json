@@ -1,0 +1,15 @@
+{
+  "name": "pt-app-tests",
+  "private": true,
+  "type": "module",
+  "description": "Gherkin-tester (Cucumber) för Min PT. Själva appen i web/ har inget byggsteg.",
+  "scripts": {
+    "test": "cucumber-js",
+    "test:logik": "cucumber-js --tags 'not @ui'",
+    "test:ui": "cucumber-js --tags @ui"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^13.3.0",
+    "playwright-core": "^1.65.1"
+  }
+}
