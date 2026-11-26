@@ -1,0 +1,11 @@
+{
+  "visa": [
+    "rubrik",
+    "siffror",
+    "minuter-per-vecka",
+    "set-per-muskelgrupp",
+    "övningar",
+    "steg"
+  ],
+  "dolda": []
+}

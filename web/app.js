@@ -99,6 +99,28 @@ function render() {
   mountFigures(view);
 }
 
+// Vilka block som syns på en sida och i vilken ordning styrs av layout/<sida>.json.
+// Saknas filen visas alla block i den ordning de står i koden.
+const LAYOUT_PAGES = ['start', 'plan', 'log', 'stats', 'settings'];
+const LAYOUT = {};
+async function loadLayouts() {
+  await Promise.all(LAYOUT_PAGES.map(async (page) => {
+    try {
+      const res = await fetch(`layout/${page}.json`, { cache: 'no-cache' });
+      if (res.ok) LAYOUT[page] = await res.json();
+    } catch (e) { console.warn(`layout/${page}.json kunde inte läsas`, e); }
+  }));
+}
+/** Ritar sidans block i den ordning layoutfilen anger. list: { blocknamn: () => html } */
+function layout(page, list) {
+  const order = Array.isArray(LAYOUT[page]?.visa) ? LAYOUT[page].visa : Object.keys(list);
+  return order.map((id) => {
+    if (list[id]) return list[id]();
+    console.warn(`layout/${page}.json: okänt block "${id}". Finns: ${Object.keys(list).join(', ')}`);
+    return '';
+  }).join('');
+}
+
 const BACK_NAME = { start: 'Idag', plan: 'Planera', log: 'Logg', settings: 'Inställningar', activity: 'Kondition' };
 const backButton = () => `<button class="back" data-action="tab" data-tab="${ui.back}">${ICON.chevronL}${BACK_NAME[ui.back] ?? 'Idag'}</button>`;
 
@@ -129,27 +151,31 @@ function startView() {
   const now = new Date();
   const hour = now.getHours();
   const hello = hour < 10 ? 'God morgon' : hour < 18 ? 'Hej' : 'God kväll';
-  return `
+  return layout('start', {
+    rubrik: () => `
     <header class="page-head">
       <p class="eyebrow">${fmtDate(now)}</p>
       <h1>${hello}!</h1>
       <p class="sub">Vad vill du göra idag?</p>
-    </header>
-    ${todayCard()}
+    </header>`,
+    dagens: todayCard,
+    val: () => `
     <div class="choices">
       ${choice('gym', 'Gym', 'Passförslag med maskiner och vikter', ICON.gym)}
       ${choice('home', 'Hemma', 'Korta cirkelpass och intervaller', ICON.home)}
       ${choice('activity', 'Kondition', 'Simma, spring, cykla, gå', ICON.pulse)}
       ${choice('plan', 'Planera', 'Veckoplan och sparade pass', ICON.calendar)}
-    </div>
-    ${goalsCard()}
-    ${stepsCard()}
-    ${physioCard()}
+    </div>`,
+    'mål': goalsCard,
+    steg: stepsCard,
+    fysio: physioCard,
+    'träna-säkert': () => `
     <button class="card guide-card" data-action="guide">
       <span class="today-icon">${ICON.shield}</span>
       <span class="today-text"><b>Träna säkert</b><small>Uppvärmning, knäna och när du ska stoppa</small></span>
       <span class="chev">${ICON.chevronR}</span>
-    </button>`;
+    </button>`,
+  });
 }
 
 const choice = (tab, title, text, icon) => `
@@ -392,12 +418,12 @@ function cardioRow(c) {
 const kindOf = (v) => (v.startsWith('saved:') ? savedById(v.slice(6))?.place ?? '' : v);
 
 function planningView() {
-  return `
-    <header class="page-head"><h1>Planera</h1><p class="sub">Din vecka, mål och sparade pass</p></header>
-    ${priorityCard()}
-    ${weekSection()}
-    ${goalsSection()}
-
+  return layout('plan', {
+    rubrik: () => '<header class="page-head"><h1>Planera</h1><p class="sub">Din vecka, mål och sparade pass</p></header>',
+    prioritering: priorityCard,
+    veckan: weekSection,
+    'mål': goalsSection,
+    'sparade-pass': () => `
     <h2 class="section-title">Sparade pass</h2>
     ${data.saved.length
       ? `<ul class="log-list">${data.saved.map(savedRow).join('')}</ul>`
@@ -406,7 +432,8 @@ function planningView() {
       <button class="btn secondary" data-action="tab" data-tab="gym">+ Gym</button>
       <button class="btn secondary" data-action="tab" data-tab="home">+ Hemma</button>
       <button class="btn secondary" data-action="tab" data-tab="swim">+ Simma</button>
-    </div>`;
+    </div>`,
+  });
 }
 
 // ---- Prioritering och mål -----------------------------------------------------
@@ -1035,23 +1062,22 @@ function statsView() {
   });
   const hasSteps = stepDays.some((d) => d.values.steps > 0);
 
-  return `
-    <header class="page-head"><h1>Grafer</h1><p class="sub">Din utveckling</p></header>
+  return layout('stats', {
+    rubrik: () => '<header class="page-head"><h1>Grafer</h1><p class="sub">Din utveckling</p></header>',
+    siffror: () => `
     <div class="tiles three">
       <div class="tile"><span>Pass 30 dagar</span><b>${passes30}</b></div>
       <div class="tile"><span>Aktiva min i veckan</span><b>${thisWeek}</b>
         ${lastWeek || thisWeek ? `<small class="delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)} mot förra</small>` : ''}</div>
       <div class="tile"><span>Personbästa 30 d</span><b>${prs30}</b></div>
-    </div>
-
-    ${chartCard('Aktiva minuter per vecka', 'Senaste 12 veckorna', legendHtml(),
+    </div>`,
+    'minuter-per-vecka': () => chartCard('Aktiva minuter per vecka', 'Senaste 12 veckorna', legendHtml(),
       columns({ cols: weeks, series: SERIES, unit: 'minuter' }),
-      table(['Vecka', 'Träning', 'Kondition', 'Promenad'], weeks.map((w) => [w.label, w.values.train, w.values.swim, w.values.walk])))}
-
-    ${chartCard('Set per muskelgrupp', 'Senaste fyra veckorna', '',
+      table(['Vecka', 'Träning', 'Kondition', 'Promenad'], weeks.map((w) => [w.label, w.values.train, w.values.swim, w.values.walk]))),
+    'set-per-muskelgrupp': () => chartCard('Set per muskelgrupp', 'Senaste fyra veckorna', '',
       hbars({ rows: groupRows, cls: 's-train' }),
-      table(['Muskelgrupp', 'Set'], groupRows.map((r) => [r.label, r.value])))}
-
+      table(['Muskelgrupp', 'Set'], groupRows.map((r) => [r.label, r.value]))),
+    'övningar': () => `
     <section class="card chart-card">
       <h3>Utveckling per övning</h3>
       ${exIds.length ? `
@@ -1061,12 +1087,12 @@ function statsView() {
         ${series.points.length ? line({ points: series.points, unit: series.unit, cls: 's-train' }) : '<p class="empty">Inga värden för övningen än.</p>'}
         ${table(['Datum', 'Bästa'], series.points.map((p) => [p.x.toLocaleDateString('sv-SE'), `${fmtNum(p.y)}${series.unit}`]))}`
         : '<p class="empty">Kör eller logga några pass, så ser du hur du blir starkare här.</p>'}
-    </section>
-
-    ${chartCard('Steg per dag', `Senaste 30 dagarna · linjen visar ditt mål på ${fmtNum(data.settings.stepGoal, 0)} steg`, '',
+    </section>`,
+    steg: () => chartCard('Steg per dag', `Senaste 30 dagarna · linjen visar ditt mål på ${fmtNum(data.settings.stepGoal, 0)} steg`, '',
       hasSteps ? columns({ cols: stepDays, series: [{ key: 'steps', name: 'Steg', cls: 's-walk' }], unit: 'steg', goal: { value: data.settings.stepGoal, label: 'Mål' } })
         : '<p class="empty">Inga steg inlagda än. Skriv in dina steg på startsidan.</p>',
-      hasSteps ? table(['Dag', 'Steg'], stepDays.filter((d) => d.values.steps).map((d) => [d.tip.split(':')[0], d.values.steps])) : '')}`;
+      hasSteps ? table(['Dag', 'Steg'], stepDays.filter((d) => d.values.steps).map((d) => [d.tip.split(':')[0], d.values.steps])) : ''),
+  });
 }
 
 // ---- Logg -----------------------------------------------------------------
@@ -1098,16 +1124,16 @@ function logView() {
     ...data.cardio.map((c) => ({ date: c.date, html: () => cardioRow(c) })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  return `
-    <header class="page-head"><h1>Logg</h1><p class="sub">Senaste 7 dagarna</p></header>
-
+  return layout('log', {
+    rubrik: () => '<header class="page-head"><h1>Logg</h1><p class="sub">Senaste 7 dagarna</p></header>',
+    siffror: () => `
     <div class="tiles">
       <div class="tile"><span>Pass</span><b>${weekSessions.length + weekSwims.length + weekCardio.length}</b></div>
       <div class="tile"><span>Set</span><b>${sets}</b></div>
       <div class="tile"><span>Kondition</span><b>${cardioMin} min</b></div>
       <div class="tile"><span>Promenad</span><b>${walkMin} min</b></div>
-    </div>
-
+    </div>`,
+    diagram: () => `
     <section class="card chart" aria-label="Aktiva minuter per dag">
       <div class="chart-head">
         <h3>Aktiva minuter</h3>
@@ -1124,20 +1150,21 @@ function logView() {
             <span>${shortDay(d)}</span>
           </div>`).join('')}
       </div>
-    </section>
-
+    </section>`,
+    logga: () => `
     <button class="btn primary" data-action="manual-new">${ICON.gym} Logga övningar</button>
     <div class="row three">
       <button class="btn primary" data-action="walk-new">${ICON.walk} Promenad</button>
       <button class="btn primary swim-btn" data-action="swim-log">${ICON.swim} Simning</button>
       <button class="btn primary swim-btn" data-action="cardio-log">${ICON.pulse} Annat</button>
-    </div>
-
+    </div>`,
+    historik: () => `
     <h2 class="section-title">Historik</h2>
     ${items.length === 0 ? '<p class="empty">Inget loggat än. Kör ett pass eller logga en promenad, simning, löpning eller cykling.</p>' : ''}
     <ul class="log-list">
       ${items.map((it) => it.html()).join('')}
-    </ul>`;
+    </ul>`,
+  });
 }
 
 const pace = (w) => {
@@ -1225,9 +1252,9 @@ function themeSection() {
 function settingsView() {
   const s = data.settings;
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  return `
-    <header class="page-head"><h1>Inställningar</h1></header>
-
+  return layout('settings', {
+    rubrik: () => '<header class="page-head"><h1>Inställningar</h1></header>',
+    'inställningar': () => `
     <section class="card list">
       <button class="list-row action" data-action="tab" data-tab="physio">
         <span class="row-text">Ont i axlar, rygg eller knän<small>${painSummary() || 'Inget just nu'}</small></span>
@@ -1273,11 +1300,9 @@ function settingsView() {
           <button data-action="goal-step" data-d="1000" aria-label="Högre mål">+</button>
         </div>
       </div>
-    </section>
-
-    ${themeSection()}
-
-    ${standalone ? '' : `
+    </section>`,
+    'färgtema': themeSection,
+    installera: () => (standalone ? '' : `
     <h2 class="section-title">Installera på iPhone</h2>
     <section class="card prose">
       <ol>
@@ -1286,12 +1311,12 @@ function settingsView() {
         <li>Välj <b>Lägg till på hemskärmen</b>.</li>
       </ol>
       <p class="muted">Då öppnas Min PT i helskärm som en vanlig app och fungerar även utan internet.</p>
-    </section>`}
-
+    </section>`),
+    'träna-säkert': () => `
     <section class="card list">
       <button class="list-row action" data-action="guide">Träna säkert – råd och varningssignaler</button>
-    </section>
-
+    </section>`,
+    data: () => `
     <h2 class="section-title">Din data</h2>
     <section class="card list">
       <button class="list-row action" data-action="export">Exportera säkerhetskopia</button>
@@ -1300,7 +1325,8 @@ function settingsView() {
       </label>
       <button class="list-row action danger" data-action="reset">Radera all data</button>
     </section>
-    <p class="hint">Allt sparas bara på den här telefonen. Exportera då och då om du vill vara säker på att inte tappa din historik.</p>`;
+    <p class="hint">Allt sparas bara på den här telefonen. Exportera då och då om du vill vara säker på att inte tappa din historik.</p>`,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -2952,6 +2978,7 @@ $('#workout').addEventListener('touchend', (e) => {
 for (const c of data.customExercises) addCustomExercise(c);
 ensurePain();
 seedPhysio();
+await loadLayouts();
 render();
 if (data.active) openWorkout(); // återuppta pågående pass
 

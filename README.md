@@ -48,12 +48,34 @@ web/
   charts.js             Diagram (SVG) till Grafer
   workouts.js           Cirkel, HIIT och kondition (stationer och timersteg)
   storage.js            Sparar data i telefonen
+  layout/               Vilka block som syns på varje sida och i vilken ordning
   sw.js                 Offlinestöd (höj VERSION när du ändrar filer)
   manifest.webmanifest  Appnamn och ikoner för hemskärmen
   icons/
 ```
 
 Det finns inget byggsteg. Allt är vanlig HTML, CSS och JavaScript.
+
+## Ändra vad som syns på sidorna
+
+Varje flik har en fil i `web/layout/`: `start.json` (Idag), `plan.json` (Planera), `log.json` (Logg), `stats.json` (Grafer) och `settings.json` (Inställningar).
+
+```json
+{
+  "visa": ["rubrik", "dagens", "val", "mål", "steg", "fysio", "träna-säkert"],
+  "dolda": []
+}
+```
+
+Blocken i `visa` visas i den ordningen. Vill du dölja ett block flyttar du det till `dolda`, så att du ser vilka block som finns. Listan `dolda` används inte av appen. Ett felstavat namn hoppas över och ger en varning i konsolen. Finns inte filen visas alla block. Höj `VERSION` i `sw.js` när du har ändrat en layoutfil.
+
+| Sida | Block |
+|---|---|
+| Idag | `rubrik`, `dagens`, `val`, `mål`, `steg`, `fysio`, `träna-säkert` |
+| Planera | `rubrik`, `prioritering`, `veckan`, `mål`, `sparade-pass` |
+| Logg | `rubrik`, `siffror`, `diagram`, `logga`, `historik` |
+| Grafer | `rubrik`, `siffror`, `minuter-per-vecka`, `set-per-muskelgrupp`, `övningar`, `steg` |
+| Inställningar | `rubrik`, `inställningar`, `färgtema`, `installera`, `träna-säkert`, `data` |
 
 ## Testa på datorn
 
