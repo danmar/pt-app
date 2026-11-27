@@ -22,17 +22,16 @@ Målgrupp: en motionär som tränar på gym, hemma, simmar och går, och som vil
 
 ## 3. Navigation
 
-Appen har en flikrad längst ner med fem flikar:
+Appen har en flikrad längst ner med fyra flikar:
 
 | Flik | Innehåll |
 |---|---|
-| Idag | Startsida: dagens plan, val av aktivitet, mål, steg, fysio |
-| Planera | Prioritering, veckoförslag, mål, sparade pass |
+| Idag | Startsida: val av aktivitet, steg, fysio |
 | Logg | Siffror, diagram för senaste 7 dagarna, logga i efterhand, historik |
 | Grafer | Minuter per vecka, set per muskelgrupp, utveckling per övning, steg |
 | Inställningar | Ont, utrustning hemma, vila, stegmål, färgtema, installera, data |
 
-Undervyer (Gym, Hemma, Kondition, Simma, Fysio) öppnas från startsidan eller Planera och har en tillbaka-knapp. Detaljer, listor och formulär öppnas i ett bottenark.
+Undervyer (Gym, Hemma, Kondition, Simma, Fysio) öppnas från startsidan och har en tillbaka-knapp. Detaljer, listor och formulär öppnas i ett bottenark.
 
 ### 3.1 Block på varje sida
 
@@ -40,8 +39,7 @@ Varje sida består av block. Vilka block som visas och i vilken ordning står i 
 
 | Sida | Block |
 |---|---|
-| Idag | `rubrik`, `dagens`, `val`, `mål`, `steg`, `fysio` |
-| Planera | `rubrik`, `prioritering`, `veckan`, `mål`, `sparade-pass` |
+| Idag | `rubrik`, `val`, `steg`, `fysio` |
 | Logg | `rubrik`, `siffror`, `diagram`, `logga`, `historik` |
 | Grafer | `rubrik`, `siffror`, `minuter-per-vecka`, `set-per-muskelgrupp`, `övningar`, `steg` |
 | Inställningar | `rubrik`, `inställningar`, `färgtema`, `installera`, `data` |
@@ -68,9 +66,7 @@ Varje sida består av block. Vilka block som visas och i vilken ordning står i 
 ### 5.1 Startsidan (Idag)
 
 - F1.1 Rubriken är "Vad vill du göra idag?".
-- F1.2 Val: Gym, Hemma, Kondition och Planera.
-- F1.3 Dagens plan från veckoförslaget visas, och det som redan är gjort idag markeras som klart.
-- F1.4 Mål visas med hur långt man har kommit.
+- F1.2 Val: Gym, Hemma och Kondition.
 - F1.5 Stegkort: dagens steg mot stegmålet och de senaste 7 dagarna. "Lägg in" öppnar ett fält "Antal steg" och "Spara" sparar värdet för dagens datum.
 - F1.6 Fysiokort: sammanfattning av ont och länk till Fysio.
 - F1.7 Guiden Träna säkert öppnas från en övnings detaljer ("Läs mer om att träna säkert").
@@ -82,7 +78,7 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 **Starta**
 - F2.1 "Börja träna" startar ett nytt pass. Passet sparas i `data.active` så att det överlever om appen stängs, och återupptas nästa gång appen öppnas.
 - F2.2 Passet börjar med förslag på uppvärmning: roddmaskin, cykel eller marsch på gym; marsch, skuggboxning eller jumping jacks hemma. Skonsamma alternativ kommer först om knäna gör ont. "Jag har redan värmt upp" hoppar över uppvärmningen. Styrkeövningarna visas under rubriken "Sedan".
-- F2.3 Om "Fysioövningar i alla pass" är på börjar gym- och hemmapass med övningarna i det sparade fysiopasset för platsen.
+- F2.3 Gym- och hemmapass börjar med platsens favoritövningar i kön (se 5.6).
 - F2.4 Under passet öppnas ingen övning automatiskt. Användaren trycker på den övning som ska köras, i kön eller bland förslagen.
 
 **Kö**
@@ -146,7 +142,7 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 
 **Avsluta**
 - F2.20 Efter gympass föreslås stretch: 5 av 7 stretchövningar, valda efter vilka muskler passet tränat, i ordning från stående till golvet. 30 s per sida, 10 s mellan.
-- F2.21 När passet sparas visas ett omdöme (se 6.5).
+- F2.21 När passet sparas visas ett omdöme (se 6.4).
 
 ### 5.3 Passtyper med intervalltimer
 
@@ -187,15 +183,12 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 | 40 | cirka 1 200 m | 200 m |
 | 60 | cirka 1 800 m | 200 m |
 
-### 5.6 Planera
+### 5.6 Favoriter
 
-- F6.1 **Prioritering:** Allround, Styrka, Kondition eller Viktnedgång. Styr veckoförslaget och övningsförslagen.
-- F6.2 **Veckoförslag:** användaren väljer antal träningsdagar (1–6) och aktiviteter (gym, hemma, simma, löpning, cykling, promenad). Appen föreslår de kommande sju dagarna från idag (se 6.3).
-- F6.3 Användaren kan själv lägga in en aktivitet, vila eller ett sparat pass på en dag. Sådana dagar ligger fast.
-- F6.4 På dagen visar gymvyn veckans fokus, som kan användas med ett tryck.
-- F6.5 **Mål:** ett mål gäller en övning och ett mått: reps i rad, vikt (kg) eller sekunder. Framsteg visas under Planera och på startsidan. En pokal visas när målet nås och datumet sparas.
-- F6.6 **Sparade pass:** ett pass kan sparas med namn, plats och övningar och läggas in på en veckodag.
-- F6.7 **Fysiopass:** "Fysio gym" (benspark, bencurl och benpress med ett ben) och "Fysio hemma" (kort enbensknäböj och högt väggsittande) läggs in som sparade pass första gången appen startar. Benövningarna ligger först och fylls på med förslag för överkropp och bål.
+- F6.1 Användaren kan markera en övning som favorit. Gym och hemma har var sina favoriter.
+- F6.2 Favoriten markeras med en stjärna i övningens detaljer ("Om övningen") och i övningsvyn när övningen körs. Stjärnan gäller platsen för passet eller vyn, och texten är "Favorit på gym" eller "Favorit hemma". Visas detaljerna utanför Gym, Hemma och passet (t.ex. i Logg eller Grafer) finns en stjärna för varje plats.
+- F6.3 När ett gym- eller hemmapass startar läggs platsens favoriter i kön, i den ordning de markerades. De kan tas bort ur kön som andra övningar.
+- F6.4 Från början är benspark, bencurl och benpress med ett ben favoriter på gym, och kort enbensknäböj och högt väggsittande favoriter hemma.
 
 ### 5.7 Fysio
 
@@ -225,7 +218,7 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 
 - F9.1 Historik över pass, simpass, konditionspass och promenader, med diagram över aktiva minuter de senaste 7 dagarna.
 - F9.2 "Logga övningar" loggar ett pass i efterhand: datum, plats, tid och valfria övningar med set, reps och kg. Finns övningen inte skapas en egen.
-- F9.3 Ett sparat pass kan ändras via "Ändra passet".
+- F9.3 Ett pass i loggen kan ändras via "Ändra passet".
 - F9.4 Ett pass i loggen visar omdömet och kroppskartan.
 
 ### 5.10 Grafer
@@ -241,7 +234,6 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 | Inställning | Standard |
 |---|---|
 | Ont i axlar, rygg eller knän | Inget |
-| Fysioövningar i alla pass | På |
 | Hantlar, kettlebell, balansplatta, gymboll, gummiband hemma | Av |
 | Vila mellan set | 90 s (steg om 15 s) |
 | Stegmål per dag | 8 000 (steg om 1 000) |
@@ -281,12 +273,12 @@ Hemma är bara övningar utan utrustning tillgängliga, plus de som kräver utru
 
 ### 6.2 Nästa övning under passet
 
-Indata: övningar klara idag (med antal set), valda muskelgrupper (tom = alla utom kondition), vald utrustning, ont, mål, prioritering och kön.
+Indata: övningar klara idag (med antal set), valda muskelgrupper (tom = alla utom kondition), vald utrustning, ont och kön.
 
 Urval:
 - Bara övningar med vald utrustning, tillåtna enligt 6.1, med huvudmuskel bland de valda.
 - Inte övningar som redan körts idag eller ligger i kön.
-- Fysioövningar och övningar som inte föreslås automatiskt räknas inte, utom om de har ett mål.
+- Fysioövningar och övningar som inte föreslås automatiskt räknas inte.
 
 Poäng (högre är bättre):
 
@@ -302,10 +294,6 @@ Poäng (högre är bättre):
 | Basövning bland de två första | +1,5 | "Basövning, bra tidigt i passet" |
 | Isolering från fjärde övningen | +1 | "Isolering, passar mot slutet" |
 | Dagar sedan gruppen tränades (max 7), om inga grupper valts | +0,2 per dag | |
-| Övningen har ett mål | +2,5 | "Mot ditt mål: <mål>" |
-| Styrka: basövning med vikt | +1 | |
-| Viktnedgång: basövning | +1,2 | "Stora muskler förbränner mest" |
-| Kondition: bål eller kroppsvikt | +0,8 | |
 
 Skälet med högst vikt visas. Annars visas "Komplement för <grupp>".
 
@@ -315,31 +303,15 @@ Resultat:
 - 5 förslag, högst två per muskelgrupp om flera grupper är valda.
 - I början av passet ska förslagen täcka minst 3 muskelgrupper.
 
-### 6.3 Veckoförslag
-
-- V1 Förslaget har 7 dagar från idag. Antal träningsdagar är 1–6.
-- V2 Det som redan gjorts idag är fast och markeras som klart (styrka före kondition före promenad).
-- V3 Dagar användaren själv lagt in ligger fast. Resten anpassas efter dem.
-- V4 Andel styrkedagar när det finns annan aktivitet: Styrka 2/3, Kondition 1/3, Allround och Viktnedgång 1/2, minst 1. Utan annan aktivitet blir alla träningsdagar styrka.
-- V5 En styrkedag mindre om knän eller rygg har ont på nivå 2 och det finns kondition eller promenad.
-- V6 En styrkedag mindre om ingen kondition gjorts på två veckor och alla dagar annars blir styrka.
-- V7 Nya träningsdagar läggs så långt från andra träningsdagar som möjligt. Avståndet räknas runt veckan.
-- V8 Två styrkedagar läggs inte i rad om det går.
-- V9 Övriga träningsdagar blir kondition, lediga dagar blir promenad om promenad är vald. Minst en vilodag, utom vid Viktnedgång.
-- V10 Löpning tas bort om knäna har ont på nivå 2 och det finns annan kondition.
-- V11 Styrkedagarna får fokus på de muskelgrupper som vilat längst, fördelade mellan dagarna.
-- V12 Gym/hemma och simning/löpning/cykling turas om: det som gjorts minst de senaste två veckorna, inräknat inlagda dagar, väljs först.
-- V13 Varje dag har ett kort skäl, t.ex. "Styrka med fokus på rygg, bröst", "Du har inte simmat på två veckor" eller "Vila. Det är då musklerna bygger upp sig".
-
-### 6.4 Förslag på pass (fast antal övningar)
+### 6.3 Förslag på pass (fast antal övningar)
 
 - Antal övningar per passlängd: 10 min 3, 15–20 min 4, 40 min 6, 60 min 8.
-- Muskelgrupper som vilat längst prioriteras (0–7 dagar). Högst 2 övningar per grupp, 3 för fokusgruppen, 1 för kondition.
+- Muskelgrupper som vilat längst prioriteras (0–7 dagar). Högst 2 övningar per grupp, 1 för kondition.
 - Hemma börjar passet med en pulshöjande övning.
 - Övningarna sorteras efter muskelgruppens ordning.
 - "Byt" ger en annan övning för samma huvudmuskel, annars en med överlappande muskler.
 
-### 6.5 Omdöme efter passet
+### 6.4 Omdöme efter passet
 
 Omdömet har en rubrik, högst 4 höjdpunkter och ett tips. Uppvärmning räknas inte som arbete.
 
@@ -349,12 +321,11 @@ Höjdpunkter i prioritetsordning:
 2. 📈 Mer jobb än förra gången (reps × vikt minst 4 % mer).
 3. ✨ "Första gången du körde <övning>."
 4. 🌡️ Bra uppvärmning, med tid och distans.
-5. 🏆 Mål klart, eller 🎯 procent av vägen mot målet.
-6. ⚖️ "Bra balans" om passet hade både press och drag.
-7. 🩺 Fysioövningar gjorda, eller 🧠 "Smart träning" om man har ont men inte belastade stället tungt.
-8. 🔥 Antal pass de senaste sju dagarna, från två.
-9. 💪 Antal set och muskelgrupper, om det finns färre än två höjdpunkter.
-10. 👏 Om inget annat: "Du dök upp och gjorde jobbet."
+5. ⚖️ "Bra balans" om passet hade både press och drag.
+6. 🩺 Fysioövningar gjorda, eller 🧠 "Smart träning" om man har ont men inte belastade stället tungt.
+7. 🔥 Antal pass de senaste sju dagarna, från två.
+8. 💪 Antal set och muskelgrupper, om det finns färre än två höjdpunkter.
+9. 👏 Om inget annat: "Du dök upp och gjorde jobbet."
 
 Rubrik: "Starkt pass!" vid personbästa, "Riktigt bra jobbat!" vid minst tre höjdpunkter, annars "Bra jobbat!".
 
@@ -376,19 +347,16 @@ Allt sparas som ett JSON-objekt:
   swims:    [{ id, date, minutes, meters, style }],
   cardio:   [{ id, date, kind: 'run' | 'bike' | 'ski' | 'other', minutes, km, name }],
   steps:    { 'ÅÅÅÅ-MM-DD': antal },
-  saved:    [{ id, name, place, items, minutes, physio? }],
-  week:     ['', '', '', '', '', '', ''],   // måndag först: '', rest, gym, home, swim, walk eller saved:<id>
+  favorites: { gym: [exId], home: [exId] },   // i den ordning de markerades
   customExercises: [{ id, name, muscles, gear, timed, unilateral? }],
-  goals:    [{ id, exId, metric: 'reps' | 'weight' | 'sec', target, created, achieved }],
   settings: { hasDumbbells, hasKettlebell, hasBoard, hasBall, hasBand, restSeconds, stepGoal,
-              kneeFriendly, physioAlways, pain, painUpdated, priority, gear, groups,
-              weekDays, weekKinds, themeMode, themeAccent, seeded },
+              kneeFriendly, pain, painUpdated, gear, groups, themeMode, themeAccent },
   active:   null | { ... }   // pågående pass
 }
 ```
 
 Regler:
-- D1 Vid inläsning normaliseras datan: fält med fel typ blir tomma listor eller standardvärden, och `week` måste ha exakt 7 strängar.
+- D1 Vid inläsning normaliseras datan: fält med fel typ blir tomma listor eller standardvärden. Saknas `favorites` blir övningarna i de gamla sparade fysiopassen "Fysio gym" och "Fysio hemma" favoriter för gym och hemma, om de finns. Annars får användaren favoriterna i F6.4. Övriga gamla fält (`saved`, `week`, `goals` och inställningarna för planering) tas bort.
 - D2 Export ger JSON med `app: "minpt"`, `version: 1` och `exportedAt`. Pågående pass (`active`) tas inte med.
 - D3 Import av en trasig fil ger tomma listor i stället för fel.
 - D4 Export följt av import ger samma data tillbaka.
@@ -413,8 +381,7 @@ Testerna är skrivna i Gherkin på svenska i `tests/` och körs med Cucumber, lo
 | `nästa-övning.feature` | 6.2 |
 | `smärta.feature` | 6.1 |
 | `simpass.feature` | F5.1–F5.5 |
-| `veckoförslag.feature` | V1–V3, V8, V10 |
-| `omdöme.feature` | 6.5 |
+| `omdöme.feature` | 6.4 |
 | `lagring.feature` | D2–D4 |
 
 Taggar: `@ui` öppnar appen i Chromium, `@gym` gäller gympass.

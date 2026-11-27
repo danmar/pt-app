@@ -13,10 +13,10 @@ const PUSH = new Set(['push-h', 'push-v']);
 const PULL = new Set(['pull-h', 'pull-v']);
 
 /**
- * session: passet som just sparats. before: alla pass före det. Övrigt: simpass, promenader, mål, ont.
+ * session: passet som just sparats. before: alla pass före det. Övrigt: simpass, promenader, ont.
  * Returnerar { title, highlights: [{ icon, text }], tip }.
  */
-export function workoutFeedback({ session, before, swims = [], walks = [], goals = [], pain = {}, goalLabel }) {
+export function workoutFeedback({ session, before, swims = [], walks = [], pain = {} }) {
   const hl = [];
   const prs = [];
   const firsts = [];
@@ -54,16 +54,6 @@ export function workoutFeedback({ session, before, swims = [], walks = [], goals
     const dist = w.sets.reduce((n, s) => n + (s.dist || 0), 0);
     const what = [sec >= 60 ? `${fmt(sec / 60)} min` : '', dist ? fmtDist(dist) : ''].filter(Boolean).join(', ');
     hl.push({ icon: '🌡️', text: `Bra uppvärmning med ${lc(BY_ID[w.exId].name)}${what ? ` (${what})` : ''}. Varma muskler orkar mer och skadas mindre.` });
-  }
-
-  // Mål
-  for (const g of goals) {
-    if (hl.length >= 4) break;
-    const e = session.entries.find((x) => x.exId === g.exId);
-    if (!e) continue;
-    const now = best(e.sets, g.metric === 'weight' ? 'weight' : 'reps');
-    if (g.achieved && new Date(g.achieved) >= new Date(session.date)) hl.push({ icon: '🏆', text: `Mål klart: ${goalLabel(g)}!` });
-    else if (now > 0 && now < g.target) hl.push({ icon: '🎯', text: `${Math.round((now / g.target) * 100)} % av vägen mot ${goalLabel(g)}.` });
   }
 
   // Balans och fysio

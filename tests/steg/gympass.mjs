@@ -120,3 +120,14 @@ Then('ska övningsvyn bara visa figuren och musklerna', async function () {
   const kids = await this.page.locator('#wk-body').evaluate((b) => [...b.children].map((c) => c.className));
   assert.deepEqual(kids, ['fig big', 'card body-card']);
 });
+
+Then('ska kön innehålla {string}', async function (names) {
+  const w = await active(this.page);
+  const queued = w.items.filter((it) => !it.sets.some((x) => x.done)).map((it) => BY_ID[it.exId].name);
+  assert.deepEqual(queued, names.split(',').map((x) => x.trim()));
+});
+
+Then(/^ska "([^"]+)" (inte )?vara favorit på gym$/, async function (id, not) {
+  const fav = (await readData(this.page)).favorites.gym;
+  assert.equal(fav.includes(id), !not, fav.join(', '));
+});

@@ -12,10 +12,8 @@ class Värld {
     this.groups = [];
     this.done = [];
     this.exclude = [];
-    this.goals = [];
     this.place = 'gym';
     this.opts = {};
-    this.week = { days: 3, kinds: [], pinned: [], swims: [] };
     this.today = { date: new Date().toISOString(), entries: [] };
     this.before = [];
     this.consoleErrors = [];

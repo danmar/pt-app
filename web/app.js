@@ -5,7 +5,6 @@ import { TYPES, LENGTH_OPTIONS, TIMING, buildInterval, expandSteps, estimateMinu
 import { data, save, uid, exportJSON, importJSON, resetAll } from './storage.js';
 import { SWIM_STYLES, SWIM_FOCUS, suggestSwim } from './swim.js';
 import { GUIDE, QUICK_TIPS } from './safety.js';
-import { WEEK_KINDS, PRIORITIES, suggestWeek } from './week.js';
 import { workoutFeedback, cardioFeedback, balanceFeedback } from './feedback.js';
 import { columns, hbars, line, table } from './charts.js';
 import { AREAS, AREA_IDS, LEVELS, REHAB, ADVICE, painAreasFor } from './physio.js';
@@ -22,9 +21,6 @@ const ui = {
   type: { gym: 'strength', home: 'strength' }, // passtyp per plats
   iplans: { gym: null, home: null }, // cirkel-, HIIT-, konditions- och balanspass
   focus: { gym: '', home: '', swim: 'endurance' },
-  fixed: { gym: null, home: null }, // fysioövningar som alltid ligger först i passet
-  skipPhysio: { gym: false, home: false }, // "Vanligt pass i stället" för just den här gången
-  loaded: { gym: null, home: null, swim: null }, // namn på inläst sparat pass
   swimStyle: 'mixed',
   swimStart: null,
   actBack: 'start', // vart tillbaka-knappen på Kondition leder
@@ -39,7 +35,6 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const fmtNum = (n, max = 1) => Number(n).toLocaleString('sv-SE', { maximumFractionDigits: max });
 const muscleNames = (ex) => ex.muscles.map((m) => MUSCLES[m].name).join(' · ');
 const byOrder = (a, b) => MUSCLES[a].order - MUSCLES[b].order;
-const clone = (x) => JSON.parse(JSON.stringify(x));
 
 /** Lokalt datum som 'ÅÅÅÅ-MM-DD' (toISOString ger UTC och blir fel runt midnatt). */
 const dayKey = (d) => {
@@ -49,11 +44,7 @@ const dayKey = (d) => {
 const lastDays = (n) => [...Array(n)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - (n - 1 - i)); return d; });
 const shortDay = (d) => d.toLocaleDateString('sv-SE', { weekday: 'short' }).replace('.', '');
 const weekIndex = (d = new Date()) => (d.getDay() + 6) % 7; // måndag = 0
-const WEEKDAYS = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
-const ACTIVITIES = { rest: 'Vila', gym: 'Gym', home: 'Hemma', swim: 'Simma', run: 'Löpning', bike: 'Cykling', ski: 'Längdskidor', walk: 'Promenad' };
 const PLACE_NAME = { gym: 'Gym', home: 'Hemma', swim: 'Simma' };
-const PASS_NAME = { gym: 'Gympass', home: 'Hemmapass', swim: 'Simpass' };
-const savedById = (id) => data.saved.find((s) => s.id === id);
 const parseDate = (key) => (key === dayKey(new Date()) ? new Date() : new Date(`${key}T12:00:00`));
 
 const ICON = {
@@ -68,9 +59,7 @@ const ICON = {
   gym: '<svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>',
   home: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>',
   swim: '<svg viewBox="0 0 24 24"><circle cx="16.5" cy="6" r="2"/><path d="M4.5 12.5l5-3.5 3.5 2.5 2.5-1.5M2 16.5c1.7 0 2.3-1.3 4-1.3s2.3 1.3 4 1.3 2.3-1.3 4-1.3 2.3 1.3 4 1.3 2.3-1.3 4-1.3M2 20.5c1.7 0 2.3-1.3 4-1.3s2.3 1.3 4 1.3 2.3-1.3 4-1.3 2.3 1.3 4 1.3 2.3-1.3 4-1.3"/></svg>',
-  calendar: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
   steps: '<svg viewBox="0 0 24 24"><path d="M8 3c1.6 0 2.5 2 2.5 4.5S9.6 12 8 12 5.5 10 5.5 7.5 6.4 3 8 3zM6 14.5h4V17a2 2 0 0 1-4 0zM16 7c1.6 0 2.5 2 2.5 4.5S17.6 16 16 16s-2.5-2-2.5-4.5S14.4 7 16 7zM14 18.5h4V20a2 2 0 0 1-4 0z"/></svg>',
-  save: '<svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4-6 4z"/></svg>',
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
   up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
@@ -88,7 +77,7 @@ const PLACE_ICON = { gym: ICON.gym, home: ICON.home, swim: ICON.swim, walk: ICON
 function render() {
   applyTheme(); // även efter import eller radering av data
   const view = $('#view');
-  const views = { start: startView, plan: planningView, log: logView, stats: statsView, settings: settingsView, swim: swimView, physio: physioView, activity: activityView, cardio: cardioView };
+  const views = { start: startView, log: logView, stats: statsView, settings: settingsView, swim: swimView, physio: physioView, activity: activityView, cardio: cardioView };
   view.innerHTML = views[ui.tab] ? views[ui.tab]() : planView(ui.tab);
   const current = !SUB.has(ui.tab) ? ui.tab : ui.tab === 'activity' || ui.back === 'activity' ? ui.actBack : ui.back;
   for (const b of document.querySelectorAll('.tabbar button')) {
@@ -102,29 +91,31 @@ function render() {
 /** list: { blocknamn: () => html } */
 const blocks = (list) => Object.values(list).map((f) => f()).join('');
 
-const BACK_NAME = { start: 'Idag', plan: 'Planera', log: 'Logg', settings: 'Inställningar', activity: 'Kondition' };
+const BACK_NAME = { start: 'Idag', log: 'Logg', settings: 'Inställningar', activity: 'Kondition' };
 const backButton = () => `<button class="back" data-action="tab" data-tab="${ui.back}">${ICON.chevronL}${BACK_NAME[ui.back] ?? 'Idag'}</button>`;
 
-const physioFor = (place) => (data.settings.physioAlways && !ui.skipPhysio[place] ? physioItems(place) : []);
+/** Platsens favoritövningar, i den ordning de markerades (SPEC.md 5.6). */
+const favoritesFor = (place) => (data.favorites[place] ?? []).filter((id) => BY_ID[id]).map((exId) => ({ exId, sets: BY_ID[exId].sets }));
+const isFavorite = (place, exId) => (data.favorites[place] ?? []).includes(exId);
+const FAV_TEXT = { gym: 'Favorit på gym', home: 'Favorit hemma' };
+/** Stjärna för platsen, eller en för varje plats utanför Gym, Hemma och passet. */
+const favoriteButtons = (ex, place) => `<div class="fav-row">${(place ? [place] : ['gym', 'home']).map((pl) =>
+  `<button class="toggle small fav-toggle" data-action="fav" data-place="${pl}" data-id="${ex.id}" aria-pressed="${isFavorite(pl, ex.id)}">${ICON.star} ${FAV_TEXT[pl]}</button>`).join('')}</div>`;
 
 function regenerate(place) {
   if (place !== 'swim' && ui.type[place] !== 'strength') {
-    ui.loaded[place] = null;
     ui.iplans[place] = buildInterval({
-      type: ui.type[place], place, minutes: ui.minutes[place], sessions: data.sessions, opts: exOpts(place), physio: physioFor(place),
+      type: ui.type[place], place, minutes: ui.minutes[place], sessions: data.sessions, opts: exOpts(place), physio: favoritesFor(place),
     });
     return;
   }
   if (place === 'swim') {
-    ui.loaded.swim = null;
     ui.plans.swim = suggestSwim({ minutes: ui.minutes.swim, style: ui.swimStyle, focus: ui.focus.swim });
     ui.swimStart = null;
     return;
   }
-  // Styrka: inget färdigt program. Fysioövningarna läggs först i kön, resten föreslås under passet.
-  if (!ui.fixed[place] && data.settings.physioAlways && !ui.skipPhysio[place]) ui.fixed[place] = physioItems(place);
-  ui.loaded[place] = null;
-  ui.plans[place] = clone(ui.fixed[place] ?? []);
+  // Styrka: inget färdigt program. Favoriterna läggs först i kön, resten föreslås under passet.
+  ui.plans[place] = favoritesFor(place);
 }
 
 // ---- Idag (startsida) -----------------------------------------------------
@@ -139,15 +130,12 @@ function startView() {
       <h1>${hello}!</h1>
       <p class="sub">Vad vill du göra idag?</p>
     </header>`,
-    dagens: todayCard,
     val: () => `
     <div class="choices">
       ${choice('gym', 'Gym', 'Passförslag med maskiner och vikter', ICON.gym)}
       ${choice('home', 'Hemma', 'Korta cirkelpass och intervaller', ICON.home)}
       ${choice('activity', 'Kondition', 'Simma, spring, cykla, gå', ICON.pulse)}
-      ${choice('plan', 'Planera', 'Veckoplan och sparade pass', ICON.calendar)}
     </div>`,
-    'mål': goalsCard,
     steg: stepsCard,
     fysio: physioCard,
   });
@@ -157,48 +145,6 @@ const choice = (tab, title, text, icon) => `
   <button class="choice ${tab}" data-action="tab" data-tab="${tab}">
     <span class="choice-icon">${icon}</span><b>${title}</b><small>${text}</small>
   </button>`;
-
-function doneToday(kind) {
-  const today = (x) => daysBetween(x.date, new Date()) === 0;
-  if (kind === 'swim') return data.swims.some(today);
-  if (kind === 'walk') return data.walks.some(today);
-  if (ACTS[kind] && !ACTS[kind].page) return data.cardio.some((c) => today(c) && c.kind === kind);
-  return data.sessions.some((s) => today(s) && s.place === kind);
-}
-
-/** Annan träning du redan har gjort idag än den planerade, t.ex. "simmat". */
-function otherDoneToday(kind) {
-  const did = [['gym', 'tränat på gym'], ['home', 'tränat hemma'], ['swim', 'simmat'], ['run', 'sprungit'], ['bike', 'cyklat'], ['ski', 'åkt skidor']];
-  return did.filter(([k]) => k !== kind && doneToday(k)).map(([, t]) => t);
-}
-
-function todayCard() {
-  let v = data.week[weekIndex()];
-  const saved = v.startsWith('saved:') ? savedById(v.slice(6)) : null;
-  if (v.startsWith('saved:') && !saved) v = '';
-  const head = v ? 'Idag enligt planen' : 'Förslag för idag';
-  if (!v) v = weekPlan().days[0].kind;
-  if (v === 'rest') {
-    return `
-      <button class="card today-card k-rest" data-action="tab" data-tab="plan">
-        <span class="today-icon">😌</span>
-        <span class="today-text"><small>${head}</small><b>Vilodag</b><small>Musklerna växer när du vilar. En promenad går bra.</small></span>
-        <span class="chev">${ICON.chevronR}</span>
-      </button>`;
-  }
-  const kind = saved ? saved.place : v;
-  const done = doneToday(kind);
-  const action = saved ? `data-action="load-saved" data-id="${esc(saved.id)}"`
-    : v === 'walk' ? 'data-action="walk-new"' : CARDIO_IDS.includes(v) ? `data-action="act" data-kind="${v}"` : `data-action="tab" data-tab="${v}"`;
-  return `
-    <section class="card today-card k-${kind}">
-      <span class="today-icon">${PLACE_ICON[kind]}</span>
-      <span class="today-text"><small>${head}</small><b>${esc(saved ? saved.name : ACTIVITIES[v])}</b>
-        ${done ? '<small class="done-text">✓ Klart för idag, bra jobbat!</small>'
-          : otherDoneToday(kind).length && v !== 'walk' ? `<small class="done-text">✓ Du har redan ${otherDoneToday(kind).join(' och ')} idag. Det räcker gott, ${esc(saved ? saved.name : ACTIVITIES[v]).toLowerCase()} kan vänta.</small>` : ''}</span>
-      <button class="btn primary small" ${action}>${done ? 'Igen' : v === 'walk' ? 'Logga' : 'Kör'}</button>
-    </section>`;
-}
 
 function stepsCard() {
   const goal = data.settings.stepGoal;
@@ -238,7 +184,7 @@ function swimView() {
     ${backButton()}
     <header class="page-head">
       <h1>Simma</h1>
-      <p class="sub">${ui.loaded.swim ? `Sparat pass: ${esc(ui.loaded.swim)}` : 'Ett pass för 25-metersbassäng'}</p>
+      <p class="sub">Ett pass för 25-metersbassäng</p>
     </header>
 
     <section class="card controls">
@@ -267,10 +213,7 @@ function swimView() {
 
     <div class="stack">
       <button class="btn primary big" data-action="swim-save">${ICON.check} Spara simpasset</button>
-      <div class="row">
-        <button class="btn secondary" data-action="regenerate">${ICON.refresh} Nytt förslag</button>
-        <button class="btn secondary" data-action="save-plan">${ICON.save} Spara till senare</button>
-      </div>
+      <button class="btn secondary" data-action="regenerate">${ICON.refresh} Nytt förslag</button>
     </div>`;
 }
 
@@ -389,223 +332,6 @@ function cardioRow(c) {
     </button></li>`;
 }
 
-// ---- Planera --------------------------------------------------------------
-const kindOf = (v) => (v.startsWith('saved:') ? savedById(v.slice(6))?.place ?? '' : v);
-
-function planningView() {
-  return blocks({
-    rubrik: () => '<header class="page-head"><h1>Planera</h1><p class="sub">Din vecka, mål och sparade pass</p></header>',
-    prioritering: priorityCard,
-    veckan: weekSection,
-    'mål': goalsSection,
-    'sparade-pass': () => `
-    <h2 class="section-title">Sparade pass</h2>
-    ${data.saved.length
-      ? `<ul class="log-list">${data.saved.map(savedRow).join('')}</ul>`
-      : '<p class="empty">Inga sparade pass än. Sätt ihop ett pass och tryck på ”Spara till senare”.</p>'}
-    <div class="row three">
-      <button class="btn secondary" data-action="tab" data-tab="gym">+ Gym</button>
-      <button class="btn secondary" data-action="tab" data-tab="home">+ Hemma</button>
-      <button class="btn secondary" data-action="tab" data-tab="swim">+ Simma</button>
-    </div>`,
-  });
-}
-
-// ---- Prioritering och mål -----------------------------------------------------
-const priority = () => data.settings.priority ?? 'balanced';
-
-function priorityCard() {
-  return `
-    <h2 class="section-title">Vad vill du prioritera?</h2>
-    <section class="card controls">
-      <div class="segmented types" role="radiogroup" aria-label="Prioritering">
-        ${Object.entries(PRIORITIES).map(([k, p]) => `<button role="radio" aria-checked="${priority() === k}" data-action="priority" data-value="${k}">${p.name}</button>`).join('')}
-      </div>
-      <p class="hint">${PRIORITIES[priority()].desc}. Påverkar veckoförslaget och vilka övningar som föreslås.</p>
-    </section>`;
-}
-
-const METRICS = { reps: 'reps i ett set', weight: 'kg', sec: 'sekunder' };
-const metricsFor = (ex) => (ex.timed ? ['sec'] : ex.equipment === 'none' ? ['reps'] : ['weight', 'reps']);
-const goalLabel = (g) => {
-  const ex = BY_ID[g.exId];
-  return g.metric === 'weight' ? `${fmtNum(g.target)} kg i ${ex.name.toLowerCase()}`
-    : g.metric === 'sec' ? `${g.target} s ${ex.name.toLowerCase()}` : `${g.target} ${ex.name.toLowerCase()} i rad`;
-};
-/** Bästa resultat hittills för målets mått. */
-function goalBest(g) {
-  let best = 0;
-  for (const s of data.sessions) for (const e of s.entries) {
-    if (e.exId !== g.exId) continue;
-    for (const set of e.sets) best = Math.max(best, g.metric === 'weight' ? (set.reps > 0 ? set.weight || 0 : 0) : set.reps || 0);
-  }
-  return best;
-}
-const activeGoals = () => data.goals.filter((g) => !g.achieved && BY_ID[g.exId]);
-const goalHints = () => activeGoals().map((g) => ({ exId: g.exId, label: goalLabel(g) }));
-
-function goalProgress(g) {
-  const best = goalBest(g);
-  const from = Math.min(g.start ?? 0, g.target);
-  const pct = g.achieved || best >= g.target ? 100 : Math.max(4, Math.round(((best - from) / Math.max(1e-9, g.target - from)) * 100));
-  return { best, pct };
-}
-
-function goalRow(g) {
-  const ex = BY_ID[g.exId];
-  const { best, pct } = goalProgress(g);
-  const unit = g.metric === 'weight' ? 'kg' : g.metric === 'sec' ? 's' : 'st';
-  return `
-    <li class="goal-item ${g.achieved ? 'done' : ''}" data-group="${ex.muscles[0]}">
-      <div class="goal-text">
-        <b>${g.achieved ? '🏆 ' : ''}${esc(goalLabel(g))}</b>
-        <small>${g.achieved ? `Klart ${new Date(g.achieved).toLocaleDateString('sv-SE')}` : `Bästa hittills: ${fmtNum(best)} ${unit}`}</small>
-        <div class="goal-bar"><div style="width:${pct}%"></div></div>
-      </div>
-      <button class="icon-btn" data-action="goal-delete" data-id="${esc(g.id)}" aria-label="Ta bort målet">${ICON.remove}</button>
-    </li>`;
-}
-
-function goalsSection() {
-  const list = [...activeGoals(), ...data.goals.filter((g) => g.achieved && BY_ID[g.exId])];
-  return `
-    <h2 class="section-title">Mina mål</h2>
-    ${list.length ? `<ul class="ex-list">${list.map(goalRow).join('')}</ul>
-      <p class="hint">Övningar med mål föreslås oftare. För fler reps: kör 3 set nära max 2–3 gånger i veckan. För mer vikt: öka lite när du klarar alla set.</p>`
-      : '<p class="empty">Inga mål än. Till exempel: 10 armhävningar i rad eller 60 sekunder plankan.</p>'}
-    <button class="btn secondary" data-action="goal-new">+ Nytt mål</button>`;
-}
-
-function goalsCard() {
-  const list = activeGoals().slice(0, 3);
-  if (!list.length) return '';
-  return `
-    <button class="card goals-card" data-action="tab" data-tab="plan">
-      <b>Mina mål</b>
-      ${list.map((g) => `<span class="goal-mini"><small>${esc(goalLabel(g))}</small><span class="goal-bar"><span style="width:${goalProgress(g).pct}%"></span></span></span>`).join('')}
-    </button>`;
-}
-
-function goalSheet(exId) {
-  const ex = BY_ID[exId] ?? BY_ID['push-up'];
-  const options = MUSCLE_IDS.map((m) => {
-    const items = EXERCISES.filter((e) => !e.physio && e.muscles[0] === m);
-    return items.length ? `<optgroup label="${MUSCLES[m].name}">${items.map((e) => `<option value="${e.id}" ${e.id === ex.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</optgroup>` : '';
-  }).join('');
-  return `
-    <div class="sheet-head"><h2>Nytt mål</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
-    <form id="goal-form" class="form">
-      <label class="field"><span class="field-label">Övning</span><select name="exId" data-change="goal-ex">${options}</select></label>
-      <div id="goal-metric">${goalMetricFields(ex)}</div>
-      <button class="btn primary big" type="submit">Spara målet</button>
-    </form>`;
-}
-function goalMetricFields(ex) {
-  const ms = metricsFor(ex);
-  const best = goalBest({ exId: ex.id, metric: ms[0] });
-  return `
-    <label class="field"><span class="field-label">Mål</span>
-      <span class="goal-input"><input name="target" type="text" inputmode="decimal" required placeholder="${ms[0] === 'weight' ? '40' : ms[0] === 'sec' ? '60' : '10'}">
-      <select name="metric">${ms.map((m) => `<option value="${m}">${METRICS[m]}</option>`).join('')}</select></span></label>
-    ${best ? `<p class="hint">Ditt bästa hittills: ${fmtNum(best)} ${ms[0] === 'weight' ? 'kg' : ms[0] === 'sec' ? 's' : 'st'}.</p>` : ''}`;
-}
-
-/** Kollar mål efter ett pass. */
-function checkGoals() {
-  const reached = activeGoals().filter((g) => goalBest(g) >= g.target);
-  for (const g of reached) g.achieved = new Date().toISOString();
-  return reached;
-}
-
-const weekDays = () => data.settings.weekDays ?? 4;
-const weekKinds = () => data.settings.weekKinds ?? ['gym', 'swim', 'walk'];
-const dayLabel = (d, i) => (i === 0 ? 'Idag' : i === 1 ? 'Imorgon' : WEEKDAYS[weekIndex(d)]);
-
-/** Veckan från idag: dagarna du själv har lagt in ligger fast, resten fylls i med förslag. */
-function weekPlan() {
-  const start = new Date();
-  const pinned = [...Array(7)].map((_, d) => kindOf(data.week[weekIndex(new Date(start.getTime() + d * 86_400_000))]) || null);
-  return suggestWeek({ days: weekDays(), kinds: weekKinds(), sessions: data.sessions, swims: data.swims, walks: data.walks,
-    cardio: data.cardio, pain: data.settings.pain, priority: priority(), pinned, start });
-}
-
-function weekSection() {
-  const { days, hist: h } = weekPlan();
-  const options = (v) => [
-    ['', 'Låt appen föreslå'],
-    ...Object.entries(ACTIVITIES),
-    ...data.saved.map((s) => [`saved:${s.id}`, `${s.name} (${PLACE_NAME[s.place]})`]),
-  ].map(([val, label]) => `<option value="${esc(val)}" ${val === v ? 'selected' : ''}>${esc(label)}</option>`).join('');
-  const anyPinned = data.week.some((v) => kindOf(v));
-  return `
-    <h2 class="section-title">Veckan</h2>
-    <section class="card controls">
-      <div class="field"><span class="field-label">Träningsdagar</span>
-        <div class="segmented five" role="radiogroup" aria-label="Träningsdagar per vecka">
-          ${[2, 3, 4, 5, 6].map((n) => `<button role="radio" aria-checked="${weekDays() === n}" data-action="wdays" data-value="${n}">${n}</button>`).join('')}
-        </div></div>
-      <div class="field"><span class="field-label">Aktiviteter</span>${chipToggles('wkind', Object.entries(WEEK_KINDS), weekKinds())}</div>
-    </section>
-    <ul class="ex-list week-proposal">${days.map((x, i) => {
-      const wi = weekIndex(x.date);
-      const v = data.week[wi];
-      const saved = x.pinned && v.startsWith('saved:') ? savedById(v.slice(6)) : null;
-      const tag = x.done ? 'Klart' : x.pinned ? 'Din plan' : 'Förslag';
-      return `
-        <li class="week-day-item k-${x.kind} ${x.pinned ? 'pinned' : ''} ${x.done ? 'done' : ''}">
-          <span class="wd">${dayLabel(x.date, i)}</span>
-          <span class="wk"><b>${esc(saved ? saved.name : ACTIVITIES[x.kind])}</b>${x.reason ? `<small>${esc(x.reason)}</small>` : ''}</span>
-          <span class="wtag">${tag}</span>
-          <select class="week-pick" data-change="weekday" data-day="${wi}" aria-label="Plan för ${WEEKDAYS[wi].toLowerCase()}">${options(v)}</select>
-        </li>`;
-    }).join('')}</ul>
-    <p class="hint">Tryck på en dag för att bestämma den själv, t.ex. simning på torsdagar. Det gäller varje vecka, och resten av veckan anpassas efter det. Senaste två veckorna: ${[`${h.gym} gympass`, `${h.home} hemmapass`, `${h.swim} simpass`, h.run ? `${h.run} löppass` : '', h.bike ? `${h.bike} cykelpass` : '', `${h.walk} promenader`].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' och $1')}${painSummary() ? `. Hänsyn till: ${esc(painSummary().toLowerCase())}` : ''}.</p>
-    ${anyPinned ? '<button class="btn secondary" data-action="week-clear">Låt appen föreslå alla dagar</button>' : ''}`;
-}
-
-function savedRow(s) {
-  const info = s.place === 'swim'
-    ? `${fmtNum(s.items.reduce((n, b) => n + b.meters, 0), 0)} m · ${s.minutes} min`
-    : s.physio ? `${s.items.length} fysioövningar, sedan förslag`
-    : s.type && s.type !== 'strength' ? `${TYPES[s.type].name} · ${s.items.length} övningar · ${s.minutes} min` : `${s.items.length} övningar`;
-  return `
-    <li class="saved-item">
-      <button class="log-item" data-action="load-saved" data-id="${esc(s.id)}">
-        <span class="log-icon ${s.place}">${PLACE_ICON[s.place]}</span>
-        <span class="log-text"><strong>${esc(s.name)}</strong><small>${PLACE_NAME[s.place]} · ${info}</small></span>
-        <span class="chev">${ICON.chevronR}</span>
-      </button>
-      <button class="icon-btn" data-action="delete-saved" data-id="${esc(s.id)}" aria-label="Ta bort ${esc(s.name)}">${ICON.remove}</button>
-    </li>`;
-}
-
-function loadSaved(id) {
-  const s = savedById(id);
-  if (!s) return;
-  const items = clone(s.items);
-  if (s.minutes) ui.minutes[s.place] = s.minutes;
-  if (s.place === 'swim') ui.plans.swim = items.map((b) => ({ ...b, done: false }));
-  else {
-    const valid = items.filter((p) => BY_ID[p.exId]);
-    ui.type[s.place] = s.type || 'strength';
-    if (ui.type[s.place] === 'strength') {
-      ui.fixed[s.place] = s.physio ? valid : null;
-      ui.plans[s.place] = clone(valid);
-    } else {
-      ui.fixed[s.place] = null;
-      ui.iplans[s.place] = buildInterval({
-        type: s.type, place: s.place, minutes: ui.minutes[s.place], sessions: data.sessions, opts: exOpts(s.place), physio: physioFor(s.place), stations: valid,
-      });
-    }
-  }
-  ui.loaded[s.place] = s.name;
-  if (s.place === 'swim') ui.swimStart = null;
-  if (!SUB.has(ui.tab)) ui.back = ui.tab === 'plan' ? 'plan' : 'start';
-  ui.tab = s.place;
-  render();
-  window.scrollTo(0, 0);
-}
-
 // ---- Gym / Hemma ----------------------------------------------------------
 // Utrustning som bara visas i balanspasset.
 const BALANCE_GEAR = ['board'];
@@ -618,38 +344,9 @@ const painWarn = (ex) => {
   return areas.length ? `<em class="knee-warn">Belastar ${painNames(areas)}</em>` : '';
 };
 
-// Fysiopassen läggs in som sparade pass första gången appen startar.
-const PHYSIO_PASSES = [
-  { id: 'fysio-gym', name: 'Fysio gym', place: 'gym', minutes: 40, physio: true,
-    items: ['single-leg-extension', 'single-leg-curl', 'single-leg-press'] },
-  { id: 'fysio-hemma', name: 'Fysio hemma', place: 'home', minutes: 40, physio: true,
-    items: ['single-leg-mini-squat', 'wall-sit-high'] },
-];
 function resetPlans() {
   ui.plans = { gym: null, home: null, swim: null };
   ui.iplans = { gym: null, home: null };
-  ui.fixed = { gym: null, home: null };
-  ui.loaded = { gym: null, home: null, swim: null };
-  ui.skipPhysio = { gym: false, home: false };
-}
-
-/** Fysioövningarna för gym eller hemma (från det sparade fysiopasset, så att dina ändringar där gäller). */
-function physioItems(place) {
-  const def = PHYSIO_PASSES.find((p) => p.place === place);
-  const saved = savedById(def.id);
-  const items = saved ? saved.items : def.items.map((exId) => ({ exId, sets: BY_ID[exId].sets }));
-  return clone(items).filter((p) => BY_ID[p.exId]);
-}
-
-function seedPhysio() {
-  const seeded = data.settings.seeded;
-  for (const pass of PHYSIO_PASSES) {
-    if (seeded.includes(pass.id)) continue;
-    seeded.push(pass.id);
-    if (savedById(pass.id)) continue;
-    data.saved.unshift({ ...pass, items: pass.items.map((exId) => ({ exId, sets: BY_ID[exId].sets })) });
-  }
-  save();
 }
 
 function placeHeader(place) {
@@ -657,7 +354,7 @@ function placeHeader(place) {
     ${backButton()}
     <header class="page-head">
       <h1>${place === 'gym' ? 'Gym' : 'Hemma'}</h1>
-      <p class="sub">${ui.loaded[place] ? `Sparat pass: ${esc(ui.loaded[place])}` : place === 'gym' ? 'Ett pass för gymmet' : 'Korta pass hemma'}</p>
+      <p class="sub">${place === 'gym' ? 'Ett pass för gymmet' : 'Korta pass hemma'}</p>
     </header>
     <section class="card controls">
       ${ui.type[place] === 'strength' ? '' : `
@@ -669,8 +366,6 @@ function placeHeader(place) {
     </section>
     <p class="hint">${ui.type[place] === 'strength' ? `När du trycker på Börja träna föreslår appen uppvärmning och sedan övning för övning, efter det du redan kört idag. Utrustning och muskelgrupper väljer du under passet.${place === 'gym' ? ' Passet avslutas med stretch.' : ''}` : TYPES[ui.type[place]].desc}</p>`;
 }
-
-const physioNote = (place) => `<p class="note">Dina fysioövningar ingår alltid och ligger först. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>`;
 
 function intervalView(place) {
   if (!ui.iplans[place]) regenerate(place);
@@ -699,10 +394,10 @@ function intervalView(place) {
       <span>${t.work} s jobb · ${t.rest} s ${plan.type === 'circuit' ? 'byte' : 'vila'} · ${t.roundRest} s vila mellan varven</span>
       <span class="est">Ungefär ${estimateMinutes(steps)} minuter totalt</span>
     </section>
-    ${hasPhysio ? `<p class="note">${ICON.shield} Dina fysioövningar ingår i passet. <button class="inline-link" data-action="leave-physio">Hoppa över fysio idag</button></p>` : ''}
+    ${hasPhysio ? `<p class="note">${ICON.star} Dina favoritövningar ingår i passet.</p>` : ''}
     <p class="hint">${plan.warmup ? `Passet börjar med ${Math.round(plan.warmup.sec / 60) || 1} min uppvärmning ${plan.warmup.exId === 'bike' ? 'på cykel' : 'på stället'}.` : 'Konditionspass behöver ingen separat uppvärmning. Börja lugnt och öka tempot.'}${plan.stretch?.length ? ' Passet avslutas med stretch.' : ''}</p>
     <details class="card station-details"><summary>Visa övningarna i passet</summary>
-    ${plan.physio.length ? `<h3 class="group-title">Fysio först</h3>
+    ${plan.physio.length ? `<h3 class="group-title">Favoriter först</h3>
       <ul class="ex-list">${plan.physio.map((p) => item(p.exId, `${p.sets} set × ${BY_ID[p.exId].reps}`)).join('')}</ul>` : ''}
     ${plan.bikeSec ? `<h3 class="group-title">Först</h3><ul class="ex-list">${item('bike', `${Math.round(plan.bikeSec / 60)} min i jämnt tempo`)}</ul>` : ''}
     <h3 class="group-title">${plan.type === 'circuit' ? 'Stationer' : plan.type === 'balance' ? 'Övningar' : 'Intervaller'} <span class="title-note">varje varv</span></h3>
@@ -724,7 +419,6 @@ function intervalView(place) {
         <button class="btn secondary" data-action="regenerate">${ICON.refresh} Nytt förslag</button>
         <button class="btn secondary" data-action="library">Alla övningar</button>
       </div>
-      <button class="btn secondary" data-action="save-plan" ${plan.stations.length ? '' : 'disabled'}>${ICON.save} Spara till senare</button>
     </div>`;
 }
 
@@ -758,14 +452,6 @@ function painSelector(areas = AREA_IDS) {
         ${LEVELS.map((l, i) => `<button role="radio" aria-checked="${(pain[a] || 0) === i}" data-action="pain" data-area="${a}" data-level="${i}">${l.name}</button>`).join('')}
       </div></div>`).join('')}
     <p class="hint">Lite ont: ${LEVELS[1].desc.toLowerCase()}. Ont: ${LEVELS[2].desc.toLowerCase()}.</p></div>`;
-}
-
-function focusNote(place) {
-  const today = weekPlan().days[0];
-  const focus = (today.focus || []).filter((m) => MUSCLES[m]);
-  if (today.kind !== place || today.done || !focus.length) return '';
-  const same = focus.length === groupsFor(place).length && focus.every((m) => groupsFor(place).includes(m));
-  return same ? '' : `<p class="note">${ICON.calendar} Veckoplanen föreslår fokus på ${esc(focus.map((m) => MUSCLES[m].name.toLowerCase()).join(', '))} idag. <button class="inline-link" data-action="use-focus">Använd</button></p>`;
 }
 
 function painNote() {
@@ -864,8 +550,8 @@ function pickSuggestions(w, done, exclude) {
   const groups = w.groups.filter((m) => m !== 'cardio');
   if (type === 'stretch') return suggestStretch({ done, groups, pain: data.settings.pain, exclude, limit: 5 });
   if (!w.gear.length) return [];
-  return suggestNext({ done, groups: type === 'cardio' ? ['cardio'] : groups, gear: w.gear, pain: data.settings.pain, goals: type === 'strength' ? goalHints() : [],
-    priority: priority(), exclude, sessions: data.sessions, limit: 5, filter: pickFilter(type) });
+  return suggestNext({ done, groups: type === 'cardio' ? ['cardio'] : groups, gear: w.gear, pain: data.settings.pain,
+    exclude, sessions: data.sessions, limit: 5, filter: pickFilter(type) });
 }
 
 /** Det du kört idag: tidigare sparade pass + klara set i pågående pass, i tidsordning. */
@@ -1236,10 +922,6 @@ function settingsView() {
         <span class="chev">${ICON.chevronR}</span>
       </button>
       <label class="list-row">
-        <span class="row-text">Fysioövningar i alla pass<small>Gym- och hemmapass börjar alltid med dina fysioövningar</small></span>
-        <input type="checkbox" class="switch" data-change="physio" ${s.physioAlways ? 'checked' : ''}>
-      </label>
-      <label class="list-row">
         <span>Jag har hantlar hemma</span>
         <input type="checkbox" class="switch" data-change="dumbbells" ${s.hasDumbbells ? 'checked' : ''}>
       </label>
@@ -1347,7 +1029,7 @@ function detailSheet(ex) {
     ${ex.tips.length ? `<h3>Så gör du</h3>
     <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>` : ex.custom ? '<p class="muted">Egen övning.</p>' : ''}
     ${safetyBlock(ex)}
-    ${ex.physio || data.active ? '' : `<button class="btn secondary" data-action="goal-new" data-id="${ex.id}">Sätt ett mål för ${esc(ex.name.toLowerCase())}</button>`}
+    ${favoriteButtons(ex, data.active?.place ?? (FAV_TEXT[ui.tab] ? ui.tab : null))}
     <button class="btn-text guide-link" data-action="guide">${ICON.shield} Läs mer om att träna säkert</button>`;
 }
 
@@ -1419,18 +1101,6 @@ function swimDetailSheet(w) {
       ${w.style ? `<div class="list-row"><span>Simsätt</span><b>${SWIM_STYLES[w.style] ?? ''}</b></div>` : ''}
     </div>
     <button class="btn danger-outline" data-action="delete-swim" data-id="${esc(w.id)}">Radera simpasset</button>`;
-}
-
-function savePlanSheet(place) {
-  const name = `${PASS_NAME[place]} ${new Date().toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' }).replace('.', '')}`;
-  return `
-    <div class="sheet-head"><h2>Spara pass</h2><button class="btn-text" data-action="close-sheet">Avbryt</button></div>
-    <form id="save-plan-form" class="form">
-      <input type="hidden" name="place" value="${place}">
-      <label>Namn<input type="text" name="name" value="${esc(ui.loaded[place] || name)}" maxlength="40" autocomplete="off" required></label>
-      <p class="hint">Passet hamnar under Planera. Där kan du starta det eller lägga in det i veckoplanen.</p>
-      <button class="btn primary big" type="submit">Spara</button>
-    </form>`;
 }
 
 // ---- Logga övningar i efterhand och välja valfri övning -------------------------
@@ -1575,7 +1245,6 @@ function saveManual() {
     const keep = dayKey(new Date(old.date)) === m.date;
     Object.assign(old, { place: m.place, entries, ...(keep ? {} : { date: start.toISOString() }) });
     delete old.endDate;
-    checkGoals();
     save();
     ui.manual = null;
     closeSheet();
@@ -1584,7 +1253,6 @@ function saveManual() {
     return;
   }
   data.sessions.push({ id: uid(), place: m.place, date: start.toISOString(), entries, manual: true });
-  checkGoals();
   save();
   ui.manual = null;
   render();
@@ -1607,7 +1275,7 @@ function walkSheet() {
 function sessionPraise(s) {
   if (s.type && s.type !== 'strength') return '';
   const before = data.sessions.filter((x) => x !== s && new Date(x.date) < new Date(s.date));
-  const fb = workoutFeedback({ session: s, before, swims: data.swims.filter((x) => new Date(x.date) < new Date(s.date)), pain: {}, goalLabel });
+  const fb = workoutFeedback({ session: s, before, swims: data.swims.filter((x) => new Date(x.date) < new Date(s.date)), pain: {} });
   return `<ul class="fb-list small">${fb.highlights.slice(0, 3).map((h) => `<li><span class="fb-icon">${h.icon}</span><span>${esc(h.text)}</span></li>`).join('')}</ul>`;
 }
 
@@ -1873,7 +1541,6 @@ function finishInterval() {
     data.sessions.push({ id: uid(), place: a.place, type: a.type, date: new Date(a.start).toISOString(), endDate: new Date().toISOString(), entries });
   }
   data.active = null;
-  checkGoals();
   save();
   closeWorkout();
   if (entries.length) ui.tab = 'log';
@@ -1991,6 +1658,7 @@ function drawWorkout() {
         muskler: () => exerciseBody(ex),
         knappar: () => `<div class="wk-links">
         <button class="toggle small" data-action="wk-warmup" aria-pressed="${!!item.warmup}">Uppvärmning</button>
+        ${FAV_TEXT[w.place] ? favoriteButtons(ex, w.place) : ''}
         <button class="btn-text wk-link" data-action="pain-sheet">Gör det ont?</button>
       </div>`,
         'så-gör-du': () => `<details class="card">
@@ -2227,7 +1895,6 @@ function finishWorkout() {
   }
   const place = w.place;
   data.active = null;
-  checkGoals();
   // Gympass avslutas alltid med stretch. Passet är redan sparat; omdömet visas när stretchen är klar.
   if (place === 'gym' && entries.length) {
     const ids = buildStretch(entries.filter((e) => !e.warmup).map((e) => e.exId));
@@ -2253,7 +1920,7 @@ function showFeedback(session) {
   const fb = session.type === 'balance' ? balanceFeedback({ minutes: minutesOf(session), before })
     : session.type && session.type !== 'strength'
     ? cardioFeedback({ minutes: minutesOf(session), kind: TYPES[session.type].name.toLowerCase(), before, swims: data.swims })
-    : workoutFeedback({ session, before, swims: data.swims, walks: data.walks, goals: data.goals, pain: data.settings.pain, goalLabel });
+    : workoutFeedback({ session, before, swims: data.swims, walks: data.walks, pain: data.settings.pain });
   openSheet(feedbackSheet(fb));
 }
 
@@ -2391,10 +2058,7 @@ document.addEventListener('click', (e) => {
       if (to === 'activity' && !SUB.has(ui.tab)) ui.actBack = ui.tab;
       if (SUB.has(to) && !SUB.has(ui.tab)) {
         ui.back = ui.tab;
-        // Via startsidan eller Planera: börja med ett vanligt förslag, inte ett tidigare inläst pass.
-        if (ui.loaded[to]) { ui.loaded[to] = null; ui.plans[to] = null; if (to !== 'swim') { ui.fixed[to] = null; ui.iplans[to] = null; } }
         if (to !== 'swim') ui.type[to] = 'strength';
-        if (to !== 'swim' && ui.skipPhysio[to] && data.settings.physioAlways) { ui.skipPhysio[to] = false; ui.plans[to] = null; ui.iplans[to] = null; }
       }
       ui.tab = to; render(); window.scrollTo(0, 0); break;
     }
@@ -2450,28 +2114,10 @@ document.addEventListener('click', (e) => {
         { label: 'Avbryt' }] });
       break;
 
-    // Sparade pass
-    case 'save-plan':
-      openSheet(savePlanSheet(place)); break;
-    case 'load-saved':
-      loadSaved(t.dataset.id); break;
-    case 'delete-saved': {
-      const s = savedById(t.dataset.id);
-      confirmDialog({ title: `Ta bort ”${esc(s.name)}”?`, message: 'Passet tas också bort från veckoplanen.', buttons: [
-        { label: 'Ta bort', style: 'danger', onClick: () => {
-          data.saved = data.saved.filter((x) => x.id !== s.id);
-          data.week = data.week.map((v) => (v === `saved:${s.id}` ? '' : v));
-          save(); render();
-        } },
-        { label: 'Avbryt' }] });
-      break;
-    }
     case 'minutes':
       ui.minutes[place] = Number(t.dataset.value); regenerate(place); render(); break;
     case 'regenerate':
       regenerate(place); render(); break;
-    case 'leave-physio':
-      ui.fixed[place] = null; ui.skipPhysio[place] = true; ui.loaded[place] = null; regenerate(place); render(); break;
     case 'swap': {
       const plan = ui.plans[place];
       const i = Number(t.dataset.index);
@@ -2489,7 +2135,6 @@ document.addEventListener('click', (e) => {
     case 'ptype':
       ui.type[place] = t.dataset.value;
       if (place === 'home' && !LENGTH_OPTIONS.home.includes(ui.minutes.home)) ui.minutes.home = 15;
-      ui.fixed[place] = null; ui.loaded[place] = null;
       regenerate(place); render(); break;
     case 'iswap': {
       const plan = ui.iplans[place];
@@ -2517,7 +2162,7 @@ document.addEventListener('click', (e) => {
       data.settings.painUpdated = new Date().toISOString();
       data.settings.kneeFriendly = data.settings.pain.knees > 0;
       save();
-      for (const pl of ['gym', 'home']) if (!ui.loaded[pl]) ui.iplans[pl] = null;
+      for (const pl of ['gym', 'home']) ui.iplans[pl] = null;
       const box = t.closest('.pain-box');
       if (box) box.outerHTML = painSelector(box.dataset.areas.split(','));
       if (!data.active) render();
@@ -2532,21 +2177,15 @@ document.addEventListener('click', (e) => {
         gear: ['body'], groups: [], picking: false, items };
       save(); openWorkout(); break;
     }
-    case 'priority': data.settings.priority = t.dataset.value; save(); render(); break;
-    case 'goal-new': openSheet(goalSheet(t.dataset.id)); break;
-    case 'goal-delete':
-      confirmDialog({ title: 'Ta bort målet?', buttons: [
-        { label: 'Ta bort', style: 'danger', onClick: () => { data.goals = data.goals.filter((g) => g.id !== t.dataset.id); save(); render(); } },
-        { label: 'Avbryt' }] });
+    case 'fav': {
+      const pl = t.dataset.place;
+      const id = t.dataset.id;
+      data.favorites[pl] = isFavorite(pl, id) ? data.favorites[pl].filter((x) => x !== id) : [...(data.favorites[pl] ?? []), id];
+      save();
+      t.setAttribute('aria-pressed', String(isFavorite(pl, id)));
+      if (!data.active) ui.plans[pl] = null; // Gym/Hemma visar de nya favoriterna nästa gång
       break;
-    case 'wdays': data.settings.weekDays = Number(t.dataset.value); save(); render(); break;
-    case 'wkind': data.settings.weekKinds = toggle(weekKinds(), t.dataset.value); save(); render(); break;
-    case 'week-clear':
-      confirmDialog({ title: 'Låta appen föreslå alla dagar?', message: 'Dagarna du har lagt in själv tas bort ur veckan.', buttons: [
-        { label: 'Ja', style: 'primary', onClick: () => { data.week = data.week.map(() => ''); save(); render(); } },
-        { label: 'Avbryt' }] });
-      break;
-    case 'use-focus': setPref('groups', place, [...weekPlan().days[0].focus]); render(); break;
+    }
     case 'detail':
       openSheet(detailSheet(BY_ID[t.dataset.id])); break;
     case 'library':
@@ -2657,7 +2296,7 @@ document.addEventListener('click', (e) => {
     }
     case 'reset':
       confirmDialog({ title: 'Radera all data?', message: 'Alla pass och promenader tas bort från telefonen.', buttons: [
-        { label: 'Radera allt', style: 'danger', onClick: () => { resetAll(); ensurePain(); resetPlans(); seedPhysio(); render(); toast('All data raderad'); } },
+        { label: 'Radera allt', style: 'danger', onClick: () => { resetAll(); ensurePain(); resetPlans(); render(); toast('All data raderad'); } },
         { label: 'Avbryt' }] });
       break;
 
@@ -2845,11 +2484,7 @@ document.addEventListener('change', (e) => {
       break;
     case 'swim-style':
       ui.swimStyle = t.value; regenerate('swim'); render(); break;
-    case 'goal-ex':
-      $('#goal-metric').innerHTML = goalMetricFields(BY_ID[t.value]); break;
     case 'stats-ex': ui.statsEx = t.value; render(); break;
-    case 'weekday':
-      data.week[Number(t.dataset.day)] = t.value; save(); render(); break;
     case 'steps-date':
       if (t.value) openSheet(stepsSheet(t.value));
       break;
@@ -2866,14 +2501,10 @@ document.addEventListener('change', (e) => {
       if (home && t.checked !== home.includes(gear)) setPref('gear', 'home', toggle(home, gear));
       save(); ui.plans.home = null; ui.iplans.home = null; break;
     }
-    case 'physio':
-      data.settings.physioAlways = t.checked; save();
-      for (const pl of ['gym', 'home']) { ui.fixed[pl] = null; ui.skipPhysio[pl] = false; ui.loaded[pl] = null; ui.plans[pl] = null; ui.iplans[pl] = null; }
-      break;
     case 'knee':
       data.settings.kneeFriendly = t.checked; save();
-      if (!ui.loaded.gym) { ui.plans.gym = null; ui.iplans.gym = null; }
-      if (!ui.loaded.home) { ui.plans.home = null; ui.iplans.home = null; }
+      ui.plans.gym = null; ui.iplans.gym = null;
+      ui.plans.home = null; ui.iplans.home = null;
       break;
     case 'import': {
       const file = t.files?.[0];
@@ -2883,7 +2514,6 @@ document.addEventListener('change', (e) => {
         for (const c of data.customExercises) addCustomExercise(c);
         ensurePain();
         resetPlans();
-        seedPhysio();
         render();
         toast('Säkerhetskopian är importerad');
       }).catch(() => toast('Kunde inte läsa filen'));
@@ -2975,24 +2605,6 @@ const FORMS = {
     if (f.get('fromPlan')) { regenerateCardio(); ui.tab = 'log'; }
     ui.after = () => openSheet(feedbackSheet(cardioFeedback({ minutes: entry.minutes, km: entry.km, kind: actName(entry).toLowerCase(), before: data.sessions, swims: before })));
   },
-  'goal-form'(f) {
-    const exId = f.get('exId');
-    const metric = f.get('metric');
-    const target = parseFloat(String(f.get('target')).replace(',', '.'));
-    if (!BY_ID[exId] || !(target > 0)) { toast('Skriv in ett mål'); return; }
-    data.goals.push({ id: uid(), exId, metric, target, start: goalBest({ exId, metric }), created: new Date().toISOString() });
-    toast('Målet är sparat 🎯');
-  },
-  'save-plan-form'(f) {
-    const place = f.get('place');
-    const name = String(f.get('name')).trim() || PASS_NAME[place];
-    const type = place === 'swim' ? undefined : ui.type[place];
-    const items = place === 'swim' ? clone(ui.plans.swim).map((x) => ({ ...x, done: false }))
-      : type === 'strength' ? clone(ui.plans[place]) : clone(ui.iplans[place].stations);
-    data.saved.push({ id: uid(), name, place, type, items, minutes: ui.minutes[place] });
-    ui.loaded[place] = name;
-    toast('Sparat under Planera');
-  },
 };
 
 document.addEventListener('submit', (e) => {
@@ -3043,7 +2655,6 @@ $('#workout').addEventListener('touchend', (e) => {
 // Start
 for (const c of data.customExercises) addCustomExercise(c);
 ensurePain();
-seedPhysio();
 render();
 if (data.active) openWorkout(); // återuppta pågående pass
 

@@ -41,7 +41,6 @@ Stegen i `steg/` importerar koden direkt från `../web/`, så testerna provar sa
 | `omdöme.feature` | Omdöme och tips efter passet | `logik.mjs` |
 | `smärta.feature` | Övningar som tas bort när du har ont, och utrustning hemma | `logik.mjs` |
 | `simpass.feature` | Simpassens delar och längd | `logik.mjs` |
-| `veckoförslag.feature` | Veckoförslaget, vilodagar och dagar du lagt in själv | `logik.mjs` |
 | `lagring.feature` | Export och import av säkerhetskopia | `lagring.mjs` |
 | `appen.feature` | Appen i Chromium: start utan konsolfel, flikar, blockordning, steg och färgtema | `webbläsare.mjs` |
 
@@ -65,18 +64,23 @@ Testerna av själva passet ligger i **`gympass.feature`**. Varje scenario börja
 | En styrkeövning anges med set, reps och vikt en gång | Set, reps och vikt anges en gång för hela övningen |
 | Set klart bockar av ett set i taget | Set klart och Ångra senaste set |
 | En enbensövning anges för höger och vänster ben var för sig | Egna värden för höger och vänster ben |
+| Övningsvyn visar namn, loggning, figur och muskler i den ordningen | Ordningen i övningsvyn, halv kroppskarta som inte går att trycka på |
+| En övning som läggs till visar namnet överst, figuren och musklerna | Vyn för att lägga till en övning: namnet överst utan tid, bara figur och kroppskarta |
+| Roddmaskinen har ingen knapp för att lägga till set | Ingen "+ Lägg till set" för övningar i minuter |
+| Plankan har kvar knappen för att lägga till set | "+ Lägg till set" finns för övningar i sekunder |
+| Ett nytt pass börjar med favoriterna i kön | Favoriterna för gym ligger i kön när passet startar |
+| En övning blir favorit med stjärnan när den körs | Stjärnan "Favorit på gym" i övningsvyn |
 
 Logiken bakom passet testas utan webbläsare i andra filer. De scenarierna har också taggen `@gym`:
 
 | Fil | Scenarier | Vad som testas |
 |---|---|---|
-| `nästa-övning.feature` | alla 9 | Förslag på nästa övning: flera muskelgrupper, inga upprepningar, drag efter press, kön, upptagna maskiner, valda muskelgrupper och utrustning, ont i knäna, mål |
+| `nästa-övning.feature` | alla 7 | Förslag på nästa övning: flera muskelgrupper, inga upprepningar, drag efter press, kön, valda muskelgrupper och utrustning, ont i knäna |
 | `omdöme.feature` | alla 4 | Personbästa, tips om att öka vikten, första gången en övning körs, balans mellan press och drag |
 | `smärta.feature` | 2 (8 med exemplen) | Knäböj och benspark när knäna gör ont, bänkpress när axlarna gör ont |
-| `veckoförslag.feature` | 1 | Styrkedagar läggs inte dag efter dag |
 | `lagring.feature` | 1 | Ett pågående pass kommer inte med i säkerhetskopian |
 
-`npm run test:gym` kör alla 28.
+`npm run test:gym` kör alla 31.
 
 ## Lägga till ett test
 

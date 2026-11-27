@@ -86,3 +86,15 @@ Egenskap: Gympass
     När jag lägger till "Plankan" från listan
     Och kör "Plankan" från kön
     Så ska jag se knappen "+ Lägg till set"
+
+  Scenario: Ett nytt pass börjar med favoriterna i kön
+    Så ska kön innehålla "Benspark med ett ben, Bencurl med ett ben, Benpress med ett ben"
+
+  Scenario: En övning blir favorit med stjärnan när den körs
+    När jag lägger till "Bänkpress" från listan
+    Och kör "Bänkpress" från kön
+    Och trycker på "Favorit på gym"
+    Så ska "bench-press" vara favorit på gym
+    När jag trycker på "Favorit på gym"
+    Så ska "bench-press" inte vara favorit på gym
+    Och konsolen ska inte ha några fel

@@ -7,17 +7,33 @@ const defaults = () => ({
   swims: [],     // { id, date, minutes, meters, style }
   cardio: [],    // löpning, cykling m.m.: { id, date, kind: 'run' | 'bike' | 'ski' | 'other', minutes, km, name }
   steps: {},     // { 'ÅÅÅÅ-MM-DD': antal }
-  saved: [],     // sparade pass: { id, name, place, items, minutes }
-  week: ['', '', '', '', '', '', ''], // dagar du själv lagt in, måndag först: '' (appen föreslår), rest, gym, home, swim, walk eller saved:<id>
+  favorites: { gym: [...DEFAULT_FAVORITES.gym], home: [...DEFAULT_FAVORITES.home] }, // favoritövningar per plats, i den ordning de markerades
   customExercises: [], // egna övningar: { id, name, muscles: [grupp], gear, timed }
-  goals: [],     // { id, exId, metric: 'reps' | 'weight' | 'sec', target, created, achieved }
-  settings: { hasDumbbells: false, restSeconds: 90, stepGoal: 8000, kneeFriendly: true, physioAlways: true, seeded: [] },
+  settings: { hasDumbbells: false, restSeconds: 90, stepGoal: 8000, kneeFriendly: true },
   active: null,  // pågående pass, sparas så att det överlever om appen stängs
 });
 
-// Förr lades hela veckoförslaget in i veckoplanen. Nu föreslås dagarna direkt, så en sådan
-// vecka töms en gång så att förslagen syns och kan anpassas efter det du lägger in själv.
-const oldProposal = (raw) => Array.isArray(raw.weekFocus) && raw.weekFocus.some((v) => Array.isArray(v) && v.length);
+// Fysioövningarna är favoriter från början (SPEC.md F6.4).
+const DEFAULT_FAVORITES = {
+  gym: ['single-leg-extension', 'single-leg-curl', 'single-leg-press'],
+  home: ['single-leg-mini-squat', 'wall-sit-high'],
+};
+// Fält och inställningar från planeringen, som inte finns längre.
+const OLD_SETTINGS = ['physioAlways', 'seeded', 'priority', 'weekDays', 'weekKinds'];
+const OLD_PHYSIO = { gym: 'fysio-gym', home: 'fysio-hemma' };
+
+/** Favoriter: sparade, annars övningarna i de gamla fysiopassen, annars standard (SPEC.md D1). */
+function favoritesOf(raw) {
+  const fav = raw.favorites;
+  const out = {};
+  for (const place of ['gym', 'home']) {
+    if (fav && Array.isArray(fav[place])) { out[place] = fav[place].filter((id) => typeof id === 'string'); continue; }
+    const old = Array.isArray(raw.saved) ? raw.saved.find((x) => x && x.id === OLD_PHYSIO[place]) : null;
+    out[place] = old && Array.isArray(old.items) ? [...new Set(old.items.map((it) => it?.exId).filter((id) => typeof id === 'string'))]
+      : [...DEFAULT_FAVORITES[place]];
+  }
+  return out;
+}
 
 function normalize(raw) {
   const base = defaults();
@@ -28,13 +44,17 @@ function normalize(raw) {
     swims: Array.isArray(raw.swims) ? raw.swims : [],
     cardio: Array.isArray(raw.cardio) ? raw.cardio.filter((c) => c && c.kind && c.date) : [],
     steps: raw.steps && typeof raw.steps === 'object' && !Array.isArray(raw.steps) ? raw.steps : {},
-    saved: Array.isArray(raw.saved) ? raw.saved : [],
-    week: oldProposal(raw) ? base.week : Array.isArray(raw.week) && raw.week.length === 7 ? raw.week.map((v) => (typeof v === 'string' ? v : '')) : base.week,
-    goals: Array.isArray(raw.goals) ? raw.goals : [],
+    favorites: favoritesOf(raw),
     customExercises: Array.isArray(raw.customExercises) ? raw.customExercises.filter((c) => c && c.id && c.name) : [],
-    settings: withBoard({ ...base.settings, ...(raw.settings || {}) }),
+    settings: withoutOld(withBoard({ ...base.settings, ...(raw.settings || {}) })),
     active: raw.active && (Array.isArray(raw.active.items) || Array.isArray(raw.active.steps)) ? raw.active : null,
   };
+}
+
+function withoutOld(settings) {
+  const out = { ...settings };
+  for (const k of OLD_SETTINGS) delete out[k];
+  return out;
 }
 
 // Utrustning som kom till senare: lägg till den en gång i ett redan sparat utrustningsval för gymmet.

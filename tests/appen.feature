@@ -16,10 +16,13 @@ Egenskap: Appen i webbläsaren
 
     Exempel:
       | flik          | rubrik        |
-      | Planera       | Planera       |
       | Logg          | Logg          |
       | Grafer        | Grafer        |
       | Inställningar | Inställningar |
+
+  Scenario: Flikraden har fyra flikar
+    Givet att jag öppnar appen med tom data
+    Så ska flikraden ha flikarna "Idag, Logg, Grafer, Inställningar"
 
   Scenario: Startsidan visar blocken i ordningen i specen
     Givet att jag öppnar appen med tom data

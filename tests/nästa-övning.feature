@@ -41,10 +41,3 @@ Egenskap: Förslag på nästa övning under passet
     Och att jag har valt muskelgrupperna "legs"
     När jag ber om förslag på nästa övning
     Så ska inget förslag belasta "knees"
-
-  Scenario: En övning med mål lyfts fram
-    Givet att jag har valt muskelgrupperna "chest"
-    Och att jag har målet "60 kg i bänkpress" för "bench-press"
-    När jag ber om förslag på nästa övning
-    Så ska "bench-press" vara första förslaget
-    Och första förslaget ska ha skälet "Mot ditt mål: 60 kg i bänkpress"

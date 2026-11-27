@@ -50,6 +50,11 @@ Then('ska jag se texten {string}', async function (text) {
   await this.page.waitForFunction((t) => document.body.innerText.replace(/\s+/g, ' ').includes(t), text, { timeout: 5000 });
 });
 
+Then('ska flikraden ha flikarna {string}', async function (names) {
+  const tabs = await this.page.locator('.tabbar button').allInnerTexts();
+  assert.deepEqual(tabs.map((t) => t.trim()), names.split(',').map((x) => x.trim()));
+});
+
 Then('ska jag inte se texten {string}', async function (text) {
   assert.ok(!(await this.page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '))).includes(text), text);
 });

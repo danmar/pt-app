@@ -27,7 +27,16 @@ When('jag importerar en säkerhetskopia med innehållet:', function (text) { thi
 Then('ska kopian ha {string} satt till {string}', function (key, value) { assert.equal(JSON.parse(this.backup)[key], value); });
 Then('kopian ska inte innehålla {string}', function (key) { assert.ok(!(key in JSON.parse(this.backup))); });
 Then(/^(?:ska )?"([^"]+)" vara en tom lista$/, function (key) { assert.deepEqual(this.storage.data[key], []); });
-Then('veckoplanen ska ha {int} tomma dagar', function (n) { assert.deepEqual(this.storage.data.week, Array(n).fill('')); });
+Then(/^(?:ska )?favoriterna (på gym|hemma) vara "([^"]*)"$/, function (where, ids) {
+  assert.deepEqual(this.storage.data.favorites[where === 'hemma' ? 'home' : 'gym'], ids.split(',').map((x) => x.trim()).filter(Boolean));
+});
+const names = (s) => s.split(/, | eller /).map((x) => x.replaceAll('"', '').trim());
+Then(/^datan ska inte innehålla (.+)$/, function (keys) {
+  for (const k of names(keys)) assert.ok(!(k in this.storage.data), k);
+});
+Then(/^inställningarna ska inte innehålla (.+)$/, function (keys) {
+  for (const k of names(keys)) assert.ok(!(k in this.storage.data.settings), k);
+});
 Then('ska jag ha {int} promenad på {int} minuter', function (n, minutes) {
   assert.equal(this.storage.data.walks.length, n);
   assert.equal(this.storage.data.walks[0].minutes, minutes);

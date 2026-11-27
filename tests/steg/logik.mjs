@@ -1,10 +1,9 @@
-// Steg för logiken i appen: övningsurval, förslag, simpass, veckoförslag och omdöme.
+// Steg för logiken i appen: övningsurval, förslag, simpass och omdöme.
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
 import { EXERCISES, BY_ID, painOk, isAvailable } from '../../web/exercises.js';
 import { suggestNext } from '../../web/planner.js';
 import { suggestSwim } from '../../web/swim.js';
-import { suggestWeek } from '../../web/week.js';
 import { workoutFeedback } from '../../web/feedback.js';
 
 const list = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
@@ -43,12 +42,11 @@ Given('att jag har utrustningen {string}', function (s) { this.gear = list(s); }
 Given('att jag har kört {string} med {int} set idag', function (id, sets) { ex(id); this.done.push({ exId: id, sets }); });
 Given('att {string} ligger i kön', function (id) { ex(id); this.exclude.push(id); });
 Given('att jag har valt muskelgrupperna {string}', function (s) { this.groups = list(s); });
-Given('att jag har målet {string} för {string}', function (label, id) { ex(id); this.goals.push({ exId: id, label }); });
 
 When('jag ber om förslag på nästa övning', function () {
   this.suggestions = suggestNext({
     done: this.done, groups: this.groups, gear: this.gear, pain: this.pain,
-    goals: this.goals, exclude: this.exclude,
+    exclude: this.exclude,
   });
 });
 
@@ -93,46 +91,6 @@ Then('passet ska vara ungefär {int} meter', function (m) {
 Then('nedvarvningen ska vara {int} meter', function (m) { assert.equal(this.swim.at(-1).meters, m); });
 Then('ingen del ska vara avbockad', function () { assert.ok(this.swim.every((b) => b.done === false)); });
 Then('ska passet innehålla delen {string}', function (t) { assert.ok(this.swim.some((b) => b.title === t), this.swim.map((b) => b.title).join(', ')); });
-
-// ---- Veckoförslag ----------------------------------------------------------
-Given('att jag vill träna {int} dagar i veckan med {string}', function (days, kinds) {
-  this.week.days = days;
-  this.week.kinds = list(kinds);
-});
-Given('att jag har lagt in {string} på dag {int}', function (kind, d) { this.week.pinned[d] = kind; });
-Given('att jag har simmat idag', function () {
-  this.week.swims.push({ id: 's1', date: new Date().toISOString(), minutes: 40, meters: 1200 });
-});
-
-When('jag ber om ett veckoförslag', function () {
-  const w = this.week;
-  this.plan = suggestWeek({
-    days: w.days, kinds: w.kinds, sessions: [], swims: w.swims, walks: [], cardio: [], pain: this.pain, pinned: w.pinned,
-  }).days;
-});
-
-const TRAIN = ['gym', 'home', 'swim', 'run', 'bike', 'ski'];
-const STRENGTH = ['gym', 'home'];
-const kinds = (w) => w.plan.map((d) => d.kind).join(', ');
-
-Then('ska förslaget ha {int} dagar', function (n) { assert.equal(this.plan.length, n); });
-Then('förslaget ska ha {int} träningsdagar', function (n) {
-  assert.equal(this.plan.filter((d) => TRAIN.includes(d.kind)).length, n, kinds(this));
-});
-Then('förslaget ska ha minst {int} vilodag', function (n) {
-  assert.ok(this.plan.filter((d) => d.kind === 'rest').length >= n, kinds(this));
-});
-Then('ska inga två styrkedagar ligga i rad', function () {
-  for (let d = 1; d < 7; d++) {
-    assert.ok(!(STRENGTH.includes(this.plan[d].kind) && STRENGTH.includes(this.plan[d - 1].kind)), kinds(this));
-  }
-});
-Then(/^(?:ska )?dag (\d+) vara "([^"]+)"$/, function (d, kind) { assert.equal(this.plan[Number(d)].kind, kind, kinds(this)); });
-Then('ska ingen dag vara {string}', function (kind) { assert.ok(this.plan.every((d) => d.kind !== kind), kinds(this)); });
-Then('ska dag {int} vara {string} och markerad som klar', function (d, kind) {
-  assert.equal(this.plan[d].kind, kind);
-  assert.equal(this.plan[d].done, true);
-});
 
 // ---- Omdöme ----------------------------------------------------------------
 const entry = (id, sets, reps, weight) => ({ exId: ex(id).id, sets: Array.from({ length: sets }, () => ({ reps, weight })) });
