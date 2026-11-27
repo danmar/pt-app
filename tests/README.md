@@ -23,6 +23,7 @@ tests/
 ├── steg/              Vad varje Givet/När/Så-rad gör
 │   ├── logik.mjs        Förslag, ont, simpass, vecka och omdöme
 │   ├── lagring.mjs      Export och import
+│   ├── gympass.mjs      Ett pågående gympass i Chromium
 │   └── webbläsare.mjs   Klick och kontroller i Chromium
 ├── stöd/              Hjälpkod
 │   ├── värld.mjs        Tillstånd för varje scenario, start och stopp av webbläsaren
@@ -35,6 +36,7 @@ Stegen i `steg/` importerar koden direkt från `../web/`, så testerna provar sa
 
 | Fil | Testar | Steg i |
 |---|---|---|
+| `gympass.feature` | Ett pågående gympass i Chromium: lägga till övningar, set, reps och vikt, Set klart, enbensövningar | `gympass.mjs` |
 | `nästa-övning.feature` | Förslag på nästa övning under passet | `logik.mjs` |
 | `omdöme.feature` | Omdöme och tips efter passet | `logik.mjs` |
 | `smärta.feature` | Övningar som tas bort när du har ont, och utrustning hemma | `logik.mjs` |
@@ -48,13 +50,23 @@ Stegen i `steg/` importerar koden direkt från `../web/`, så testerna provar sa
 | Tagg | Betyder |
 |---|---|
 | `@gym` | Testet handlar om gympass (styrkepass med övningar, set och vikter) |
-| `@ui` | Testet öppnar appen i Chromium. Hela `appen.feature` har den taggen. |
+| `@ui` | Testet öppnar appen i Chromium. Hela `appen.feature` och `gympass.feature` har den taggen. |
 
 En tagg på raden ovanför `Egenskap:` gäller alla scenarier i filen. En tagg ovanför `Scenario:` gäller bara det scenariot.
 
 ## Tester för gympass
 
-28 scenarier har taggen `@gym`:
+Testerna av själva passet ligger i **`gympass.feature`**. Varje scenario börjar med samma `Bakgrund`: appen öppnas med tom data, man trycker på **Gym** på startsidan och sedan på **Börja träna**. Scenariot startar alltså i ett nytt, pågående gympass.
+
+| Scenario i `gympass.feature` | Vad som testas |
+|---|---|
+| Ett nytt pass föreslår uppvärmning och har en kö | Passet startar utan fel |
+| En övning som läggs till under passet visas utan set och reps | Lägg till övning visar övningen utan set och reps, knappen heter Lägg till och övningen hamnar i kön |
+| En styrkeövning anges med set, reps och vikt en gång | Set, reps och vikt anges en gång för hela övningen |
+| Set klart bockar av ett set i taget | Set klart och Ångra senaste set |
+| En enbensövning anges för höger och vänster ben var för sig | Egna värden för höger och vänster ben |
+
+Logiken bakom passet testas utan webbläsare i andra filer. De scenarierna har också taggen `@gym`:
 
 | Fil | Scenarier | Vad som testas |
 |---|---|---|
@@ -63,12 +75,11 @@ En tagg på raden ovanför `Egenskap:` gäller alla scenarier i filen. En tagg o
 | `smärta.feature` | 2 (8 med exemplen) | Knäböj och benspark när knäna gör ont, bänkpress när axlarna gör ont |
 | `veckoförslag.feature` | 1 | Styrkedagar läggs inte dag efter dag |
 | `lagring.feature` | 1 | Ett pågående pass kommer inte med i säkerhetskopian |
-| `appen.feature` | 5 | Gym-sidan går att öppna, en övning som läggs till under passet visas utan set och reps, set, reps och vikt anges en gång per övning, Set klart och Ångra, enbensövningar med höger och vänster ben var för sig |
 
-Testerna för simpass, steg, färgtema och fysioövningar har inte taggen.
+`npm run test:gym` kör alla 28.
 
 ## Lägga till ett test
 
 1. Skriv ett scenario i rätt `.feature`-fil, eller skapa en ny fil som börjar med `# language: sv`.
-2. Sätt `@gym` ovanför scenariot om det handlar om gympass.
+2. Ett test som börjar i ett pågående gympass skriver du i `gympass.feature`, så får det Bakgrunden automatiskt. Andra tester som handlar om gympass får `@gym` ovanför scenariot.
 3. Kör `npm test`. Om ett steg saknas skriver Cucumber ut ett förslag på kod som du kan klistra in i en fil i `steg/`.

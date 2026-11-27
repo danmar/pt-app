@@ -108,6 +108,7 @@ npm run test:ui     # bara appen i webbläsaren (@ui)
 | `omdöme.feature` | Omdöme och tips efter passet |
 | `lagring.feature` | Export och import av säkerhetskopia |
 | `appen.feature` | Appen i Chromium: start utan konsolfel, flikar, layoutfiler, steg och färgtema |
+| `gympass.feature` | Ett pågående gympass i Chromium, från Gym och Börja träna |
 
 Stegen finns i `tests/steg/`. UI-testerna använder Chromium som redan finns på datorn (sätt `CHROMIUM_PATH` om den inte hittas).
 

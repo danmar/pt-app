@@ -1,0 +1,81 @@
+// Steg för gympass.feature: ett pågående gympass i Chromium.
+import { When, Then } from '@cucumber/cucumber';
+import assert from 'node:assert/strict';
+import { exact, readData } from './webbläsare.mjs';
+
+const active = async (page) => (await readData(page)).active;
+/** Seten för övningen som är öppen just nu. */
+const openSets = async (page) => { const w = await active(page); return w.items[w.index].sets; };
+const sideOf = (ben) => ({ höger: 'H', vänster: 'V' })[ben] ?? '';
+const exercise = (page, name) => page.locator('strong', { hasText: exact(name) });
+
+Then('ska ett nytt gympass vara igång', async function () {
+  await this.page.locator('#workout .picker').waitFor();
+  const w = await active(this.page);
+  assert.equal(w.place, 'gym');
+  assert.equal(w.items.filter((it) => it.sets.some((x) => x.done)).length, 0);
+});
+
+When('jag lägger till {string} från listan', async function (name) {
+  const page = this.page;
+  await page.locator('button:visible').filter({ hasText: exact('Lägg till övning') }).click();
+  await page.locator('button:visible').filter({ hasText: exact('Välj övningar från listan') }).click();
+  await page.getByLabel('Sök övning').fill(name);
+  await page.locator('#sheet [data-action="pick-toggle"]').filter({ has: exercise(page, name) }).click();
+  await page.locator('#pick-done').click();
+  await page.locator('#workout .picker').waitFor();
+});
+
+When(/^(?:jag )?kör "([^"]+)" från kön$/, async function (name) {
+  await this.page.locator('#workout [data-action="q-go"]').filter({ has: exercise(this.page, name) }).first().click();
+  await this.page.locator('#workout .wk-name').filter({ hasText: exact(name) }).waitFor();
+});
+
+When('väljer det första förslaget', async function () {
+  const first = this.page.locator('#workout [data-action="s-go"]').first();
+  this.chosen = await first.getAttribute('data-id');
+  await first.click();
+});
+
+When(/^(?:jag )?trycker på "([^"]+)" för (höger|vänster) ben$/, async function (name, ben) {
+  await this.page.getByRole('button', { name: `${name}, ${ben} ben`, exact: true }).click();
+});
+
+When(/^skriver vikten "([^"]+)"(?: för (höger|vänster) ben)?$/, async function (value, ben) {
+  await this.page.getByLabel(ben ? `Vikt, ${ben} ben` : 'Vikt', { exact: true }).fill(value);
+});
+
+Then('ska jag inte se valen för set och reps', async function () {
+  await this.page.locator('#workout .wk-name').waitFor();
+  assert.equal(await this.page.locator('#workout .set-form, #workout .set, #workout .stepper').count(), 0);
+});
+
+Then('ska jag inte se knappen {string}', async function (text) {
+  assert.equal(await this.page.locator('button:visible').filter({ hasText: exact(text) }).count(), 0);
+});
+
+Then('ska förslaget ligga i kön utan klara set', async function () {
+  await this.page.locator('#workout .picker').waitFor();
+  const items = (await active(this.page)).items.filter((it) => it.exId === this.chosen);
+  assert.equal(items.length, 1, this.chosen);
+  assert.ok(!items[0].sets.some((x) => x.done) && !items[0].preview && !items[0].fresh);
+});
+
+Then('ska fälten för set och reps finnas en gång', async function () {
+  assert.equal(await this.page.locator('#workout .set-form').count(), 1);
+  assert.equal(await this.page.locator('#workout .set').count(), 0);
+});
+
+Then(/^ska övningen ha (\d+) set om (\d+) reps på ([\d,]+) kg(?: för (höger|vänster) ben)?$/, async function (n, reps, kg, ben) {
+  const list = (await openSets(this.page)).filter((x) => (x.side ?? '') === sideOf(ben));
+  assert.deepEqual(list.map((x) => [x.reps, x.weight]), [...Array(Number(n))].map(() => [Number(reps), Number(kg.replace(',', '.'))]));
+});
+
+Then('ska {int} set vara klara', async function (n) {
+  assert.equal((await openSets(this.page)).filter((x) => x.done).length, n);
+});
+
+Then('ska {int} set vara klara för varje ben', async function (n) {
+  const sets = await openSets(this.page);
+  for (const side of ['H', 'V']) assert.equal(sets.filter((x) => x.side === side && x.done).length, n, side);
+});

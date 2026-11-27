@@ -2138,7 +2138,7 @@ function renderAdd() {
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body picker" id="wk-body">
-      <p class="hint center">Tryck på en övning för att köra den nu, eller på + för att lägga den i kön.</p>
+      <p class="hint center">Tryck på en övning för att läsa om den och lägga till den, eller på + för att lägga den direkt i kön.</p>
       <section class="card controls pk-controls">${pickControls(w)}</section>
       <div><h3 class="pk-title">Förslag</h3>
       ${!w.gear.length && w.stype !== 'stretch' ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : free.length ? `
