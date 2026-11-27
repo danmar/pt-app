@@ -28,6 +28,8 @@ En webbapp (PWA) som du lägger på hemskärmen på din iPhone. Du behöver inge
 - **Logg:** historik över pass och promenader, med ett diagram över aktiva minuter de senaste 7 dagarna. Promenader loggar du för hand.
 - **Fungerar offline**, och all data sparas bara på telefonen. Du kan exportera och importera en säkerhetskopia under Inställningar.
 
+Den fullständiga specifikationen finns i [`SPEC.md`](SPEC.md).
+
 ## Filer
 
 ```
