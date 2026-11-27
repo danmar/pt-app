@@ -139,10 +139,10 @@ export function volumeByGroup(done) {
  * done: [{ exId, sets }] i den ordning de kördes idag (antal klara set).
  * groups: valda muskelgrupper (tom = alla utom kondition). gear: vald utrustning. pain: se painOk.
  * filter: valfritt urval av övningar för en passtyp (cirkel, HIIT, kondition, balans).
- * exclude: övningar som redan ligger i kön. busy: { exId: true } för upptagna maskiner.
- * Returnerar [{ ex, reason, busy }], bästa först. Upptagna hamnar sist.
+ * exclude: övningar som redan ligger i kön.
+ * Returnerar [{ ex, reason }], bästa först.
  */
-export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], priority = 'balanced', exclude = [], busy = {}, sessions = [], limit = 5, filter = null }) {
+export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], priority = 'balanced', exclude = [], sessions = [], limit = 5, filter = null }) {
   const targets = groups.length ? groups : MUSCLE_IDS.filter((m) => m !== 'cardio');
   const doneIds = new Set(done.map((d) => d.exId));
   const vol = volumeByGroup(done);
@@ -178,20 +178,20 @@ export function suggestNext({ done, groups = [], gear, pain = {}, goals = [], pr
       if (priority === 'weightloss' && COMPOUND.has(pattern)) { score += 1.2; if (v === 0) reasons.push([1.5, 'Stora muskler förbränner mest']); }
       if (priority === 'cardio' && (g === 'core' || ex.gear === 'body')) score += 0.8;
       reasons.sort((a, b) => b[0] - a[0]);
-      return { ex, score, busy: !!busy[ex.id], reason: reasons[0]?.[1] ?? `Komplement för ${MUSCLES[g].name.toLowerCase()}` };
+      return { ex, score, reason: reasons[0]?.[1] ?? `Komplement för ${MUSCLES[g].name.toLowerCase()}` };
     })
-    .sort((a, b) => (a.busy - b.busy) || (b.score - a.score));
+    .sort((a, b) => b.score - a.score);
 
   // Sprid förslagen: högst två per muskelgrupp bland de första.
   const picked = [];
   const perGroup = {};
   for (const s of scored) {
-    if (picked.length >= limit || s.busy) break;
+    if (picked.length >= limit) break;
     const g = primary(s.ex);
     if ((perGroup[g] ?? 0) >= 2 && targets.length > 1) continue;
     perGroup[g] = (perGroup[g] ?? 0) + 1;
     picked.push(s);
   }
-  for (const s of scored) if (picked.length < limit && !s.busy && !picked.includes(s)) picked.push(s);
-  return [...picked, ...scored.filter((s) => s.busy)];
+  for (const s of scored) if (picked.length < limit && !picked.includes(s)) picked.push(s);
+  return picked;
 }

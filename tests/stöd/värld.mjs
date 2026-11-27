@@ -12,7 +12,6 @@ class Värld {
     this.groups = [];
     this.done = [];
     this.exclude = [];
-    this.busy = {};
     this.goals = [];
     this.place = 'gym';
     this.opts = {};
@@ -20,7 +19,6 @@ class Värld {
     this.today = { date: new Date().toISOString(), entries: [] };
     this.before = [];
     this.consoleErrors = [];
-    this.consoleWarnings = [];
   }
 }
 setWorldConstructor(Värld);

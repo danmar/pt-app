@@ -672,9 +672,8 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
   background: var(--gc, var(--accent)); color: #fff;
 }
 .go-btn.soft { background: color-mix(in srgb, var(--card) 75%, transparent); color: var(--gc, var(--accent)); }
-.ex-item.is-busy { opacity: 0.6; }
 .pk-controls { margin-top: 12px; }
-.busy-link { align-self: center; font-size: 14px; margin-top: -6px; }
+.wk-link { align-self: center; font-size: 14px; margin-top: -6px; }
 
 /* --- Fysio --------------------------------------------------------------- */
 .pain-box { display: flex; flex-direction: column; gap: 10px; }
@@ -684,7 +683,7 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .card.prose ul, .note ul { margin: 4px 0 10px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .note ul { margin-bottom: 0; }
 .wk-links { display: flex; justify-content: center; gap: 18px; margin-top: -6px; }
-.wk-links .busy-link { margin-top: 0; }
+.wk-links .wk-link { margin-top: 0; }
 .physio-card { --c: var(--green); }
 
 /* --- Veckoförslag -------------------------------------------------------- */
@@ -859,7 +858,7 @@ ul.safety li::before { content: ""; position: absolute; left: 4px; top: 0.5em; w
 .body-card { display: grid; gap: 8px; }
 .body-card .segmented { margin: 0; }
 .body-map { width: 100%; max-width: 320px; margin: 0 auto; display: block; }
-.wk-body .body-map { max-width: 260px; }
+.wk-body .body-map { max-width: 130px; }
 .sheet-body > .body-map { max-width: 200px; margin-bottom: 8px; }
 .bm-base { fill: var(--card-2); stroke: var(--line); stroke-width: 0.6; }
 .bm-m { stroke: var(--line); stroke-width: 0.4; transition: fill 0.2s; }

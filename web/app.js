@@ -74,7 +74,6 @@ const ICON = {
   info: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
   up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
-  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
   pulse: '<svg viewBox="0 0 24 24"><path d="M3 12.5h4l2.2-5.5 4.3 11 2.3-5.5H21"/></svg>',
   run: '<svg viewBox="0 0 24 24"><circle cx="15" cy="4.5" r="1.9"/><path d="M6 20.5l3.5-4.5 3 2 1 3.5M9.5 16l2-6.5 4 2.5 3 1M11.5 9.5l-3.5 1-2 3"/></svg>',
   bike: '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16l4-7.5h6l3 7.5M9.5 8.5l3.5 7.5H5.5M13.5 5.5h3"/></svg>',
@@ -99,27 +98,9 @@ function render() {
   mountFigures(view);
 }
 
-// Vilka block som syns på en sida och i vilken ordning styrs av layout/<sida>.json.
-// Saknas filen visas alla block i den ordning de står i koden.
-const LAYOUT_PAGES = ['start', 'plan', 'log', 'stats', 'settings'];
-const LAYOUT = {};
-async function loadLayouts() {
-  await Promise.all(LAYOUT_PAGES.map(async (page) => {
-    try {
-      const res = await fetch(`layout/${page}.json`, { cache: 'no-cache' });
-      if (res.ok) LAYOUT[page] = await res.json();
-    } catch (e) { console.warn(`layout/${page}.json kunde inte läsas`, e); }
-  }));
-}
-/** Ritar sidans block i den ordning layoutfilen anger. list: { blocknamn: () => html } */
-function layout(page, list) {
-  const order = Array.isArray(LAYOUT[page]?.visa) ? LAYOUT[page].visa : Object.keys(list);
-  return order.map((id) => {
-    if (list[id]) return list[id]();
-    console.warn(`layout/${page}.json: okänt block "${id}". Finns: ${Object.keys(list).join(', ')}`);
-    return '';
-  }).join('');
-}
+// Varje sida består av block som ritas i den ordning de står (se SPEC.md 3.1).
+/** list: { blocknamn: () => html } */
+const blocks = (list) => Object.values(list).map((f) => f()).join('');
 
 const BACK_NAME = { start: 'Idag', plan: 'Planera', log: 'Logg', settings: 'Inställningar', activity: 'Kondition' };
 const backButton = () => `<button class="back" data-action="tab" data-tab="${ui.back}">${ICON.chevronL}${BACK_NAME[ui.back] ?? 'Idag'}</button>`;
@@ -151,7 +132,7 @@ function startView() {
   const now = new Date();
   const hour = now.getHours();
   const hello = hour < 10 ? 'God morgon' : hour < 18 ? 'Hej' : 'God kväll';
-  return layout('start', {
+  return blocks({
     rubrik: () => `
     <header class="page-head">
       <p class="eyebrow">${fmtDate(now)}</p>
@@ -169,12 +150,6 @@ function startView() {
     'mål': goalsCard,
     steg: stepsCard,
     fysio: physioCard,
-    'träna-säkert': () => `
-    <button class="card guide-card" data-action="guide">
-      <span class="today-icon">${ICON.shield}</span>
-      <span class="today-text"><b>Träna säkert</b><small>Uppvärmning, knäna och när du ska stoppa</small></span>
-      <span class="chev">${ICON.chevronR}</span>
-    </button>`,
   });
 }
 
@@ -418,7 +393,7 @@ function cardioRow(c) {
 const kindOf = (v) => (v.startsWith('saved:') ? savedById(v.slice(6))?.place ?? '' : v);
 
 function planningView() {
-  return layout('plan', {
+  return blocks({
     rubrik: () => '<header class="page-head"><h1>Planera</h1><p class="sub">Din vecka, mål och sparade pass</p></header>',
     prioritering: priorityCard,
     veckan: weekSection,
@@ -890,7 +865,7 @@ function pickSuggestions(w, done, exclude) {
   if (type === 'stretch') return suggestStretch({ done, groups, pain: data.settings.pain, exclude, limit: 5 });
   if (!w.gear.length) return [];
   return suggestNext({ done, groups: type === 'cardio' ? ['cardio'] : groups, gear: w.gear, pain: data.settings.pain, goals: type === 'strength' ? goalHints() : [],
-    priority: priority(), exclude, busy: w.busy, sessions: data.sessions, limit: 5, filter: pickFilter(type) });
+    priority: priority(), exclude, sessions: data.sessions, limit: 5, filter: pickFilter(type) });
 }
 
 /** Det du kört idag: tidigare sparade pass + klara set i pågående pass, i tidsordning. */
@@ -926,14 +901,14 @@ function planView(place) {
     </div>`;
 }
 
-function suggestionItem({ ex, reason, busy }, actions, main = `data-action="detail" data-id="${ex.id}"`) {
+function suggestionItem({ ex, reason }, actions, main = `data-action="detail" data-id="${ex.id}"`) {
   return `
-    <li class="ex-item ${busy ? 'is-busy' : ''}" data-group="${ex.muscles[0]}">
+    <li class="ex-item" data-group="${ex.muscles[0]}">
       <button class="ex-main" ${main}>
         <div class="fig thumb" data-ex="${ex.id}"></div>
         <div class="ex-text">
           <strong>${esc(ex.name)}</strong>
-          <span>${busy ? 'Upptagen' : esc(reason)}</span>
+          <span>${esc(reason)}</span>
           <small>${GEAR[ex.gear]} · ${muscleNames(ex)}</small>
           ${painWarn(ex)}
         </div>
@@ -1062,7 +1037,7 @@ function statsView() {
   });
   const hasSteps = stepDays.some((d) => d.values.steps > 0);
 
-  return layout('stats', {
+  return blocks({
     rubrik: () => '<header class="page-head"><h1>Grafer</h1><p class="sub">Din utveckling</p></header>',
     siffror: () => `
     <div class="tiles three">
@@ -1124,7 +1099,7 @@ function logView() {
     ...data.cardio.map((c) => ({ date: c.date, html: () => cardioRow(c) })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  return layout('log', {
+  return blocks({
     rubrik: () => '<header class="page-head"><h1>Logg</h1><p class="sub">Senaste 7 dagarna</p></header>',
     siffror: () => `
     <div class="tiles">
@@ -1252,7 +1227,7 @@ function themeSection() {
 function settingsView() {
   const s = data.settings;
   const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  return layout('settings', {
+  return blocks({
     rubrik: () => '<header class="page-head"><h1>Inställningar</h1></header>',
     'inställningar': () => `
     <section class="card list">
@@ -1312,10 +1287,6 @@ function settingsView() {
       </ol>
       <p class="muted">Då öppnas Min PT i helskärm som en vanlig app och fungerar även utan internet.</p>
     </section>`),
-    'träna-säkert': () => `
-    <section class="card list">
-      <button class="list-row action" data-action="guide">Träna säkert – råd och varningssignaler</button>
-    </section>`,
     data: () => `
     <h2 class="section-title">Din data</h2>
     <section class="card list">
@@ -1751,7 +1722,6 @@ function startWorkout(place) {
     gear: [...gearFor(place)],
     groups: [...groupsFor(place)],
     stype: 'strength',
-    busy: {},
     picking: true, // man trycker själv på övningen man ska köra
     items,
   };
@@ -1784,13 +1754,6 @@ function openPicker() {
   save();
   renderWorkout();
   $('#wk-body').scrollTop = 0;
-}
-
-/** Markera en maskin som upptagen och flytta övningen sist i kön. */
-function markBusy(w, exId) {
-  w.busy[exId] = true;
-  const i = w.items.findIndex((it) => it.exId === exId && !doneSets(it));
-  if (i >= 0) w.items.push(...w.items.splice(i, 1));
 }
 
 function openWorkout() {
@@ -1999,7 +1962,6 @@ function renderWorkout() {
 
 function drawWorkout() {
   const w = data.active;
-  w.busy ??= {};
   w.gear ??= gearFor(w.place);
   w.groups ??= groupsFor(w.place);
   if (w.picking || !w.items[w.index]) { renderPicker(); return; }
@@ -2014,23 +1976,25 @@ function drawWorkout() {
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body" id="wk-body">
-      <div class="fig big" data-ex="${ex.id}" data-play="1"></div>
-      <h2 class="wk-name">${esc(ex.name)}</h2>
-      <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>
-      ${exerciseBody(ex, true)}
-      <div class="wk-links">
+      ${blocks({
+        rubrik: () => `<h2 class="wk-name">${esc(ex.name)}</h2>
+      <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>`,
+        logga: () => (item.preview ? '' : simpleSets(ex) ? setsForm(ex, item) : `
+      <div class="sets">${item.sets.map((s, k) => setRow(ex, s, k)).join('')}</div>
+      ${inMinutes(ex) ? '' : '<button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>'}`),
+        figur: () => `<div class="fig big" data-ex="${ex.id}" data-play="1"></div>`,
+        // Musklerna går bara att trycka på när övningen visas under "Lägg till övning".
+        muskler: () => exerciseBody(ex, !!item.preview),
+        knappar: () => `<div class="wk-links">
         <button class="toggle small" data-action="wk-warmup" aria-pressed="${!!item.warmup}">Uppvärmning</button>
-        ${doneSets(item) || ex.physio || item.preview ? '' : '<button class="btn-text busy-link" data-action="busy-now">Upptagen?</button>'}
-        <button class="btn-text busy-link" data-action="pain-sheet">Gör det ont?</button>
-      </div>
-      <details class="card">
+        <button class="btn-text wk-link" data-action="pain-sheet">Gör det ont?</button>
+      </div>`,
+        'så-gör-du': () => `<details class="card">
         <summary>Så gör du</summary>
         <ol class="tips">${ex.tips.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>
-      </details>
-      ${ex.safety.length ? `<details class="card safety-card"><summary>${ICON.shield} Tänk på</summary>${safetyList(ex)}</details>` : ''}
-      ${item.preview ? '' : simpleSets(ex) ? setsForm(ex, item) : `
-      <div class="sets">${item.sets.map((s, k) => setRow(ex, s, k)).join('')}</div>
-      <button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>`}
+      </details>`,
+        'tänk-på': () => (ex.safety.length ? `<details class="card safety-card"><summary>${ICON.shield} Tänk på</summary>${safetyList(ex)}</details>` : ''),
+      })}
     </div>
     <div id="rest" class="rest" hidden></div>
     <div class="wk-bottom">
@@ -2092,12 +2056,11 @@ function renderPicker() {
       <div><h3 class="pk-title">Din kö <small>tryck på övningen du ska köra</small></h3>
       ${qi.length ? `<ul class="ex-list">${qi.map((i, n) => {
         const it = w.items[i], ex = BY_ID[it.exId];
-        return suggestionItem({ ex, reason: `${it.warmup ? 'Uppvärmning · ' : ''}${setsText(it, ex, it.sets.length)}`, busy: w.busy[ex.id] }, `
+        return suggestionItem({ ex, reason: `${it.warmup ? 'Uppvärmning · ' : ''}${setsText(it, ex, it.sets.length)}`}, `
           <div class="ex-actions">
             <div class="pk-more">
               ${btn('detail', `data-id="${ex.id}"`, `Om ${esc(ex.name)}`, ICON.info)}
               ${n ? btn('q-up', `data-k="${i}"`, `Flytta upp ${esc(ex.name)}`, ICON.up) : ''}
-              ${btn('q-busy', `data-k="${i}"`, `${esc(ex.name)} är upptagen, flytta sist`, ICON.clock)}
               ${btn('q-remove', `data-k="${i}"`, `Ta bort ${esc(ex.name)}`, ICON.remove)}
             </div>
           </div>`, `data-action="q-go" data-k="${i}"`);
@@ -2119,9 +2082,7 @@ function renderAdd() {
   const done = exercisesToday();
   const qi = queueIndexes(w);
   const queueIds = qi.map((i) => w.items[i].exId);
-  const list = pickSuggestions(w, done, queueIds);
-  const free = list.filter((x) => !x.busy);
-  const busy = list.filter((x) => x.busy);
+  const suggestions = pickSuggestions(w, done, queueIds);
   const btn = (action, attr, label, icon) => `<button class="icon-btn" data-action="${action}" ${attr} aria-label="${label}">${icon}</button>`;
   const actions = (ex) => `
     <div class="ex-actions">
@@ -2141,22 +2102,19 @@ function renderAdd() {
       <p class="hint center">Tryck på en övning för att läsa om den och lägga till den, eller på + för att lägga den direkt i kön.</p>
       <section class="card controls pk-controls">${pickControls(w)}</section>
       <div><h3 class="pk-title">Förslag</h3>
-      ${!w.gear.length && w.stype !== 'stretch' ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : free.length ? `
-        <ul class="ex-list">${free.map((x) => suggestionItem(x, `
+      ${!w.gear.length && w.stype !== 'stretch' ? '<p class="note warn">Välj minst en typ av utrustning.</p>' : suggestions.length ? `
+        <ul class="ex-list">${suggestions.map((x) => suggestionItem(x, `
           <div class="ex-actions">
             <div class="pk-more">
               ${btn('detail', `data-id="${x.ex.id}"`, `Om ${esc(x.ex.name)}`, ICON.info)}
               ${btn('s-queue', `data-id="${x.ex.id}"`, `Lägg ${esc(x.ex.name)} i kön`, ICON.plus)}
-              ${btn('s-busy', `data-id="${x.ex.id}"`, `${esc(x.ex.name)} är upptagen`, ICON.clock)}
             </div>
           </div>`, `data-action="s-go" data-id="${x.ex.id}"`)).join('')}</ul>`
         : '<p class="empty">Inga fler övningar passar. Välj en annan typ, fler muskelgrupper eller mer utrustning.</p>'}
       </div>
-      ${rehabSuggestions(w.place, [...queueIds, ...done.map((d) => d.exId), ...free.map((x) => x.ex.id)]).map(([area, list]) => `
+      ${rehabSuggestions(w.place, [...queueIds, ...done.map((d) => d.exId), ...suggestions.map((x) => x.ex.id)]).map(([area, list]) => `
         <div><h3 class="pk-title">Fysio för ${AREAS[area].the}</h3>
         <ul class="ex-list">${list.map((ex) => suggestionItem({ ex, reason: `Stärker och avlastar ${AREAS[area].the}` }, actions(ex), `data-action="s-go" data-id="${ex.id}"`)).join('')}</ul></div>`).join('')}
-      ${busy.length ? `<div><h3 class="pk-title">Upptaget just nu</h3>
-        <ul class="ex-list">${busy.map((x) => suggestionItem(x, `<div class="ex-actions"><button class="go-btn soft" data-action="s-free" data-id="${x.ex.id}">Ledig nu</button></div>`)).join('')}</ul></div>` : ''}
       <button class="btn secondary" data-action="any-exercise">Välj övningar från listan</button>
       ${done.length ? `<div><h3 class="pk-title">Kört idag</h3>${todaySummary(done)}</div>` : ''}
       ${sessionBodyCard(w)}
@@ -2567,7 +2525,7 @@ document.addEventListener('click', (e) => {
       const ids = rehabSuggestions('home', [], 3).flatMap(([, list]) => list.map((ex) => ex.id));
       const items = newItems([...new Set(ids)].map((exId) => ({ exId, sets: BY_ID[exId].sets })));
       data.active = { place: 'home', start: Date.now(), index: 0, restEnd: null, restBeeped: false,
-        gear: ['body'], groups: [], busy: {}, picking: false, items };
+        gear: ['body'], groups: [], picking: false, items };
       save(); openWorkout(); break;
     }
     case 'priority': data.settings.priority = t.dataset.value; save(); render(); break;
@@ -2738,11 +2696,7 @@ document.addEventListener('click', (e) => {
       openPicker(); break;
     }
     case 'pk-back': w.picking = false; save(); renderWorkout(); break;
-    case 'busy-now':
-      markBusy(w, w.items[w.index].exId);
-      w.index = Math.max(0, w.items.filter((it) => doneSets(it)).length - 1);
-      openPicker(); break;
-    case 'q-go': delete w.busy[w.items[k].exId]; delete w.items[k].fresh; delete w.items[k].preview; runItem(w, w.items[k]); break;
+    case 'q-go': delete w.items[k].fresh; delete w.items[k].preview; runItem(w, w.items[k]); break;
     // Vald under Lägg till övning: visas utan set och reps, och Lägg till lägger den i kön.
     case 's-go': runItem(w, { ...newItem(t.dataset.id), fresh: true, preview: true }); break;
     case 'ex-add': {
@@ -2767,8 +2721,6 @@ document.addEventListener('click', (e) => {
     }
     case 'bm-queue': closeSheet(); w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
     case 's-queue': w.items.push(newItem(t.dataset.id)); save(); renderWorkout(); toast('Lagd i kön'); break;
-    case 's-busy': markBusy(w, t.dataset.id); save(); renderWorkout(); break;
-    case 's-free': delete w.busy[t.dataset.id]; save(); renderWorkout(); break;
     case 'add-open': w.adding = true; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
     case 'add-close': w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
     case 'd-go': delete w.items[k].fresh; w.index = k; w.snap = JSON.stringify(w.items[k].sets); w.picking = false; w.adding = false; save(); renderWorkout(); $('#wk-body').scrollTop = 0; break;
@@ -2780,7 +2732,6 @@ document.addEventListener('click', (e) => {
       if (p > 0) [w.items[qi[p - 1]], w.items[k]] = [w.items[k], w.items[qi[p - 1]]];
       save(); renderWorkout(); break;
     }
-    case 'q-busy': markBusy(w, w.items[k].exId); save(); renderWorkout(); break;
     case 'q-remove': {
       w.items.splice(k, 1);
       if (w.index >= k && w.index > 0) w.index--;
@@ -3089,7 +3040,6 @@ $('#workout').addEventListener('touchend', (e) => {
 for (const c of data.customExercises) addCustomExercise(c);
 ensurePain();
 seedPhysio();
-await loadLayouts();
 render();
 if (data.active) openWorkout(); // återuppta pågående pass
 

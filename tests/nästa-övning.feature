@@ -26,11 +26,6 @@ Egenskap: Förslag på nästa övning under passet
     När jag ber om förslag på nästa övning
     Så ska "seated-row" inte finnas bland förslagen
 
-  Scenario: En upptagen maskin hamnar sist
-    Givet att maskinen för "leg-press" är upptagen
-    När jag ber om förslag på nästa övning
-    Så ska "leg-press" vara sist och markerad som upptagen
-
   Scenario: Bara valda muskelgrupper föreslås
     Givet att jag har valt muskelgrupperna "back"
     När jag ber om förslag på nästa övning

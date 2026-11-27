@@ -1,10 +1,9 @@
 # Specifikation: Min PT
 
-Version: 1.0 (2026-11-27), gäller appversion `minpt-v48`.
 
 ## 1. Syfte
 
-Min PT är en personlig tränare i mobilen. Appen föreslår styrkepass, konditionspass och simpass, visar hur övningarna görs, loggar träningen och ger omdöme efter varje pass. Den tar hänsyn till ont i axlar, rygg och knän och till vilken utrustning som finns.
+Min PT är en personlig tränare och fysioterapeut i mobilen. Appen föreslår styrkepass, konditionspass och simpass, visar hur övningarna görs, loggar träningen och ger omdöme efter varje pass. Den tar hänsyn till ont i axlar, rygg och knän och till vilken utrustning som finns.
 
 Målgrupp: en motionär som tränar på gym, hemma, simmar och går, och som vill ha förslag i stället för fasta program.
 
@@ -27,7 +26,7 @@ Appen har en flikrad längst ner med fem flikar:
 
 | Flik | Innehåll |
 |---|---|
-| Idag | Startsida: dagens plan, val av aktivitet, mål, steg, fysio, Träna säkert |
+| Idag | Startsida: dagens plan, val av aktivitet, mål, steg, fysio |
 | Planera | Prioritering, veckoförslag, mål, sparade pass |
 | Logg | Siffror, diagram för senaste 7 dagarna, logga i efterhand, historik |
 | Grafer | Minuter per vecka, set per muskelgrupp, utveckling per övning, steg |
@@ -35,26 +34,18 @@ Appen har en flikrad längst ner med fem flikar:
 
 Undervyer (Gym, Hemma, Kondition, Simma, Fysio) öppnas från startsidan eller Planera och har en tillbaka-knapp. Detaljer, listor och formulär öppnas i ett bottenark.
 
-### 3.1 Layoutfiler
+### 3.1 Block på varje sida
 
-Varje flik har en fil i `web/layout/` (`start.json`, `plan.json`, `log.json`, `stats.json`, `settings.json`):
-
-```json
-{ "visa": ["rubrik", "dagens", "val"], "dolda": [] }
-```
-
-- Blocken i `visa` visas i den ordningen.
-- `dolda` är bara dokumentation och används inte av appen.
-- Ett okänt block hoppas över och ger varningen `okänt block "<namn>"` i konsolen.
-- Saknas filen visas alla block i kodens ordning.
+Varje sida består av block. Vilka block som visas och i vilken ordning står i tabellen nedan och är hårdkodat i appen. Blocken visas uppifrån och ned i den ordning de står.
 
 | Sida | Block |
 |---|---|
-| Idag | `rubrik`, `dagens`, `val`, `mål`, `steg`, `fysio`, `träna-säkert` |
+| Idag | `rubrik`, `dagens`, `val`, `mål`, `steg`, `fysio` |
 | Planera | `rubrik`, `prioritering`, `veckan`, `mål`, `sparade-pass` |
 | Logg | `rubrik`, `siffror`, `diagram`, `logga`, `historik` |
 | Grafer | `rubrik`, `siffror`, `minuter-per-vecka`, `set-per-muskelgrupp`, `övningar`, `steg` |
-| Inställningar | `rubrik`, `inställningar`, `färgtema`, `installera`, `träna-säkert`, `data` |
+| Inställningar | `rubrik`, `inställningar`, `färgtema`, `installera`, `data` |
+| Övning under passet | `rubrik`, `logga`, `figur`, `muskler`, `knappar`, `så-gör-du`, `tänk-på` |
 
 ## 4. Begrepp
 
@@ -81,7 +72,7 @@ Varje flik har en fil i `web/layout/` (`start.json`, `plan.json`, `log.json`, `s
 - F1.4 Mål visas med hur långt man har kommit.
 - F1.5 Stegkort: dagens steg mot stegmålet och de senaste 7 dagarna. "Lägg in" öppnar ett fält "Antal steg" och "Spara" sparar värdet för dagens datum.
 - F1.6 Fysiokort: sammanfattning av ont och länk till Fysio.
-- F1.7 Länk till guiden Träna säkert.
+- F1.7 Guiden Träna säkert öppnas från en övnings detaljer ("Läs mer om att träna säkert").
 
 ### 5.2 Styrkepass (gym och hemma)
 
@@ -93,12 +84,25 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F2.3 Om "Fysioövningar i alla pass" är på börjar gym- och hemmapass med övningarna i det sparade fysiopasset för platsen.
 - F2.4 Under passet öppnas ingen övning automatiskt. Användaren trycker på den övning som ska köras, i kön eller bland förslagen.
 
-**Kö och förslag**
+**Kö**
 - F2.5 Användaren kan lägga övningar i en kö och flytta om dem.
-- F2.6 "Lägg till övning" visar förslag. En vald övning visas utan val för set och reps, och knappen heter "Lägg till" (inte "Klar"). Övningen hamnar i kön utan klara set.
+
+**Lägg till övning**
+- F2.6.1 Knappen "Lägg till övning" i passet öppnar sidan "Lägg till övning". Knappen "Passet" leder tillbaka.
+- F2.6.2 Överst står hjälptexten "Tryck på en övning för att läsa om den och lägga till den, eller på + för att lägga den direkt i kön."
+- F2.6.3 Under hjälptexten väljer användaren typ av övning: Styrka, Cirkel, HIIT, Kondition, Balans eller Stretch.
+- F2.6.4 Under typen väljer användaren muskelgrupper. Inget valt betyder alla. Valet visas inte för Kondition.
+- F2.6.5 Under muskelgrupperna väljer användaren vilken utrustning som ska användas. Valet visas inte för Stretch.
+- F2.6.6 Under det visas en lista med automatiska förslag som kompletterar de övningar som redan finns i passet (se 6.2). Varje förslag har knapparna "Om övningen" och + (lägg i kön).
+- F2.6.7 Har användaren ont visas "Fysio för <kroppsdel>" med rehabövningar under förslagen (se F7.3).
+- F2.6.8 Under förslagen finns knappen "Välj övningar från listan".
 - F2.7 Alla övningar kan väljas ur en lista med bockar. Sökningen träffar namn och andra namn (t.ex. *liggande hantelpress*, *rodd*, *benspark*).
-- F2.8 Är en maskin upptagen trycker användaren på klockan. Övningen flyttas sist och markeras som upptagen, och andra förslag visas.
 - F2.9 Under "Valfri övning…" kan egna övningar väljas.
+- F2.6.9 Under det visas "Kört idag" om något är kört idag.
+- F2.6.10 Sist visas "Musklerna i passet". Kroppskartan visar musklerna i de övningar som har klara set. Användaren kan växla mellan "Det här passet" och "Förra passet".
+- F2.6.11 Ett tryck på en muskel i "Musklerna i passet" visar förslag på övningar som tränar den muskeln.
+- F2.6.12 Ett tryck på en övning visar övningen utan val för set och reps. Knappen längst ned heter "Lägg till" (inte "Klar").
+- F2.6.13 "Lägg till" lägger övningen i kön utan klara set och går tillbaka till passet.
 
 **Logga en övning**
 - F2.10 En styrkeövning anges med set, reps och vikt en gång för hela övningen, med knapparna "Fler set", "Färre set", "Fler reps", "Färre reps" och ett viktfält. Standardvärden kommer från övningen (t.ex. bänkpress 4 set × 8 reps). Vikten fylls i från senaste gången övningen kördes, annars 0 kg.
@@ -108,6 +112,12 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F2.14 Skärmen hålls tänd under passet (Wake Lock).
 - F2.15 Användaren kan svepa mellan övningarna.
 - F2.16 "Gör det ont?" mitt i en övning låter användaren ange var det gör ont och välja en annan övning.
+
+**Övningsvyn**
+- F2.22 Övningsvyn under passet visar uppifrån: övningens namn, loggningen (set, reps, vikt eller tid), streckgubben, kroppskartan och sist knapparna Uppvärmning och Gör det ont? samt "Så gör du" och "Tänk på" (se 3.1).
+- F2.23 Kroppskartan i övningsvyn är hälften så stor som på andra ställen.
+- F2.24 När en övning körs går det inte att trycka på musklerna i kroppskartan, och texten "Tryck på en muskel för att få förslag på övningar." visas inte. När en övning visas under "Lägg till övning" går det att trycka på musklerna och texten visas.
+- F2.25 Övningar som mäts i minuter (roddmaskin och motionscykel) har ingen knapp "+ Lägg till set". Övningar som mäts i sekunder (t.ex. planka) har kvar knappen.
 
 **Uppvärmning**
 - F2.17 Varje övning kan markeras som uppvärmning. Roddmaskin och motionscykel blir uppvärmning automatiskt om de körs först.
@@ -188,7 +198,7 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F8.2 Varje övning har namn, muskelgrupper, utrustning, standard för set och reps, instruktion och en animerad streckgubbe (SVG).
 - F8.3 Varje övning har en lista "Tänk på" med vanliga misstag och hur man skyddar knän, rygg och axlar.
 - F8.4 Varje styrkeövning visar en kroppskarta framifrån och bakifrån där huvudmuskler och hjälpmuskler är markerade.
-- F8.5 Under passet visar kroppskartan vilka muskler som tränats i passet och förra passet. Tryck på en muskel ger förslag på övningar för den, som kan köras direkt eller läggas i kön.
+- F8.5 Under passet visar kroppskartan vilka muskler som tränats i passet och förra passet.
 - F8.6 Egna övningar skapas med namn, muskelgrupper, utrustning och om de är tidsatta eller enbensövningar. De föreslås inte automatiskt.
 
 ### 5.9 Logg
@@ -251,7 +261,7 @@ Hemma är bara övningar utan utrustning tillgängliga, plus de som kräver utru
 
 ### 6.2 Nästa övning under passet
 
-Indata: övningar klara idag (med antal set), valda muskelgrupper (tom = alla utom kondition), vald utrustning, ont, mål, prioritering, kön och upptagna maskiner.
+Indata: övningar klara idag (med antal set), valda muskelgrupper (tom = alla utom kondition), vald utrustning, ont, mål, prioritering och kön.
 
 Urval:
 - Bara övningar med vald utrustning, tillåtna enligt 6.1, med huvudmuskel bland de valda.
@@ -284,7 +294,6 @@ Motsatta mönster: horisontell press ↔ horisontellt drag, vertikal press ↔ v
 Resultat:
 - 5 förslag, högst två per muskelgrupp om flera grupper är valda.
 - I början av passet ska förslagen täcka minst 3 muskelgrupper.
-- Upptagna maskiner läggs sist och markeras.
 
 ### 6.3 Veckoförslag
 
@@ -380,7 +389,7 @@ Testerna är skrivna i Gherkin på svenska i `tests/` och körs med Cucumber, lo
 | Fil | Krav som testas |
 |---|---|
 | `appen.feature` | T5, kap. 3, 3.1, F1.5, 5.11 (mörkt läge) |
-| `gympass.feature` | F2.1, F2.2, F2.6, F2.10–F2.12 |
+| `gympass.feature` | F2.1, F2.2, F2.6.12, F2.6.13, F2.10–F2.12, F2.22–F2.25 |
 | `nästa-övning.feature` | 6.2 |
 | `smärta.feature` | 6.1 |
 | `simpass.feature` | F5.1–F5.5 |

@@ -42,14 +42,13 @@ Then(/^(?:ska )?övningen "([^"]+)" vara tillgänglig$/, function (id) {
 Given('att jag har utrustningen {string}', function (s) { this.gear = list(s); });
 Given('att jag har kört {string} med {int} set idag', function (id, sets) { ex(id); this.done.push({ exId: id, sets }); });
 Given('att {string} ligger i kön', function (id) { ex(id); this.exclude.push(id); });
-Given('att maskinen för {string} är upptagen', function (id) { ex(id); this.busy[id] = true; });
 Given('att jag har valt muskelgrupperna {string}', function (s) { this.groups = list(s); });
 Given('att jag har målet {string} för {string}', function (label, id) { ex(id); this.goals.push({ exId: id, label }); });
 
 When('jag ber om förslag på nästa övning', function () {
   this.suggestions = suggestNext({
     done: this.done, groups: this.groups, gear: this.gear, pain: this.pain,
-    goals: this.goals, exclude: this.exclude, busy: this.busy,
+    goals: this.goals, exclude: this.exclude,
   });
 });
 
@@ -63,12 +62,6 @@ Then('förslagen ska täcka minst {int} muskelgrupper', function (n) {
 Then('ska {string} inte finnas bland förslagen', function (id) { assert.ok(!ids(this).includes(id), ids(this).join(', ')); });
 Then(/^(?:ska )?något förslag ha skälet "([^"]+)"$/, function (reason) {
   assert.ok(this.suggestions.some((s) => s.reason === reason), this.suggestions.map((s) => `${s.ex.id}: ${s.reason}`).join('\n'));
-});
-Then('ska {string} vara sist och markerad som upptagen', function (id) {
-  const last = this.suggestions.at(-1);
-  assert.equal(last.ex.id, id);
-  assert.equal(last.busy, true);
-  assert.ok(this.suggestions.slice(0, -1).every((s) => !s.busy));
 });
 Then('ska alla förslag ha huvudmuskeln {string}', function (m) {
   assert.ok(this.suggestions.length > 0);

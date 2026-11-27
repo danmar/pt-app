@@ -21,17 +21,10 @@ Egenskap: Appen i webbläsaren
       | Grafer        | Grafer        |
       | Inställningar | Inställningar |
 
-  Scenario: Layoutfilen styr vilka block som syns och i vilken ordning
-    Givet att layoutfilen för startsidan visar "steg, rubrik"
-    Och att jag öppnar appen med tom data
-    Så ska stegkortet komma före rubriken
-    Och knapparna för Gym och Hemma ska inte synas
-
-  Scenario: Ett felstavat block hoppas över med en varning
-    Givet att layoutfilen för startsidan visar "rubrik, stg"
-    Och att jag öppnar appen med tom data
-    Så ska jag se texten "Vad vill du göra idag?"
-    Och konsolen ska ha en varning om "okänt block \"stg\""
+  Scenario: Startsidan visar blocken i ordningen i specen
+    Givet att jag öppnar appen med tom data
+    Så ska rubriken komma före valen och valen före stegkortet
+    Och ska jag inte se texten "Uppvärmning, knäna och när du ska stoppa"
 
   Scenario: Lägga in dagens steg
     Givet att jag öppnar appen med tom data

@@ -6,10 +6,6 @@ export const KEY = 'minpt-data-v1';
 export const exact = (s) => new RegExp(`^\\s*${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
 export const readData = (page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), KEY);
 
-Given('att layoutfilen för startsidan visar {string}', function (s) {
-  this.layoutStart = { visa: s.split(',').map((x) => x.trim()), dolda: [] };
-});
-
 Given('att jag öppnar appen med tom data', async function () { await openApp(this); });
 
 async function openApp(world) {
@@ -17,12 +13,8 @@ async function openApp(world) {
   world.page = page;
   page.on('console', (m) => {
     if (m.type() === 'error') world.consoleErrors.push(m.text());
-    if (m.type() === 'warning') world.consoleWarnings.push(m.text());
   });
   page.on('pageerror', (e) => world.consoleErrors.push(String(e)));
-  if (world.layoutStart) {
-    await page.route('**/layout/start.json', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(world.layoutStart) }));
-  }
   await page.goto(world.baseUrl);
   try {
     await page.waitForFunction(() => document.querySelector('#view')?.children.length > 0, null, { timeout: 5000 });
@@ -58,6 +50,10 @@ Then('ska jag se texten {string}', async function (text) {
   await this.page.waitForFunction((t) => document.body.innerText.replace(/\s+/g, ' ').includes(t), text, { timeout: 5000 });
 });
 
+Then('ska jag inte se texten {string}', async function (text) {
+  assert.ok(!(await this.page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '))).includes(text), text);
+});
+
 Then('ska jag se knappen {string}', async function (text) {
   await this.page.locator('button:visible').filter({ hasText: text }).first().waitFor();
 });
@@ -66,21 +62,12 @@ Then('konsolen ska inte ha några fel', function () {
   assert.deepEqual(this.consoleErrors, []);
 });
 
-Then('konsolen ska ha en varning om {string}', function (text) {
-  assert.ok(this.consoleWarnings.some((w) => w.includes(text)), this.consoleWarnings.join('\n'));
-});
-
-Then('ska stegkortet komma före rubriken', async function () {
-  const before = await this.page.evaluate(() => {
-    const steps = document.querySelector('#view .steps-card');
-    const head = document.querySelector('#view .page-head');
-    return !!(steps && head && steps.compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING);
+Then('ska rubriken komma före valen och valen före stegkortet', async function () {
+  const order = await this.page.evaluate(() => {
+    const all = [...document.querySelectorAll('#view *')];
+    return ['.page-head', '.choices', '.steps-card'].map((sel) => all.indexOf(document.querySelector(`#view ${sel}`)));
   });
-  assert.ok(before);
-});
-
-Then('knapparna för Gym och Hemma ska inte synas', async function () {
-  assert.equal(await this.page.locator('#view .choices').count(), 0);
+  assert.ok(order[0] >= 0 && order[0] < order[1] && order[1] < order[2], String(order));
 });
 
 Then('datan ska ha {int} steg idag', async function (n) {

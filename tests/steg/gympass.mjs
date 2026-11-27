@@ -79,3 +79,31 @@ Then('ska {int} set vara klara för varje ben', async function (n) {
   const sets = await openSets(this.page);
   for (const side of ['H', 'V']) assert.equal(sets.filter((x) => x.side === side && x.done).length, n, side);
 });
+
+When('jag väljer uppvärmningen {string}', async function (name) {
+  await this.page.locator('#workout [data-action="w-go"]').filter({ has: exercise(this.page, name) }).click();
+  await this.page.locator('#workout .wk-name').filter({ hasText: exact(name) }).waitFor();
+});
+
+Then('ska övningsvyn visa namn, loggning, figur och muskler i den ordningen', async function () {
+  const order = await this.page.locator('#wk-body').evaluate((body) => {
+    const parts = { namn: '.wk-name', loggning: '.set-form', figur: '.fig', muskler: '.body-map' };
+    const all = [...body.querySelectorAll('*')];
+    return Object.entries(parts).map(([k, sel]) => [k, all.indexOf(body.querySelector(sel))]);
+  });
+  for (const [k, i] of order) assert.ok(i >= 0, `${k} saknas`);
+  assert.deepEqual([...order].sort((a, b) => a[1] - b[1]).map(([k]) => k), order.map(([k]) => k));
+});
+
+Then('ska kroppskartan vara hälften så stor', async function () {
+  const { map, fig } = await this.page.locator('#wk-body').evaluate((body) => ({
+    map: body.querySelector('.body-map').getBoundingClientRect().width,
+    fig: body.querySelector('.fig').getBoundingClientRect().width,
+  }));
+  assert.ok(map <= fig / 2 + 1, `kroppskartan är ${map}px, figuren ${fig}px`);
+});
+
+Then(/^ska det (inte )?gå att trycka på musklerna$/, async function (not) {
+  const n = await this.page.locator('#wk-body .body-map [data-action="body-muscle"]').count();
+  if (not) assert.equal(n, 0); else assert.ok(n > 0);
+});

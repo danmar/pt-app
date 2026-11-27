@@ -36,14 +36,14 @@ Stegen i `steg/` importerar koden direkt från `../web/`, så testerna provar sa
 
 | Fil | Testar | Steg i |
 |---|---|---|
-| `gympass.feature` | Ett pågående gympass i Chromium: lägga till övningar, set, reps och vikt, Set klart, enbensövningar | `gympass.mjs` |
+| `gympass.feature` | Ett pågående gympass i Chromium: lägga till övningar, set, reps och vikt, Set klart, enbensövningar, övningsvyns ordning och kroppskarta | `gympass.mjs` |
 | `nästa-övning.feature` | Förslag på nästa övning under passet | `logik.mjs` |
 | `omdöme.feature` | Omdöme och tips efter passet | `logik.mjs` |
 | `smärta.feature` | Övningar som tas bort när du har ont, och utrustning hemma | `logik.mjs` |
 | `simpass.feature` | Simpassens delar och längd | `logik.mjs` |
 | `veckoförslag.feature` | Veckoförslaget, vilodagar och dagar du lagt in själv | `logik.mjs` |
 | `lagring.feature` | Export och import av säkerhetskopia | `lagring.mjs` |
-| `appen.feature` | Appen i Chromium: start utan konsolfel, flikar, layoutfiler, steg och färgtema | `webbläsare.mjs` |
+| `appen.feature` | Appen i Chromium: start utan konsolfel, flikar, blockordning, steg och färgtema | `webbläsare.mjs` |
 
 ## Taggar
 

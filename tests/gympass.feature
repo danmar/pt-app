@@ -55,3 +55,29 @@ Egenskap: Gympass
     När jag trycker på "Set 1 av 3 klart"
     Så ska 1 set vara klara för varje ben
     Och konsolen ska inte ha några fel
+
+  Scenario: Övningsvyn visar namn, loggning, figur och muskler i den ordningen
+    När jag lägger till "Bänkpress" från listan
+    Och kör "Bänkpress" från kön
+    Så ska övningsvyn visa namn, loggning, figur och muskler i den ordningen
+    Och ska kroppskartan vara hälften så stor
+    Och ska det inte gå att trycka på musklerna
+    Och ska jag inte se texten "Tryck på en muskel för att få förslag på övningar."
+    Och konsolen ska inte ha några fel
+
+  Scenario: Under Lägg till övning går det att trycka på musklerna
+    När jag trycker på "Lägg till övning"
+    Och väljer det första förslaget
+    Så ska det gå att trycka på musklerna
+    Och ska jag se texten "Tryck på en muskel för att få förslag på övningar."
+    Och ska kroppskartan vara hälften så stor
+
+  Scenario: Roddmaskinen har ingen knapp för att lägga till set
+    När jag väljer uppvärmningen "Roddmaskin"
+    Så ska jag inte se knappen "+ Lägg till set"
+    Och konsolen ska inte ha några fel
+
+  Scenario: Plankan har kvar knappen för att lägga till set
+    När jag lägger till "Plankan" från listan
+    Och kör "Plankan" från kön
+    Så ska jag se knappen "+ Lägg till set"
