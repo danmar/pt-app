@@ -9,7 +9,7 @@ const defaults = () => ({
   steps: {},     // { 'ÅÅÅÅ-MM-DD': antal }
   favorites: { gym: [...DEFAULT_FAVORITES.gym], home: [...DEFAULT_FAVORITES.home] }, // favoritövningar per plats, i den ordning de markerades
   customExercises: [], // egna övningar: { id, name, muscles: [grupp], gear, timed }
-  settings: { hasDumbbells: false, restSeconds: 90, stepGoal: 8000, kneeFriendly: true },
+  settings: { restSeconds: 90, stepGoal: 8000, kneeFriendly: true },
   active: null,  // pågående pass, sparas så att det överlever om appen stängs
 });
 
@@ -21,6 +21,8 @@ const DEFAULT_FAVORITES = {
 // Fält och inställningar från planeringen, som inte finns längre.
 const OLD_SETTINGS = ['physioAlways', 'seeded', 'priority', 'weekDays', 'weekKinds'];
 const OLD_PHYSIO = { gym: 'fysio-gym', home: 'fysio-hemma' };
+// Gamla inställningar för utrustning hemma. De blir utrustningsvalet för hemma (SPEC.md D1).
+const OLD_GEAR = { hasDumbbells: 'dumbbells', hasKettlebell: 'kettlebell', hasBoard: 'board', hasBall: 'ball', hasBand: 'band' };
 
 /** Favoriter: sparade, annars övningarna i de gamla fysiopassen, annars standard (SPEC.md D1). */
 function favoritesOf(raw) {
@@ -53,7 +55,11 @@ function normalize(raw) {
 
 function withoutOld(settings) {
   const out = { ...settings };
-  for (const k of OLD_SETTINGS) delete out[k];
+  if (!Array.isArray(out.gear?.home)) {
+    const home = Object.entries(OLD_GEAR).filter(([k]) => out[k]).map(([, g]) => g);
+    if (home.length) out.gear = { ...out.gear, home: ['body', ...home] };
+  }
+  for (const k of [...OLD_SETTINGS, ...Object.keys(OLD_GEAR)]) delete out[k];
   return out;
 }
 

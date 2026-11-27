@@ -26,7 +26,7 @@ Then('ska alla fysioövningar vara tillåtna', function () {
 });
 
 Given('att jag tränar hemma', function () { this.place = 'home'; });
-Given('att jag inte har hantlar', function () { this.opts.hasDumbbells = false; });
+Given('att jag inte har hantlar', function () { this.opts.gear = ['body', 'kettlebell', 'board', 'ball', 'band']; });
 
 Then('ska ingen tillgänglig övning kräva hantlar', function () {
   const bad = EXERCISES.filter((e) => isAvailable(e, this.place, this.opts) && e.equipment === 'dumbbells');

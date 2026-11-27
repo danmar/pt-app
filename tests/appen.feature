@@ -43,3 +43,9 @@ Egenskap: Appen i webbläsaren
     Och trycker på "Mörkt"
     Så ska sidan vara i mörkt läge
     Och mörkt läge ska vara sparat
+
+  Scenario: Inställningar har inga val för utrustning
+    Givet att jag öppnar appen med tom data
+    När jag trycker på fliken "Inställningar"
+    Så ska jag se texten "Vila mellan set"
+    Men ska jag inte se texten "hemma"

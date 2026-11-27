@@ -337,7 +337,7 @@ function cardioRow(c) {
 const BALANCE_GEAR = ['board'];
 // Utrustning i balanspasset.
 const BALANCE_PASS_GEAR = ['body', 'board', 'ball'];
-const exOpts = (place) => ({ hasDumbbells: data.settings.hasDumbbells, hasKettlebell: data.settings.hasKettlebell, hasBoard: data.settings.hasBoard, hasBall: data.settings.hasBall, hasBand: data.settings.hasBand, pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
+const exOpts = (place) => ({ pain: data.settings.pain, ...(place ? { gear: gearFor(place) } : {}) });
 const painNames = (areas) => areas.map((a) => AREAS[a].the).join(' och ');
 const painWarn = (ex) => {
   const areas = painAreasFor(ex, data.settings.pain);
@@ -520,7 +520,7 @@ function painSheet(ex) {
 }
 
 // ---- Fri styrketräning ------------------------------------------------------
-const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body', ...(data.settings.hasDumbbells ? ['dumbbells'] : []), ...(data.settings.hasKettlebell ? ['kettlebell'] : []), ...(data.settings.hasBoard ? ['board'] : []), ...(data.settings.hasBall ? ['ball'] : []), ...(data.settings.hasBand ? ['band'] : [])]);
+const defaultGear = (place) => (place === 'gym' ? [...GEAR_IDS] : ['body']);
 const gearFor = (place) => data.settings.gear?.[place] ?? defaultGear(place);
 const groupsFor = (place) => data.settings.groups?.[place] ?? [];
 const toggle = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -921,26 +921,6 @@ function settingsView() {
         <span class="row-text">Ont i axlar, rygg eller knän<small>${painSummary() || 'Inget just nu'}</small></span>
         <span class="chev">${ICON.chevronR}</span>
       </button>
-      <label class="list-row">
-        <span>Jag har hantlar hemma</span>
-        <input type="checkbox" class="switch" data-change="dumbbells" ${s.hasDumbbells ? 'checked' : ''}>
-      </label>
-      <label class="list-row">
-        <span>Jag har kettlebell hemma</span>
-        <input type="checkbox" class="switch" data-change="kettlebell" ${s.hasKettlebell ? 'checked' : ''}>
-      </label>
-      <label class="list-row">
-        <span>Jag har balansplatta hemma</span>
-        <input type="checkbox" class="switch" data-change="board" ${s.hasBoard ? 'checked' : ''}>
-      </label>
-      <label class="list-row">
-        <span>Jag har gymboll hemma</span>
-        <input type="checkbox" class="switch" data-change="ball" ${s.hasBall ? 'checked' : ''}>
-      </label>
-      <label class="list-row">
-        <span>Jag har gummiband hemma</span>
-        <input type="checkbox" class="switch" data-change="band" ${s.hasBand ? 'checked' : ''}>
-      </label>
       <div class="list-row">
         <span>Vila mellan set</span>
         <div class="stepper">
@@ -1042,7 +1022,7 @@ function librarySheet(place) {
 
 function libraryList(place, query) {
   const q = query.trim().toLowerCase();
-  const list = EXERCISES.filter((e) => (e.physio || isAvailable(e, place, exOpts())) && (place === 'gym' || e.equipment !== 'gym') && matchesQuery(e, q));
+  const list = EXERCISES.filter((e) => (e.physio || isAvailable(e, place, exOpts(place === 'gym' ? null : place))) && matchesQuery(e, q));
   return MUSCLE_IDS.map((m) => {
     const items = list.filter((e) => e.muscles[0] === m);
     if (!items.length) return '';
@@ -2488,19 +2468,6 @@ document.addEventListener('change', (e) => {
     case 'steps-date':
       if (t.value) openSheet(stepsSheet(t.value));
       break;
-    case 'dumbbells':
-      data.settings.hasDumbbells = t.checked; save(); ui.plans.home = null; ui.iplans.home = null; break;
-    case 'kettlebell':
-    case 'board':
-    case 'ball':
-    case 'band': {
-      const gear = t.dataset.change;
-      data.settings[{ kettlebell: 'hasKettlebell', board: 'hasBoard', ball: 'hasBall', band: 'hasBand' }[gear]] = t.checked;
-      // Följ med i hemmavalet av utrustning om man redan valt där.
-      const home = data.settings.gear?.home;
-      if (home && t.checked !== home.includes(gear)) setPref('gear', 'home', toggle(home, gear));
-      save(); ui.plans.home = null; ui.iplans.home = null; break;
-    }
     case 'knee':
       data.settings.kneeFriendly = t.checked; save();
       ui.plans.gym = null; ui.iplans.gym = null;

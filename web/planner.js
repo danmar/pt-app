@@ -35,9 +35,9 @@ export function daysSinceTrained(sessions, now = new Date()) {
  * skip: muskelgrupper som inte ska väljas (t.ex. ben när ett fysiopass redan tränar dem).
  * count: antal övningar (annars efter passlängd).
  */
-export function suggest({ place, minutes, focus, sessions, hasDumbbells, kneeFriendly, skip = [], count: wanted }) {
+export function suggest({ place, minutes, focus, sessions, kneeFriendly, skip = [], count: wanted }) {
   const count = wanted ?? COUNT[minutes] ?? 6;
-  const candidates = EXERCISES.filter((e) => !e.physio && !e.noAuto && !skip.includes(primary(e)) && isAvailable(e, place, { hasDumbbells, kneeFriendly }));
+  const candidates = EXERCISES.filter((e) => !e.physio && !e.noAuto && !skip.includes(primary(e)) && isAvailable(e, place, { kneeFriendly }));
   const rest = daysSinceTrained(sessions);
   const chosen = [];
 

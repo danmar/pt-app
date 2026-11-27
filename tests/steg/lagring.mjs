@@ -30,6 +30,9 @@ Then(/^(?:ska )?"([^"]+)" vara en tom lista$/, function (key) { assert.deepEqual
 Then(/^(?:ska )?favoriterna (på gym|hemma) vara "([^"]*)"$/, function (where, ids) {
   assert.deepEqual(this.storage.data.favorites[where === 'hemma' ? 'home' : 'gym'], ids.split(',').map((x) => x.trim()).filter(Boolean));
 });
+Then('ska utrustningen hemma vara {string}', function (ids) {
+  assert.deepEqual(this.storage.data.settings.gear?.home, ids.split(',').map((x) => x.trim()));
+});
 const names = (s) => s.split(/, | eller /).map((x) => x.replaceAll('"', '').trim());
 Then(/^datan ska inte innehålla (.+)$/, function (keys) {
   for (const k of names(keys)) assert.ok(!(k in this.storage.data), k);

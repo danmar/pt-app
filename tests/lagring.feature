@@ -44,3 +44,20 @@ Egenskap: Säkerhetskopia
     Och favoriterna hemma vara "single-leg-mini-squat, wall-sit-high"
     Och datan ska inte innehålla "saved", "week" eller "goals"
     Och inställningarna ska inte innehålla "physioAlways", "priority" eller "weekDays"
+
+  Scenario: Utrustningen från de gamla inställningarna blir vald hemma
+    Givet en tom app
+    När jag importerar en säkerhetskopia med innehållet:
+      """
+      { "settings": { "hasDumbbells": true, "hasBand": true, "hasBall": false } }
+      """
+    Så ska utrustningen hemma vara "body, dumbbells, band"
+    Och inställningarna ska inte innehålla "hasDumbbells", "hasBand" eller "hasBall"
+
+  Scenario: Ett sparat utrustningsval för hemma ändras inte av de gamla inställningarna
+    Givet en tom app
+    När jag importerar en säkerhetskopia med innehållet:
+      """
+      { "settings": { "hasDumbbells": true, "gear": { "home": ["body", "kettlebell"] } } }
+      """
+    Så ska utrustningen hemma vara "body, kettlebell"

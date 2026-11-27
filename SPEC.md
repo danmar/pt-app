@@ -29,7 +29,7 @@ Appen har en flikrad längst ner med fyra flikar:
 | Idag | Startsida: val av aktivitet, steg, fysio |
 | Logg | Siffror, diagram för senaste 7 dagarna, logga i efterhand, historik |
 | Grafer | Minuter per vecka, set per muskelgrupp, utveckling per övning, steg |
-| Inställningar | Ont, utrustning hemma, vila, stegmål, färgtema, installera, data |
+| Inställningar | Ont, vila, stegmål, färgtema, installera, data |
 
 Undervyer (Gym, Hemma, Kondition, Simma, Fysio) öppnas från startsidan och har en tillbaka-knapp. Detaljer, listor och formulär öppnas i ett bottenark.
 
@@ -53,7 +53,7 @@ Varje sida består av block. Vilka block som visas och i vilken ordning står i 
 | Muskelgrupp | `cardio` (Kondition), `legs` (Ben & rumpa), `back` (Rygg), `chest` (Bröst), `shoulders` (Axlar), `arms` (Armar), `core` (Mage & bål). Ordningen styr hur övningar sorteras i ett pass. |
 | Huvudmuskel | Första muskelgruppen i en övnings lista. Övriga är hjälpmuskler. |
 | Utrustning (gear) | `body` (Kroppsvikt), `dumbbells`, `kettlebell`, `barbell`, `machine` (Maskiner & kabel), `ball` (Gymboll), `band` (Gummiband), `board` (Balansplatta). |
-| Plats | `gym` eller `home`. På gym finns all utrustning, hemma bara kroppsvikt och det man markerat i Inställningar. |
+| Plats | `gym` eller `home`. Vilken utrustning som finns väljs på sidan Gym eller Hemma (F2.0). |
 | Belastning (load) | Per övning och kroppsdel (`knees`, `back`, `shoulders`): 0 = ingen, 1 = lätt, 2 = tung. |
 | Ont | Per kroppsdel: 0 = Inget, 1 = Lite ont (högst 3 av 10), 2 = Ont (mer än 3 av 10, eller värre av träning). |
 | Rörelsemönster | T.ex. `push-h` (horisontell press), `pull-v` (vertikalt drag), `squat`, `hinge`. Används för variation och motvikt. |
@@ -76,6 +76,7 @@ Varje sida består av block. Vilka block som visas och i vilken ordning står i 
 Det finns inga färdiga program. Användaren väljer utrustning och muskelgrupper, och appen föreslår övning för övning.
 
 **Starta**
+- F2.0 Sidan Gym eller Hemma visar "Tillgänglig utrustning" där användaren markerar vad som finns på platsen. Valet sparas per plats. Från början är all utrustning vald på gym och bara Kroppsvikt hemma. "Börja träna" går inte att trycka på om ingen utrustning är vald.
 - F2.1 "Börja träna" startar ett nytt pass. Passet sparas i `data.active` så att det överlever om appen stängs, och återupptas nästa gång appen öppnas.
 - F2.2 Passet börjar med förslag på uppvärmning: roddmaskin, cykel eller marsch på gym; marsch, skuggboxning eller jumping jacks hemma. Skonsamma alternativ kommer först om knäna gör ont. "Jag har redan värmt upp" hoppar över uppvärmningen. Styrkeövningarna visas under rubriken "Sedan".
 - F2.3 Gym- och hemmapass börjar med platsens favoritövningar i kön (se 5.6).
@@ -89,7 +90,7 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F2.6.2 Överst står hjälptexten "Tryck på en övning för att läsa om den och lägga till den, eller på + för att lägga den direkt i kön."
 - F2.6.3 Under hjälptexten väljer användaren typ av övning: Styrka, Cirkel, HIIT, Kondition, Balans eller Stretch.
 - F2.6.4 Under typen väljer användaren muskelgrupper. Inget valt betyder alla. Valet visas inte för Kondition.
-- F2.6.5 Under muskelgrupperna väljer användaren vilken utrustning som ska användas. Valet visas inte för Stretch.
+- F2.6.5 Under muskelgrupperna väljer användaren vilken utrustning som ska användas, bland den som är tillgänglig enligt F2.0. Valet visas inte för Stretch.
 - F2.6.6 Under det visas en lista med automatiska förslag som kompletterar de övningar som redan finns i passet (se 6.2). Varje förslag har knapparna "Om övningen" och + (lägg i kön).
 - F2.6.7 Har användaren ont visas "Fysio för <kroppsdel>" med rehabövningar under förslagen (se F7.3).
 - F2.6.8 Under förslagen finns knappen "Välj övningar från listan".
@@ -234,7 +235,6 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 | Inställning | Standard |
 |---|---|
 | Ont i axlar, rygg eller knän | Inget |
-| Hantlar, kettlebell, balansplatta, gymboll, gummiband hemma | Av |
 | Vila mellan set | 90 s (steg om 15 s) |
 | Stegmål per dag | 8 000 (steg om 1 000) |
 | Ljust/mörkt läge | Som telefonen (alternativ: Ljust, Mörkt) |
@@ -269,7 +269,7 @@ Exempel som ska gälla:
 
 Lite ont i axlarna tar bort bänkpress men inte armhävningar.
 
-Hemma är bara övningar utan utrustning tillgängliga, plus de som kräver utrustning användaren har markerat.
+Bara övningar med utrustning som är tillgänglig enligt F2.0 är tillgängliga. Övningar som kräver gym (t.ex. chins och hantelpress på bänk) är aldrig tillgängliga hemma.
 
 ### 6.2 Nästa övning under passet
 
@@ -349,14 +349,13 @@ Allt sparas som ett JSON-objekt:
   steps:    { 'ÅÅÅÅ-MM-DD': antal },
   favorites: { gym: [exId], home: [exId] },   // i den ordning de markerades
   customExercises: [{ id, name, muscles, gear, timed, unilateral? }],
-  settings: { hasDumbbells, hasKettlebell, hasBoard, hasBall, hasBand, restSeconds, stepGoal,
-              kneeFriendly, pain, painUpdated, gear, groups, themeMode, themeAccent },
+  settings: { restSeconds, stepGoal, kneeFriendly, pain, painUpdated, gear, groups, themeMode, themeAccent },
   active:   null | { ... }   // pågående pass
 }
 ```
 
 Regler:
-- D1 Vid inläsning normaliseras datan: fält med fel typ blir tomma listor eller standardvärden. Saknas `favorites` blir övningarna i de gamla sparade fysiopassen "Fysio gym" och "Fysio hemma" favoriter för gym och hemma, om de finns. Annars får användaren favoriterna i F6.4. Övriga gamla fält (`saved`, `week`, `goals` och inställningarna för planering) tas bort.
+- D1 Vid inläsning normaliseras datan: fält med fel typ blir tomma listor eller standardvärden. Saknas `favorites` blir övningarna i de gamla sparade fysiopassen "Fysio gym" och "Fysio hemma" favoriter för gym och hemma, om de finns. Annars får användaren favoriterna i F6.4. Övriga gamla fält (`saved`, `week`, `goals` och inställningarna för planering) tas bort. Saknas ett sparat utrustningsval för hemma blir det Kroppsvikt plus det som var påslaget i de gamla inställningarna för utrustning hemma (`hasDumbbells`, `hasKettlebell`, `hasBoard`, `hasBall`, `hasBand`). De gamla inställningarna tas sedan bort.
 - D2 Export ger JSON med `app: "minpt"`, `version: 1` och `exportedAt`. Pågående pass (`active`) tas inte med.
 - D3 Import av en trasig fil ger tomma listor i stället för fel.
 - D4 Export följt av import ger samma data tillbaka.

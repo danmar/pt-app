@@ -1313,14 +1313,12 @@ export function painOk(exercise, pain = {}) {
 
 export const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]));
 
-/** opts: { hasDumbbells, hasKettlebell, hasBoard, hasBall, hasBand, kneeFriendly, pain, gear } – gear: vald utrustning (utelämnad = all). */
-export function isAvailable(exercise, place, { hasDumbbells = false, hasKettlebell = false, hasBoard = false, hasBall = false, hasBand = false, kneeFriendly = false, pain, gear } = {}) {
+/**
+ * opts: { kneeFriendly, pain, gear } – gear: tillgänglig utrustning (SPEC.md F2.0).
+ * Utan gear finns all utrustning på gym och bara kroppsvikt hemma. Övningar som kräver gym finns aldrig hemma.
+ */
+export function isAvailable(exercise, place, { kneeFriendly = false, pain, gear } = {}) {
   if (pain ? !painOk(exercise, pain) : kneeFriendly && exercise.kneeHeavy) return false;
-  if (gear && !gear.includes(exercise.gear)) return false;
-  if (place === 'gym') return true;
-  return exercise.equipment === 'none' || (exercise.equipment === 'dumbbells' && hasDumbbells)
-    || (exercise.equipment === 'kettlebell' && (hasKettlebell || !!gear?.includes('kettlebell')))
-    || (exercise.equipment === 'board' && (hasBoard || !!gear?.includes('board')))
-    || (exercise.equipment === 'ball' && (hasBall || !!gear?.includes('ball')))
-    || (exercise.equipment === 'band' && (hasBand || !!gear?.includes('band')));
+  if (place !== 'gym' && exercise.equipment === 'gym') return false;
+  return gear ? gear.includes(exercise.gear) : place === 'gym' || exercise.equipment === 'none';
 }
