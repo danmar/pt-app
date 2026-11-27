@@ -65,12 +65,17 @@ Egenskap: Gympass
     Och ska jag inte se texten "Tryck på en muskel för att få förslag på övningar."
     Och konsolen ska inte ha några fel
 
-  Scenario: Under Lägg till övning går det att trycka på musklerna
+  Scenario: En övning som läggs till visar namnet överst, figuren och musklerna
     När jag trycker på "Lägg till övning"
     Och väljer det första förslaget
-    Så ska det gå att trycka på musklerna
-    Och ska jag se texten "Tryck på en muskel för att få förslag på övningar."
+    Så ska övningens namn stå överst utan tid
+    Och ska övningsvyn bara visa figuren och musklerna
     Och ska kroppskartan vara hälften så stor
+    Och ska det inte gå att trycka på musklerna
+    Och ska jag inte se texten "Tryck på en muskel för att få förslag på övningar."
+    Och ska jag inte se knappen "Uppvärmning"
+    Och ska jag inte se knappen "Gör det ont?"
+    Och konsolen ska inte ha några fel
 
   Scenario: Roddmaskinen har ingen knapp för att lägga till set
     När jag väljer uppvärmningen "Roddmaskin"

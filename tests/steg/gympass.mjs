@@ -2,6 +2,7 @@
 import { When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
 import { exact, readData } from './webbläsare.mjs';
+import { BY_ID } from '../../web/exercises.js';
 
 const active = async (page) => (await readData(page)).active;
 /** Seten för övningen som är öppen just nu. */
@@ -46,7 +47,7 @@ When(/^skriver vikten "([^"]+)"(?: för (höger|vänster) ben)?$/, async functio
 });
 
 Then('ska jag inte se valen för set och reps', async function () {
-  await this.page.locator('#workout .wk-name').waitFor();
+  await this.page.locator('#workout .wk-bottom').waitFor();
   assert.equal(await this.page.locator('#workout .set-form, #workout .set, #workout .stepper').count(), 0);
 });
 
@@ -103,7 +104,19 @@ Then('ska kroppskartan vara hälften så stor', async function () {
   assert.ok(map <= fig / 2 + 1, `kroppskartan är ${map}px, figuren ${fig}px`);
 });
 
-Then(/^ska det (inte )?gå att trycka på musklerna$/, async function (not) {
-  const n = await this.page.locator('#wk-body .body-map [data-action="body-muscle"]').count();
-  if (not) assert.equal(n, 0); else assert.ok(n > 0);
+Then('ska det inte gå att trycka på musklerna', async function () {
+  assert.equal(await this.page.locator('#wk-body .body-map [data-action="body-muscle"]').count(), 0);
+});
+
+Then('ska övningens namn stå överst utan tid', async function () {
+  await this.page.locator('#workout .wk-bottom').waitFor();
+  const title = this.page.locator('#workout .wk-title');
+  assert.equal((await title.innerText()).trim(), BY_ID[this.chosen].name);
+  assert.equal(await title.locator('#elapsed').count(), 0);
+  assert.equal(await this.page.locator('#wk-body .wk-name').count(), 0);
+});
+
+Then('ska övningsvyn bara visa figuren och musklerna', async function () {
+  const kids = await this.page.locator('#wk-body').evaluate((b) => [...b.children].map((c) => c.className));
+  assert.deepEqual(kids, ['fig big', 'card body-card']);
 });

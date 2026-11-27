@@ -45,7 +45,8 @@ Varje sida består av block. Vilka block som visas och i vilken ordning står i 
 | Logg | `rubrik`, `siffror`, `diagram`, `logga`, `historik` |
 | Grafer | `rubrik`, `siffror`, `minuter-per-vecka`, `set-per-muskelgrupp`, `övningar`, `steg` |
 | Inställningar | `rubrik`, `inställningar`, `färgtema`, `installera`, `data` |
-| Övning under passet | `rubrik`, `logga`, `figur`, `muskler`, `knappar`, `så-gör-du`, `tänk-på` |
+| Köra en övning | `rubrik`, `logga`, `figur`, `muskler`, `knappar`, `så-gör-du`, `tänk-på` |
+| Lägga till en övning | `figur`, `muskler` |
 
 ## 4. Begrepp
 
@@ -101,7 +102,9 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F2.6.9 Under det visas "Kört idag" om något är kört idag.
 - F2.6.10 Sist visas "Musklerna i passet". Kroppskartan visar musklerna i de övningar som har klara set. Användaren kan växla mellan "Det här passet" och "Förra passet".
 - F2.6.11 Ett tryck på en muskel i "Musklerna i passet" visar förslag på övningar som tränar den muskeln.
-- F2.6.12 Ett tryck på en övning visar övningen utan val för set och reps. Knappen längst ned heter "Lägg till" (inte "Klar").
+
+**Lägg till övning: övning**
+- F2.6.12 Ett tryck på en övning visar övningsvyn för att lägga till övningen (se F2.23). Där finns inga val för set och reps, och knappen längst ned heter "Lägg till" (inte "Klar").
 - F2.6.13 "Lägg till" lägger övningen i kön utan klara set och går tillbaka till passet.
 
 **Logga en övning**
@@ -114,9 +117,26 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F2.16 "Gör det ont?" mitt i en övning låter användaren ange var det gör ont och välja en annan övning.
 
 **Övningsvyn**
-- F2.22 Övningsvyn under passet visar uppifrån: övningens namn, loggningen (set, reps, vikt eller tid), streckgubben, kroppskartan och sist knapparna Uppvärmning och Gör det ont? samt "Så gör du" och "Tänk på" (se 3.1).
-- F2.23 Kroppskartan i övningsvyn är hälften så stor som på andra ställen.
-- F2.24 När en övning körs går det inte att trycka på musklerna i kroppskartan, och texten "Tryck på en muskel för att få förslag på övningar." visas inte. När en övning visas under "Lägg till övning" går det att trycka på musklerna och texten visas.
+
+Övningsvyn visas på två sätt: när användaren *kör* en övning (trycker på den i kön, bland uppvärmningen eller bland de slutförda) och när användaren *lägger till* en övning (trycker på den under "Lägg till övning"). Tabellen visar vad som syns uppifrån och ned.
+
+| Del | Köra | Lägga till |
+|---|---|---|
+| Överst | "Övning N" eller "Uppvärmning" och tiden sedan passet började | Övningens namn, ingen tid |
+| Övningens namn | Ja | Nej (står redan överst) |
+| Raden "4 set × 8 · muskler" | Ja | Nej |
+| Loggning (set, reps, vikt eller tid) | Ja | Nej |
+| Streckgubben | Ja | Ja |
+| Kroppskartan, hälften så stor | Ja | Ja |
+| Texten "Tryck på en muskel för att få förslag på övningar." | Nej | Nej |
+| Knapparna Uppvärmning och Gör det ont? | Ja | Nej |
+| Så gör du | Ja | Nej |
+| Tänk på | Ja | Nej |
+| Knapparna längst ned | Avbryt och Klar | Avbryt och Lägg till |
+
+- F2.22 När en övning körs visas uppifrån: "Övning N" (eller "Uppvärmning") och tiden, övningens namn och raden med set, reps och muskler, loggningen, streckgubben, kroppskartan, knapparna Uppvärmning och Gör det ont?, "Så gör du" och "Tänk på". Längst ned finns Avbryt och Klar.
+- F2.23 När en övning läggs till visas uppifrån: övningens namn utan tid, streckgubben och kroppskartan. Längst ned finns Avbryt och Lägg till.
+- F2.24 Kroppskartan i övningsvyn är hälften så stor som på andra ställen. Det går inte att trycka på musklerna i den, och texten "Tryck på en muskel för att få förslag på övningar." visas inte. Musklerna går att trycka på i "Musklerna i passet" (F2.6.11).
 - F2.25 Övningar som mäts i minuter (roddmaskin och motionscykel) har ingen knapp "+ Lägg till set". Övningar som mäts i sekunder (t.ex. planka) har kvar knappen.
 
 **Uppvärmning**

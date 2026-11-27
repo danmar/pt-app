@@ -370,6 +370,7 @@ svg { display: block; }
 .wk-top { display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; padding: 6px 12px; }
 .wk-end { flex-basis: 100%; padding: 4px; margin-top: -2px; color: var(--muted); font-size: 15px; }
 .wk-title { display: flex; flex-direction: column; align-items: center; }
+.wk-title b { text-align: center; }
 .wk-title span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .progress { height: 4px; background: var(--card-2); margin: 4px 16px 0; border-radius: 2px; overflow: hidden; }
 .progress div { height: 100%; background: var(--accent); transition: width 0.3s; }

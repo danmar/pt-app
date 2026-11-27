@@ -1895,15 +1895,14 @@ const BODY_LEGEND = {
 };
 const TAP_HINT = '<p class="hint center">Tryck på en muskel för att få förslag på övningar.</p>';
 
-/** Vilka muskler övningen tränar. interactive: under passet går det att trycka på musklerna. */
-function exerciseBody(ex, interactive = false) {
+/** Vilka muskler övningen tränar. Det går inte att trycka på musklerna. */
+function exerciseBody(ex) {
   const { p, s } = musclesOf(ex);
   if (!p.length && !s.length) return '';
   return `<div class="card body-card">
-    ${bodyMap(exerciseLevels(ex), { interactive, label: `Muskler som ${ex.name} tränar` })}
+    ${bodyMap(exerciseLevels(ex), { label: `Muskler som ${ex.name} tränar` })}
     <div class="legend center">${BODY_LEGEND.ex}</div>
     <p class="bm-names"><b>${p.map((m) => BODY[m].name).join(', ')}</b>${s.length ? `${p.length ? ' · ' : ''}${s.map((m) => BODY[m].name).join(', ')}` : ''}</p>
-    ${interactive ? TAP_HINT : ''}
   </div>`;
 }
 
@@ -1968,23 +1967,28 @@ function drawWorkout() {
   const root = $('#workout');
   const item = w.items[w.index];
   const ex = BY_ID[item.exId];
+  const figure = () => `<div class="fig big" data-ex="${ex.id}" data-play="1"></div>`;
 
   root.innerHTML = `
     <div class="wk-top">
       <span class="wk-spacer"></span>
-      <div class="wk-title"><b>${item.warmup ? 'Uppvärmning' : `Övning ${w.items.slice(0, w.index).filter((it) => !it.warmup).length + 1}`}</b><span id="elapsed">0:00</span></div>
+      <div class="wk-title">${item.preview ? `<b>${esc(ex.name)}</b>`
+        : `<b>${item.warmup ? 'Uppvärmning' : `Övning ${w.items.slice(0, w.index).filter((it) => !it.warmup).length + 1}`}</b><span id="elapsed">0:00</span>`}</div>
       <span class="wk-spacer"></span>
     </div>
     <div class="wk-body" id="wk-body">
-      ${blocks({
+      ${item.preview ? blocks({
+        // Lägga till: namnet står överst, inga val och ingen instruktion (SPEC.md F2.23).
+        figur: () => figure(),
+        muskler: () => exerciseBody(ex),
+      }) : blocks({
         rubrik: () => `<h2 class="wk-name">${esc(ex.name)}</h2>
       <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>`,
-        logga: () => (item.preview ? '' : simpleSets(ex) ? setsForm(ex, item) : `
+        logga: () => (simpleSets(ex) ? setsForm(ex, item) : `
       <div class="sets">${item.sets.map((s, k) => setRow(ex, s, k)).join('')}</div>
       ${inMinutes(ex) ? '' : '<button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>'}`),
-        figur: () => `<div class="fig big" data-ex="${ex.id}" data-play="1"></div>`,
-        // Musklerna går bara att trycka på när övningen visas under "Lägg till övning".
-        muskler: () => exerciseBody(ex, !!item.preview),
+        figur: () => figure(),
+        muskler: () => exerciseBody(ex),
         knappar: () => `<div class="wk-links">
         <button class="toggle small" data-action="wk-warmup" aria-pressed="${!!item.warmup}">Uppvärmning</button>
         <button class="btn-text wk-link" data-action="pain-sheet">Gör det ont?</button>
