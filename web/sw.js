@@ -1,5 +1,5 @@
 // Gör att appen fungerar utan internet. Höj VERSION när du ändrar filerna.
-const VERSION = 'minpt-v52';
+const VERSION = 'minpt-v53';
 const FILES = [
   './',
   './index.html',

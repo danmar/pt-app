@@ -131,3 +131,7 @@ Then(/^ska "([^"]+)" (inte )?vara favorit på gym$/, async function (id, not) {
   const fav = (await readData(this.page)).favorites.gym;
   assert.equal(fav.includes(id), !not, fav.join(', '));
 });
+
+Then(/^ska övningen ha (\d+) rad(?:er)?$/, async function (n) {
+  assert.equal(await this.page.locator('#wk-body .sets .set').count(), Number(n));
+});

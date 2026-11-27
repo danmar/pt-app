@@ -135,6 +135,8 @@ Det finns inga färdiga program. Användaren väljer utrustning och muskelgruppe
 - F2.23 När en övning läggs till visas uppifrån: övningens namn utan tid, streckgubben och kroppskartan. Längst ned finns Avbryt och Lägg till.
 - F2.24 Kroppskartan i övningsvyn är hälften så stor som på andra ställen. Det går inte att trycka på musklerna i den, och texten "Tryck på en muskel för att få förslag på övningar." visas inte. Musklerna går att trycka på i "Musklerna i passet" (F2.6.11).
 - F2.25 Övningar som mäts i minuter (roddmaskin och motionscykel) har ingen knapp "+ Lägg till set". Övningar som mäts i sekunder (t.ex. planka) har kvar knappen.
+- F2.26 Övningar som mäts i sekunder (t.ex. planka) börjar med 1 set, en rad per set (en för varje ben på en enbensövning). Raden under namnet visar bara tiden och musklerna, inte antal set.
+- F2.27 Bredvid "+ Lägg till set" finns knappen "− Ta bort set". Den tar bort den sista raden som inte är avbockad. Knappen visas inte när bara en rad finns kvar eller alla rader är avbockade.
 
 **Uppvärmning**
 - F2.17 Varje övning kan markeras som uppvärmning. Roddmaskin och motionscykel blir uppvärmning automatiskt om de körs först.

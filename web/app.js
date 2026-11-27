@@ -1340,13 +1340,16 @@ function makeSets(ex, n = ex.sets, weight = 0, extra = {}) {
   const count = ex.unilateral ? n * 2 : n;
   return [...Array(count)].map((_, i) => ({ reps: ex.defaultReps, weight, ...extra, ...(ex.unilateral ? { side: i % 2 ? 'V' : 'H' } : {}) }));
 }
+/** Index för den sista raden som inte är avbockad, eller -1 om ingen rad kan tas bort (SPEC.md F2.27). */
+const removableSet = (item) => (item.sets.length > 1 ? item.sets.findLastIndex((x) => !x.done) : -1);
 const flip = (side) => (side === 'H' ? 'V' : side === 'V' ? 'H' : undefined);
 const sideTag = (set) => (set.side ? ` (${set.side})` : '');
 
 function newItem(exId, sets = BY_ID[exId].sets, before = data.active?.items ?? []) {
   const ex = BY_ID[exId];
   const warmup = isWarmupStart(exId, before);
-  const item = { exId, warmup, sets: makeSets(ex, sets, lastWeights(data.sessions)[exId] ?? 0, { done: false }) };
+  // Tidsövningar börjar med 1 set; fler läggs till med "+ Lägg till set" (SPEC.md F2.26).
+  const item = { exId, warmup, sets: makeSets(ex, ex.timed ? 1 : sets, lastWeights(data.sessions)[exId] ?? 0, { done: false }) };
   // Som uppvärmning räcker 5 minuter på cykel eller roddmaskin.
   if (warmup && inMinutes(ex)) for (const x of item.sets) x.reps = 300;
   return item;
@@ -1630,10 +1633,13 @@ function drawWorkout() {
         muskler: () => exerciseBody(ex),
       }) : blocks({
         rubrik: () => `<h2 class="wk-name">${esc(ex.name)}</h2>
-      <p class="muted center">${ex.sets} set × ${ex.reps} · ${muscleNames(ex)}</p>`,
+      <p class="muted center">${ex.timed ? ex.reps : `${ex.sets} set × ${ex.reps}`} · ${muscleNames(ex)}</p>`,
         logga: () => (simpleSets(ex) ? setsForm(ex, item) : `
       <div class="sets">${item.sets.map((s, k) => setRow(ex, s, k)).join('')}</div>
-      ${inMinutes(ex) ? '' : '<button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>'}`),
+      ${inMinutes(ex) ? '' : `<div class="set-btns">
+        <button class="btn-text add-set" data-action="add-set">+ Lägg till set</button>
+        ${removableSet(item) >= 0 ? '<button class="btn-text add-set" data-action="remove-set">− Ta bort set</button>' : ''}
+      </div>`}`),
         figur: () => figure(),
         muskler: () => exerciseBody(ex),
         knappar: () => `<div class="wk-links">
@@ -2442,6 +2448,12 @@ document.addEventListener('click', (e) => {
       sets.push({ reps: prev?.reps ?? 10, weight: prev?.weight ?? 0, done: false, ...(prev?.side ? { side: flip(prev.side) } : {}) });
       save();
       renderWorkout();
+      break;
+    }
+    case 'remove-set': {
+      const it = w.items[w.index];
+      const k = removableSet(it);
+      if (k >= 0) { it.sets.splice(k, 1); save(); renderWorkout(); }
       break;
     }
     case 'rest-add': w.restEnd += 15000; save(); updateTimers(); break;

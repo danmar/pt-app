@@ -87,6 +87,17 @@ Egenskap: Gympass
     Och kör "Plankan" från kön
     Så ska jag se knappen "+ Lägg till set"
 
+  Scenario: Plankan börjar med ett set som går att ta bort igen
+    När jag lägger till "Plankan" från listan
+    Och kör "Plankan" från kön
+    Så ska övningen ha 1 rad
+    Och ska jag inte se knappen "− Ta bort set"
+    När jag trycker på "+ Lägg till set"
+    Så ska övningen ha 2 rader
+    När jag trycker på "− Ta bort set"
+    Så ska övningen ha 1 rad
+    Och konsolen ska inte ha några fel
+
   Scenario: Ett nytt pass börjar med favoriterna i kön
     Så ska kön innehålla "Benspark med ett ben, Bencurl med ett ben, Benpress med ett ben"
 
